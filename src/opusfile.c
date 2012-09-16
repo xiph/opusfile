@@ -197,70 +197,6 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
   }
 }
 
-#if 0
-/*Find the last page beginning before the current stream cursor position with a
-   valid granule position.
-  This is much dirtier than the above, as Ogg doesn't have any backward search
-   linkage.
-  There is no '_boundary' parameter as it will have to read more data.
-  Return: The offset of the start of the page, or a negative value on failure.
-          OP_EREAD:    Failed to read more data (error or EOF).
-          OP_EBADLINK: We read a page, and then went back and couldn't find it
-                        again.*/
-static opus_int64 op_get_prev_page(OggOpusFile *_of,ogg_page *_og){
-  opus_int64 begin;
-  opus_int64 end;
-  opus_int64 llret;
-  opus_int64 page_offset;
-  opus_int64 original_end;
-  opus_int32 chunk_size;
-  int        have_page;
-  int        ret;
-  original_end=end=begin=_of->offset;
-  page_offset=-1;
-  have_page=0;
-  chunk_size=OP_CHUNK_SIZE;
-  do{
-    OP_ASSERT(chunk_size>=OP_PAGE_SIZE);
-    begin=OP_MAX(begin-chunk_size,0);
-    ret=op_seek_helper(_of,begin);
-    if(OP_UNLIKELY(ret<0))return ret;
-    while(_of->offset<end){
-      llret=op_get_next_page(_of,_og,end-_of->offset);
-      if(OP_UNLIKELY(llret<OP_FALSE))return llret;
-      else if(llret==OP_FALSE){
-        have_page=0;
-        break;
-      }
-      /*We're only doing this search to get a timestamp, so keep going if the
-         granule position is not valid.*/
-      if(ogg_page_granulepos(_og)==-1)continue;
-      page_offset=llret;
-      have_page=1;
-    }
-    chunk_size=OP_MIN(2*chunk_size,OP_CHUNK_SIZE_MAX);
-    /*Avoid quadratic complexity if we hit an invalid patch of the file.*/
-    end=OP_MIN(begin+OP_PAGE_SIZE-1,original_end);
-  }
-  while(page_offset==-1);
-  /*In a fully compliant, non-multiplexed stream, we'll still be holding the
-     last page.
-    In multiplexed (or noncompliant streams), we will probably have to re-read
-     the last page we saw.*/
-  if(!have_page){
-    ret=op_seek_helper(_of,page_offset);
-    if(OP_UNLIKELY(ret<0))return ret;
-    llret=op_get_next_page(_of,_og,OP_CHUNK_SIZE);
-    if(OP_UNLIKELY(llret<0)||OP_UNLIKELY(ogg_page_granulepos(_og)==-1)){
-      /*This shouldn't be possible unless the stream data changed out from
-         under us.*/
-      return OP_EBADLINK;
-    }
-  }
-  return page_offset;
-}
-#endif
-
 static int op_add_serialno(ogg_page *_og,
  ogg_uint32_t **_serialnos,int *_nserialnos,int *_cserialnos){
   ogg_uint32_t *serialnos;
@@ -298,13 +234,21 @@ static int op_lookup_page_serialno(ogg_page *_og,
   return op_lookup_serialno(ogg_page_serialno(_og),_serialnos,_nserialnos);
 }
 
-/*Performs the same search as op_get_prev_page(), but prefers pages of the
-   specified serial number.
+/*Find the last page beginning before the current stream cursor position with a
+   valid granule position.
+  There is no '_boundary' parameter as it will have to read more data.
+  This is much dirtier than the above, as Ogg doesn't have any backward search
+   linkage.
+  This search prefers pages of the specified serial number.
   If a page of the specified serial number is spotted during the
    seek-back-and-read-forward, it will return the info of last page of the
    matching serial number, instead of the very last page.
   If no page of the specified serial number is seen, it will return the info of
-   the last page and update *_serialno.*/
+   the last page and update *_serialno.
+  Return: The offset of the start of the page, or a negative value on failure.
+          OP_EREAD:    Failed to read more data (error or EOF).
+          OP_EBADLINK: We couldn't find a page even after seeking back to the
+                        start of the stream.*/
 static opus_int64 op_get_prev_page_serial(OggOpusFile *_of,
  const ogg_uint32_t *_serialnos,int _nserialnos,opus_int32 *_chunk_size,
  ogg_uint32_t *_serialno,ogg_int64_t *_gp){
