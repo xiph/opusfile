@@ -956,10 +956,6 @@ int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li);
                               checks.*/
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li);
 
-long op_read_filter(OggOpusFile *_of,char *buffer,int length,
-                          int bigendianp,int word,int sgned,int *bitstream,
-                          void (*filter)(float **pcm,long channels,long samples,void *filter_param),void *filter_param);
-
 # if OP_GNUC_PREREQ(4,0)
 #  pragma GCC visibility pop
 # endif
