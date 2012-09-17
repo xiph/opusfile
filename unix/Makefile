@@ -16,7 +16,7 @@ MAKEDEPEND = ${CC} -MM
 # The location of include files.
 # Modify these to point to your Ogg and Vorbis include directories if they are
 #  not installed in a standard location.
-CINCLUDE = `pkg-config --cflags ogg opus`
+CINCLUDE = `pkg-config --cflags --static ogg opus`
 # These are gcc-only, but not actually critical.
 # Extra compilation flags.
 # You may get speed increases by including flags such as -O2 or -O3 or
@@ -31,7 +31,7 @@ CFLAGS := -Wextra -Wno-parentheses -Wno-long-long $(CFLAGS)
 CFLAGS := -Wall $(CFLAGS)
 
 # Libraries to link with, and the location of library files.
-LIBS = `pkg-config --libs ogg opus`
+LIBS = `pkg-config --libs --static ogg opus`
 
 #TODO: tests
 FOO_LIBS =
