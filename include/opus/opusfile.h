@@ -23,7 +23,7 @@ extern "C" {
 
 # include <stdio.h>
 # include <ogg/ogg.h>
-# include <opus/opus_multistream.h>
+# include <opus_multistream.h>
 
 /*Enable special features for gcc and gcc-compatible compilers.*/
 # if !defined(OP_GNUC_PREREQ)
