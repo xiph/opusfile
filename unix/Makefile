@@ -178,5 +178,7 @@ ${WORKDIR}/%.o : ${BINSRCDIR}/%.c
 	mkdir -p ${dir $@}
 	${CC} ${CINCLUDE} ${CFLAGS} -c -o $@ $<
 
-# Include header file dependencies
+# Include header file dependencies, except when cleaning
+ifneq ($(MAKECMDGOALS),clean)
 include ${ALL_DEPS}
+endif
