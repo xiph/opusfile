@@ -12,7 +12,7 @@
 # include <io.h>
 # include <fcntl.h>
 #endif
-#include <opus/opusfile.h>
+#include <opusfile.h>
 
 /*Use shorts, they're smaller.*/
 #define OP_FIXED_POINT (1)

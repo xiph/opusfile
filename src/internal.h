@@ -18,7 +18,7 @@
 # endif
 
 # include <stdlib.h>
-# include <opus/opusfile.h>
+# include <opusfile.h>
 
 typedef struct OggOpusLink OggOpusLink;
 # if defined(OP_FIXED_POINT)

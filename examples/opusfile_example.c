@@ -11,7 +11,7 @@
 # include <io.h>
 # include <fcntl.h>
 #endif
-#include <opus/opusfile.h>
+#include <opusfile.h>
 
 int main(int _argc,const char **_argv){
   OggOpusFile *of;

@@ -22,7 +22,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "opus/opusfile.h"
+#include "opusfile.h"
 
 /*This implementation is largely based off of libvorbisfile.
   All of the Ogg bits work roughly the same, though I have made some
