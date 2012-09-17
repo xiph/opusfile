@@ -14,8 +14,8 @@
  last mod: $Id: vorbisfile.h 17182 2010-04-29 03:48:32Z xiphmont $
 
  ********************************************************************/
-#if !defined(_opus_opusfile_h)
-# define _opus_opusfile_h (1)
+#if !defined(_opusfile_h)
+# define _opusfile_h (1)
 
 # if defined(__cplusplus)
 extern "C" {
