@@ -13,45 +13,6 @@
 #endif
 #include <opus/opusfile.h>
 
-/*Matrices for downmixing from the supported channel counts to stereo.*/
-static const float DOWNMIX_MATRIX[8][8][2]={
-  /*mono*/
-  {
-    {1.F,1.F}
-  },
-  /*stereo*/
-  {
-    {1.F,0.F},{0.F,1.F}
-  },
-  /*3.0*/
-  {
-    {0.5858F,0.F},{0.4142F,0.4142F},{0,0.5858F}
-  },
-  /*quadrophonic*/
-  {
-    {0.4226F,0.F},{0,0.4226F},{0.366F,0.2114F},{0.2114F,0.336F}
-  },
-  /*5.0*/
-  {
-    {0.651F,0.F},{0.46F,0.46F},{0,0.651F},{0.5636F,0.3254F},{0.3254F,0.5636F}
-  },
-  /*5.1*/
-  {
-    {0.529F,0.F},{0.3741F,0.3741F},{0.F,0.529F},{0.4582F,0.2645F},
-    {0.2645F,0.4582F},{0.3741F,0.3741F}
-  },
-  /*6.1*/
-  {
-    {0.4553F,0.F},{0.322F,0.322F},{0.F,0.4553F},{0.3943F,0.2277F},
-    {0.2277F,0.3943F},{0.2788F,0.2788F},{0.322F,0.322F}
-  },
-  /*7.1*/
-  {
-    {0.3886F,0.F},{0.2748F,0.2748F},{0.F,0.3886F},{0.3366F,0.1943F},
-    {0.1943F,0.3366F},{0.3366F,0.1943F},{0.1943F,0.3366F},{0.2748F,0.2748F}
-  }
-};
-
 int main(int _argc,const char **_argv){
   OggOpusFile *of;
   ogg_int64_t  pcm_offset;
@@ -75,7 +36,7 @@ int main(int _argc,const char **_argv){
   }
   if(strcmp(_argv[1],"-")==0){
     OpusFileCallbacks cb={NULL,NULL,NULL,NULL};
-    of=op_open_callbacks(op_fdopen(&cb,fileno(stdin),"rb"),&cb,NULL,0,NULL);
+    of=op_open_callbacks(op_fdopen(&cb,fileno(stdin),"rb"),&cb,NULL,0,&ret);
   }
 #if 0
   /*For debugging: force a file to not be seekable.*/
@@ -88,10 +49,10 @@ int main(int _argc,const char **_argv){
     of=op_open_callbacks(fp,&cb,NULL,0,NULL);
   }
 #else
-  else of=op_open_file(_argv[1],NULL);
+  else of=op_open_file(_argv[1],&ret);
 #endif
   if(of==NULL){
-    fprintf(stderr,"Failed to open file '%s'.\n",_argv[1]);
+    fprintf(stderr,"Failed to open file '%s': %i\n",_argv[1],ret);
     return EXIT_FAILURE;
   }
   if(op_seekable(of)){
@@ -109,17 +70,15 @@ int main(int _argc,const char **_argv){
   }
   for(;;){
     ogg_int64_t next_pcm_offset;
-    float       pcm[120*48*8];
-    float       stereo_pcm[120*48*2];
-    int         nchannels;
+    float       pcm[120*48*2];
     int         li;
-    int         i;
-    ret=op_read_float(of,pcm,sizeof(pcm)/sizeof(*pcm),&li);
+    ret=op_read_float_stereo(of,pcm,sizeof(pcm)/sizeof(*pcm));
     if(ret<0){
       fprintf(stderr,"Error decoding '%s': %i\n",_argv[1],ret);
       ret=EXIT_FAILURE;
       break;
     }
+    li=op_current_link(of);
     if(li!=prev_li){
       const OpusHead *head;
       const OpusTags *tags;
@@ -163,26 +122,7 @@ int main(int _argc,const char **_argv){
       ret=EXIT_SUCCESS;
       break;
     }
-    /*Downmix to stereo so we can have a consistent output format.*/
-    nchannels=op_channel_count(of,li);
-    if(nchannels<0||nchannels>8){
-      fprintf(stderr,"Unsupported channel count: %i\n",nchannels);
-      ret=EXIT_FAILURE;
-      break;
-    }
-    for(i=0;i<ret;i++){
-      float l;
-      float r;
-      int   ci;
-      l=r=0.F;
-      for(ci=0;ci<nchannels;ci++){
-        l+=DOWNMIX_MATRIX[nchannels-1][ci][0]*pcm[i*nchannels+ci];
-        r+=DOWNMIX_MATRIX[nchannels-1][ci][1]*pcm[i*nchannels+ci];
-      }
-      stereo_pcm[2*i+0]=l;
-      stereo_pcm[2*i+1]=r;
-    }
-    if(!fwrite(stereo_pcm,sizeof(*stereo_pcm)*2,ret,stdout)){
+    if(!fwrite(pcm,sizeof(*pcm)*2,ret,stdout)){
       fprintf(stderr,"Error writing decoded audio data: %s\n",strerror(errno));
       ret=EXIT_FAILURE;
       break;

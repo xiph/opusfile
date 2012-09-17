@@ -1376,6 +1376,11 @@ const OpusTags *op_tags(OggOpusFile *_of,int _li){
   return _li>=_of->nlinks?NULL:&_of->links[_li].tags;
 }
 
+int op_current_link(OggOpusFile *_of){
+  if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
+  return _of->cur_link;
+}
+
 /*Compute an average bitrate given a byte and sample count.
   Return: The bitrate in bits per second.*/
 static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
@@ -2214,37 +2219,157 @@ static int op_read_native(OggOpusFile *_of,
   }
 }
 
-#if defined(OP_FIXED_POINT)
+typedef int (*op_read_filter_func)(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_sample *_src,int _nsamples,int _nchannels);
 
-int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li){
-  return op_read_native(_of,_pcm,_buf_size,_li);
-}
-
-# if !defined(OP_DISABLE_FLOAT_API)
-int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
+/*Decode some samples and then apply a custom filter to them.
+  This is used to convert to different output formats.*/
+static int op_read_native_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_read_filter_func _filter,int *_li){
   int ret;
   /*Ensure we have some decoded samples in our buffer.*/
   ret=op_read_native(_of,NULL,0,_li);
-  /*Now convert them to float.*/
+  /*Now apply the filter to them.*/
   if(OP_LIKELY(ret>=0)&&OP_LIKELY(_of->ready_state>=OP_INITSET)){
-    int nchannels;
     int od_buffer_pos;
-    nchannels=_of->links[_of->seekable?_of->cur_link:0].head.channel_count;
     od_buffer_pos=_of->od_buffer_pos;
     ret=_of->od_buffer_size-od_buffer_pos;
     if(OP_LIKELY(ret>0)){
-      op_sample *buf;
-      int        i;
-      if(OP_UNLIKELY(ret*nchannels>_buf_size))ret=_buf_size/nchannels;
-      buf=_of->od_buffer+nchannels*od_buffer_pos;
-      _buf_size=ret*nchannels;
-      for(i=0;i<_buf_size;i++)_pcm[i]=(1.0F/32768)*buf[i];
+      int nchannels;
+      nchannels=_of->links[_of->seekable?_of->cur_link:0].head.channel_count;
+      ret=(*_filter)(_of,_dst,_dst_sz,
+       _of->od_buffer+nchannels*od_buffer_pos,ret,nchannels);
+      OP_ASSERT(ret>=0);
+      OP_ASSERT(ret<=_of->od_buffer_size-od_buffer_pos);
       od_buffer_pos+=ret;
       _of->od_buffer_pos=od_buffer_pos;
     }
   }
   return ret;
 }
+
+#if defined(OP_FIXED_POINT)
+
+int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li){
+  return op_read_native(_of,_pcm,_buf_size,_li);
+}
+
+/*Matrices for downmixing from the supported channel counts to stereo.
+  The matrices with 5 or more channels are normalized to a total volume of 2.0,
+   since most mixes sound too quiet if normalized to 1.0 (as there is generally
+   little volume in the side/rear channels).
+  Hence we keep the coefficients in Q14, so the downmix values won't overflow a
+   32-bit number.*/
+static const opus_int16 OP_STEREO_DOWNMIX_Q14
+ [OP_NCHANNELS_MAX-2][OP_NCHANNELS_MAX][2]={
+  /*3.0*/
+  {
+    {9598,0},{6786,6786},{0,9598}
+  },
+  /*quadrophonic*/
+  {
+    {6924,0},{0,6924},{5996,3464},{3464,5996}
+  },
+  /*5.0*/
+  {
+    {10666,0},{7537,7537},{0,10666},{9234,5331},{5331,9234}
+  },
+  /*5.1*/
+  {
+    {8668,0},{6129,6129},{0,8668},{7507,4335},{4335,7507},{6129,6129}
+  },
+  /*6.1*/
+  {
+    {7459,0},{5275,5275},{0,7459},{6460,3731},{3731,6460},{4568,4568},
+    {5275,5275}
+  },
+  /*7.1*/
+  {
+    {6368,0},{4502,4502},{0,6368},{5515,3183},{3183,5515},{5515,3183},
+    {3183,5515},{4502,4502}
+  }
+};
+
+static int op_stereo_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_sample *_src,int _nsamples,int _nchannels){
+  _of=_of;
+  _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
+  if(_nchannels==2)memcpy(_dst,_src,_nsamples*2*sizeof(*_src));
+  else{
+    opus_int16 *dst;
+    int         i;
+    dst=(opus_int16 *)_dst;
+    if(_nchannels==1){
+      for(i=0;i<_nsamples;i++)dst[2*i+0]=dst[2*i+1]=_src[i];
+    }
+    else{
+      for(i=0;i<_nsamples;i++){
+        opus_int32 l;
+        opus_int32 r;
+        int        ci;
+        l=r=0;
+        for(ci=0;ci<_nchannels;ci++){
+          opus_int32 s;
+          s=_src[_nchannels*i+ci];
+          l+=OP_STEREO_DOWNMIX_Q14[_nchannels-3][ci][0]*s;
+          r+=OP_STEREO_DOWNMIX_Q14[_nchannels-3][ci][1]*s;
+        }
+        dst[2*i+0]=(opus_int16)OP_CLAMP(-32768,l+8192>>14,32767);
+        dst[2*i+1]=(opus_int16)OP_CLAMP(-32768,r+8192>>14,32767);
+      }
+    }
+  }
+  return _nsamples;
+}
+
+int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
+  return op_read_native_filter(_of,_pcm,_buf_size,op_stereo_filter,NULL);
+}
+
+# if !defined(OP_DISABLE_FLOAT_API)
+
+static int op_short2float_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_sample *_src,int _nsamples,int _nchannels){
+  float *dst;
+  int    i;
+  dst=(float *)_dst;
+  if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
+  _dst_sz=_nsamples*_nchannels;
+  for(i=0;i<_dst_sz;i++)dst[i]=(1.0F/32768)*_src[i];
+  return _nsamples;
+}
+
+int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
+  return op_read_native_filter(_of,_pcm,_buf_size,op_short2float_filter,_li);
+}
+
+static int op_short2float_stereo_filter(OggOpusFile *_of,
+ void *_dst,int _dst_sz,op_sample *_src,int _nsamples,int _nchannels){
+  float *dst;
+  dst=(float *)_dst;
+  _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
+  if(_nchannels==1){
+    int i;
+    _nsamples=op_short2float_filter(_of,dst,_nsamples,_src,_nsamples,1);
+    for(i=_nsamples;i-->0;)dst[2*i+0]=dst[2*i+1]=dst[i];
+    return _nsamples;
+  }
+  /*It would be better to convert to floats and then downmix (so that we don't
+     risk clipping with more than 5 channels), but that would require a large
+     stack buffer, which is probably not a good idea if you're using the
+     fixed-point build.*/
+  if(_nchannels>2){
+    _nsamples=op_stereo_filter(_of,_src,_nsamples*2,
+     _src,_nsamples,_nchannels);
+  }
+  return op_short2float_filter(_of,dst,_dst_sz,_src,_nsamples,2);
+}
+
+int op_read_stereo_float(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
+  return op_read_native_filter(_of,_pcm,_buf_size,
+   op_short2float_stereo_filter,NULL);
+}
+
 # endif
 
 #else
@@ -2297,8 +2422,8 @@ static const float OP_FCOEF_A[4]={
   0.9030F,0.0116F,-0.5853F,-0.2571F
 };
 
-static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,float *_src,
- int _nsamples,int _nchannels){
+static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
+ const float *_src,int _nsamples,int _nchannels){
   opus_uint32 seed;
   int         mute;
   int         i;
@@ -2355,31 +2480,115 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,float *_src,
   _of->dither_seed=seed;
 }
 
+static int op_float2short_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_sample *_src,int _nsamples,int _nchannels){
+  opus_int16 *dst;
+  dst=(opus_int16 *)_dst;
+  if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
+  op_shaped_dither16(_of,dst,_src,_nsamples,_nchannels);
+  return _nsamples;
+}
+
 int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li){
-  int ret;
-  /*Ensure we have some decoded samples in our buffer.*/
-  ret=op_read_native(_of,NULL,0,_li);
-  /*Now convert them to shorts.*/
-  if(OP_LIKELY(ret>=0)&&OP_LIKELY(_of->ready_state>=OP_INITSET)){
-    int nchannels;
-    int od_buffer_pos;
-    nchannels=_of->links[_of->seekable?_of->cur_link:0].head.channel_count;
-    od_buffer_pos=_of->od_buffer_pos;
-    ret=_of->od_buffer_size-od_buffer_pos;
-    if(OP_LIKELY(ret>0)){
-      op_sample *buf;
-      if(OP_UNLIKELY(ret*nchannels>_buf_size))ret=_buf_size/nchannels;
-      buf=_of->od_buffer+nchannels*od_buffer_pos;
-      op_shaped_dither16(_of,_pcm,buf,ret,nchannels);
-      od_buffer_pos+=ret;
-      _of->od_buffer_pos=od_buffer_pos;
-    }
-  }
-  return ret;
+  return op_read_native_filter(_of,_pcm,_buf_size,op_float2short_filter,_li);
 }
 
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
   return op_read_native(_of,_pcm,_buf_size,_li);
+}
+
+/*Matrices for downmixing from the supported channel counts to stereo.
+  The matrices with 5 or more channels are normalized to a total volume of 2.0,
+   since most mixes sound too quiet if normalized to 1.0 (as there is generally
+   little volume in the side/rear channels).*/
+static const float OP_STEREO_DOWNMIX[OP_NCHANNELS_MAX-2][OP_NCHANNELS_MAX][2]={
+  /*3.0*/
+  {
+    {0.5858F,0.0F},{0.4142F,0.4142F},{0.0F,0.5858F}
+  },
+  /*quadrophonic*/
+  {
+    {0.4226F,0.0F},{0.0F,0.4226F},{0.366F,0.2114F},{0.2114F,0.336F}
+  },
+  /*5.0*/
+  {
+    {0.651F,0.0F},{0.46F,0.46F},{0.0F,0.651F},{0.5636F,0.3254F},
+    {0.3254F,0.5636F}
+  },
+  /*5.1*/
+  {
+    {0.529F,0.0F},{0.3741F,0.3741F},{0.0F,0.529F},{0.4582F,0.2645F},
+    {0.2645F,0.4582F},{0.3741F,0.3741F}
+  },
+  /*6.1*/
+  {
+    {0.4553F,0.0F},{0.322F,0.322F},{0.0F,0.4553F},{0.3943F,0.2277F},
+    {0.2277F,0.3943F},{0.2788F,0.2788F},{0.322F,0.322F}
+  },
+  /*7.1*/
+  {
+    {0.3886F,0.0F},{0.2748F,0.2748F},{0.0F,0.3886F},{0.3366F,0.1943F},
+    {0.1943F,0.3366F},{0.3366F,0.1943F},{0.1943F,0.3366F},{0.2748F,0.2748F}
+  }
+};
+
+static int op_stereo_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+ op_sample *_src,int _nsamples,int _nchannels){
+  _of=_of;
+  _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
+  if(_nchannels==2)memcpy(_dst,_src,_nsamples*2*sizeof(*_src));
+  else{
+    float *dst;
+    int    i;
+    dst=(float *)_dst;
+    if(_nchannels==1){
+      for(i=0;i<_nsamples;i++)dst[2*i+0]=dst[2*i+1]=_src[i];
+    }
+    else{
+      for(i=0;i<_nsamples;i++){
+        float l;
+        float r;
+        int   ci;
+        l=r=0;
+        for(ci=0;ci<_nchannels;ci++){
+          l+=OP_STEREO_DOWNMIX[_nchannels-3][ci][0]*_src[_nchannels*i+ci];
+          r+=OP_STEREO_DOWNMIX[_nchannels-3][ci][1]*_src[_nchannels*i+ci];
+        }
+        dst[2*i+0]=l;
+        dst[2*i+1]=r;
+      }
+    }
+  }
+  return _nsamples;
+}
+
+static int op_float2short_stereo_filter(OggOpusFile *_of,
+ void *_dst,int _dst_sz,op_sample *_src,int _nsamples,int _nchannels){
+  opus_int16 *dst;
+  dst=(opus_int16 *)_dst;
+  _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
+  if(_nchannels==1){
+    int i;
+    op_shaped_dither16(_of,dst,_src,_nsamples,1);
+    for(i=_nsamples;i-->0;)dst[2*i+0]=dst[2*i+1]=dst[i];
+  }
+  else{
+    if(_nchannels>2){
+      _nsamples=op_stereo_filter(_of,_src,_nsamples*2,
+       _src,_nsamples,_nchannels);
+    }
+    op_shaped_dither16(_of,dst,_src,_nsamples,_nchannels);
+  }
+  return _nsamples;
+}
+
+int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
+  return op_read_native_filter(_of,_pcm,_buf_size,
+   op_float2short_stereo_filter,NULL);
+}
+
+int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
+  return op_read_native_filter(_of,_pcm,_buf_size,op_stereo_filter,NULL);
 }
 
 #endif

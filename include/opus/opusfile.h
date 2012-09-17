@@ -784,6 +784,22 @@ const OpusHead *op_head(OggOpusFile *_of,int _li);
             partially open.*/
 const OpusTags *op_tags(OggOpusFile *_of,int _li);
 
+/**Retrieve the index of the current link.
+   This is the link that produced the data most recently read by
+    op_read_float() or its associated functions, or, after a seek, the link
+    that the seek target landed in.
+   Reading more data may advance the link index (even on the first read after a
+    seek).
+   \return The index of the current link on success, or a negative value on
+            failture.
+           For seekable streams, this is a number between 0 and the value
+            returned by op_link_count().
+           For unseekable streams, this value starts at 0 and increments by one
+            each time a new link is encountered (even though op_link_count()
+            always returns 1).
+   \retval #OP_EINVAL The stream was not fully open.*/
+int op_current_link(OggOpusFile *_of);
+
 /**Computes the bitrate for a given link in a (possibly chained) Ogg Opus
     stream.
    The stream must be seekable to compute the bitrate.
@@ -955,6 +971,96 @@ int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li);
                               a starting timestamp that failed basic validity
                               checks.*/
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li);
+
+/**Reads more samples from the stream and downmixes to stereo, if necessary.
+   This function is intended for simple players that want a uniform output
+    format, even if the channel count changes between links in a chained
+    stream.
+   \param[out] _pcm      A buffer in which to store the output PCM samples, as
+                          signed native-endian 16-bit values with a nominal
+                          range of <code>[-32768,32767)</code>.
+                         The left and right channels are interleaved in the
+                          buffer.
+                         This must have room for at least \a _buf_size values.
+   \param      _buf_size The number of values that can be stored in \a _pcm.
+                         It is reccommended that this be large enough for at
+                          least 120 ms of data at 48 kHz per channel (11520
+                          values total).
+                         Smaller buffers will simply return less data, possibly
+                          consuming more memory to buffer the data internally.
+   \return The number of samples read per channel on success, or a negative
+            value on failure.
+           The number of samples returned may be 0 if the buffer was too small
+            to store even a single sample for both channels, or if end of file
+            was reached.
+           The list of possible failure codes follows.
+           Most of them can only be returned by unseekable, chained streams
+            that encounter a new link.
+   \retval #OP_EFAULT        An internal memory allocation failed.
+   \retval #OP_EIMPL         An unseekable stream encountered a new link that
+                              used a feature that is not implemented, such as
+                              an unsupported channel family.
+   \retval #OP_EINVAL        The stream was not fully open.
+   \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
+                              contained a link that did not have any logical
+                              Opus streams in it.
+   \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
+                              required header packet that was not properly
+                              formatted, contained illegal values, or was
+                              missing altogether.
+   \retval #OP_EVERSION      An unseekable stream encountered a new link with
+                              an ID header that contained an unrecognized
+                              version number.
+   \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
+                              a starting timestamp that failed basic validity
+                              checks.*/
+int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size);
+
+/**Reads more samples from the stream and downmixes to stereo, if necessary.
+   This function is intended for simple players that want a uniform output
+    format, even if the channel count changes between links in a chained
+    stream.
+   \param[out] _pcm      A buffer in which to store the output PCM samples, as
+                          signed floats with a nominal range of
+                          <code>[-1.0,1.0]</code>.
+                         The left and right channels are interleaved in the
+                          buffer.
+                         This must have room for at least \a _buf_size values.
+   \param      _buf_size The number of values that can be stored in \a _pcm.
+                         It is reccommended that this be large enough for at
+                          least 120 ms of data at 48 kHz per channel (11520
+                          values total).
+                         Smaller buffers will simply return less data, possibly
+                          consuming more memory to buffer the data internally.
+   \return The number of samples read per channel on success, or a negative
+            value on failure.
+           The number of samples returned may be 0 if the buffer was too small
+            to store even a single sample for both channels, or if end of file
+            was reached.
+           The list of possible failure codes follows.
+           Most of them can only be returned by unseekable, chained streams
+            that encounter a new link.
+   \retval #OP_EFAULT        An internal memory allocation failed.
+   \retval #OP_EIMPL         An unseekable stream encountered a new link that
+                              used a feature that is not implemented, such as
+                              an unsupported channel family.
+   \retval #OP_EINVAL        The stream was not fully open.
+   \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
+                              contained a link that did not have any logical
+                              Opus streams in it.
+   \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
+                              required header packet that was not properly
+                              formatted, contained illegal values, or was
+                              missing altogether.
+   \retval #OP_EVERSION      An unseekable stream encountered a new link with
+                              an ID header that contained an unrecognized
+                              version number.
+   \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
+                              a starting timestamp that failed basic validity
+                              checks.*/
+int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size);
 
 # if OP_GNUC_PREREQ(4,0)
 #  pragma GCC visibility pop
