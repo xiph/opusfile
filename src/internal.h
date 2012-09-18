@@ -182,4 +182,6 @@ struct OggOpusFile{
 #endif
 };
 
+int op_strncasecmp(const char *_a,const char *_b,int _n);
+
 #endif

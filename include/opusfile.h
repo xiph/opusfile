@@ -281,7 +281,9 @@ void opus_tags_init(OpusTags *_tags) OP_ARG_NONNULL(1);
    \param _tags    The #OpusTags structure to add the (tag, value) pair to.
    \param _tag     A NUL-terminated, case-insensitive, ASCII string containing
                     the tag to add (without an '=' character).
-   \param _comment A NUL-terminated UTF-8 containing the corresponding value.*/
+   \param _comment A NUL-terminated UTF-8 containing the corresponding value.
+   \return 0 on success, or a negative value on failure.
+   \retval OP_EFAULT An internal memory allocation failed.*/
 int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2) OP_ARG_NONNULL(3);
 
@@ -292,7 +294,9 @@ int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value)
     directly.
    \param _tags    The #OpusTags structure to add the comment to.
    \param _comment A NUL-terminated UTF-8 string containing the comment in
-                    "TAG=value" form.*/
+                    "TAG=value" form.
+   \return 0 on success, or a negative value on failure.
+   \retval OP_EFAULT An internal memory allocation failed.*/
 int opus_tags_add_comment(OpusTags *_tags,const char *_comment)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
