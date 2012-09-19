@@ -1431,7 +1431,8 @@ opus_int32 op_bitrate_instant(OggOpusFile *_of){
   Return: <0) Error, OP_HOLE (lost packet), or OP_EOF.
            0) Need more data (only if _readp==0).
            1) Got at least one audio data packet.*/
-static int op_fetch_and_process_page(OggOpusFile *_of,int _readp,int _spanp){
+static int op_fetch_and_process_page(OggOpusFile *_of,
+ int _readp,int _spanp,int _ignore_holes){
   OggOpusLink  *links;
   ogg_uint32_t  cur_serialno;
   int           seekable;
@@ -1508,6 +1509,9 @@ static int op_fetch_and_process_page(OggOpusFile *_of,int _readp,int _spanp){
         if(page_pos<=links[cur_link].data_offset){
           _of->prev_packet_gp=links[cur_link].pcm_start;
           _of->cur_discard_count=links[cur_link].head.pre_skip;
+          /*Ignore a hole at the start of a new link (this is common for
+             streams joined in the middle) or after seeking.*/
+          _ignore_holes=1;
         }
       }
       else{
@@ -1517,6 +1521,8 @@ static int op_fetch_and_process_page(OggOpusFile *_of,int _readp,int _spanp){
           ret=op_fetch_headers(_of,&links[0].head,&links[0].tags,
            NULL,NULL,NULL,&og);
           if(OP_UNLIKELY(ret<0))return ret;
+          /*op_find_initial_pcm_offset() will suppress any initial hole for us,
+             so no need to set _ignore_holes.*/
           ret=op_find_initial_pcm_offset(_of,links,&og);
           if(OP_UNLIKELY(ret<0))return ret;
           _of->links[0].serialno=cur_serialno=_of->os.serialno;
@@ -1548,7 +1554,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,int _readp,int _spanp){
       int        op_count;
       total_duration=op_collect_audio_packets(_of,durations);
       /*Report holes to the caller.*/
-      if(OP_UNLIKELY(total_duration<0))return (int)total_duration;
+      if(OP_UNLIKELY(total_duration<0)&&!_ignore_holes)return OP_HOLE;
       op_count=_of->op_count;
       /*If we found at least one audio data packet, compute per-packet granule
          positions for them.*/
@@ -1700,9 +1706,7 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
   _of->samples_tracked=0;
   ret=op_seek_helper(_of,_pos);
   if(OP_UNLIKELY(ret<0))return OP_EREAD;
-  do ret=op_fetch_and_process_page(_of,1,1);
-  /*Ignore holes.*/
-  while(ret==OP_HOLE);
+  ret=op_fetch_and_process_page(_of,1,1,1);
   /*If we hit EOF, op_fetch_and_process_page() leaves us uninitialized.
     Instead, jump to the end.*/
   if(ret==OP_EOF){
@@ -1928,9 +1932,7 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
   _of->prev_packet_gp=best_gp;
   _of->cur_discard_count=cur_discard_count;
   ogg_stream_reset_serialno(&_of->os,serialno);
-  do ret=op_fetch_and_process_page(_of,1,0);
-  /*Ignore holes.*/
-  while(ret==OP_HOLE);
+  ret=op_fetch_and_process_page(_of,1,0,1);
   if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
   /*Verify result.*/
   if(OP_UNLIKELY(op_granpos_cmp(_of->prev_packet_gp,_target_gp)>0)){
@@ -1995,9 +1997,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
     if(op_pos<op_count)break;
     /*We skipped all the packets on this page.
       Fetch another.*/
-    do ret=op_fetch_and_process_page(_of,1,0);
-    /*Ignore holes.*/
-    while(ret==OP_HOLE);
+    ret=op_fetch_and_process_page(_of,1,0,1);
     if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
   }
   ret=op_granpos_diff(&diff,prev_packet_gp,pcm_start);
@@ -2210,7 +2210,7 @@ static int op_read_native(OggOpusFile *_of,
       }
     }
     /*Suck in another page.*/
-    ret=op_fetch_and_process_page(_of,1,1);
+    ret=op_fetch_and_process_page(_of,1,1,0);
     if(OP_UNLIKELY(ret==OP_EOF)){
       if(_li!=NULL)*_li=_of->cur_link;
       return 0;
