@@ -152,7 +152,7 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
        "expected %i, got %i.\n",lj,li);
       exit(EXIT_FAILURE);
     }
-    _bigassbuffer+=op_channel_count(_of,lj)*duration;
+    if(_bigassbuffer!=NULL)_bigassbuffer+=op_channel_count(_of,lj)*duration;
   }
   duration=op_pcm_total(_of,li);
   if(pcm_offset+nsamples>duration){
@@ -161,22 +161,24 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
     exit(EXIT_FAILURE);
   }
   nchannels=op_channel_count(_of,li);
-  for(i=0;i<nsamples*nchannels;i++){
-    if(!MATCH(buffer[i],_bigassbuffer[pcm_offset*nchannels+i])){
-      fprintf(stderr,"\nData after seek doesn't match declared PCM "
-       "position: mismatch %G\n",
-       (double)buffer[i]-_bigassbuffer[pcm_offset*nchannels+i]);
-      for(i=0;i<duration-nsamples;i++){
-        int j;
-        for(j=0;j<nsamples*nchannels;j++){
-          if(!MATCH(buffer[j],_bigassbuffer[i*nchannels+j]))break;
+  if(_bigassbuffer!=NULL){
+    for(i=0;i<nsamples*nchannels;i++){
+      if(!MATCH(buffer[i],_bigassbuffer[pcm_offset*nchannels+i])){
+        fprintf(stderr,"\nData after seek doesn't match declared PCM "
+         "position: mismatch %G\n",
+         (double)buffer[i]-_bigassbuffer[pcm_offset*nchannels+i]);
+        for(i=0;i<duration-nsamples;i++){
+          int j;
+          for(j=0;j<nsamples*nchannels;j++){
+            if(!MATCH(buffer[j],_bigassbuffer[i*nchannels+j]))break;
+          }
+          if(j==nsamples*nchannels){
+            fprintf(stderr,"\nData after seek appears to match position %li.\n",
+             (long)i);
+          }
         }
-        if(j==nsamples*nchannels){
-          fprintf(stderr,"\nData after seek appears to match position %li.\n",
-           (long)i);
-        }
+        exit(EXIT_FAILURE);
       }
-      exit(EXIT_FAILURE);
     }
   }
 #if defined(OP_WRITE_SEEK_SAMPLES)
@@ -258,6 +260,7 @@ int main(int _argc,const char **_argv){
   }
   if(op_seekable(of)){
     op_sample   *bigassbuffer;
+    op_sample    smallerbuffer[120*48*8];
     ogg_int64_t  size;
     ogg_int64_t  pcm_print_offset;
     ogg_int64_t  pcm_offset;
@@ -265,6 +268,7 @@ int main(int _argc,const char **_argv){
     ogg_int64_t  nsamples;
     ogg_int64_t  si;
     opus_int32   bitrate;
+    int          saw_hole;
     int          nlinks;
     int          ret;
     int          li;
@@ -281,6 +285,10 @@ int main(int _argc,const char **_argv){
       nsamples+=op_pcm_total(of,li)*op_channel_count(of,li);
     }
     bigassbuffer=_ogg_malloc(sizeof(*bigassbuffer)*nsamples);
+    if(bigassbuffer==NULL){
+      fprintf(stderr,
+       "Buffer allocation failed. Seek offset detection disabled.\n");
+    }
     pcm_offset=op_pcm_tell(of);
     if(pcm_offset!=0){
       fprintf(stderr,"Initial PCM offset was not 0, got %li instead.!\n",
@@ -289,14 +297,30 @@ int main(int _argc,const char **_argv){
     }
     pcm_print_offset=pcm_offset-48000;
     bitrate=0;
+    saw_hole=0;
     for(si=0;si<nsamples;){
       ogg_int64_t next_pcm_offset;
       opus_int32  next_bitrate;
-      ret=op_read_native(of,bigassbuffer+si,OP_MIN(120*48*8,nsamples-si),&li);
-      if(ret<=0){
-        fprintf(stderr,"Failed to read PCM data: %i\n",ret);
+      op_sample  *buf;
+      int         buf_size;
+      buf=bigassbuffer==NULL?smallerbuffer:bigassbuffer+si;
+      buf_size=(int)OP_MIN(nsamples-si,
+       (int)(sizeof(smallerbuffer)/sizeof(*smallerbuffer))),
+      ret=op_read_native(of,buf,buf_size,&li);
+      if(ret==OP_HOLE){
+        /*Only warn once in a row.*/
+        if(saw_hole)continue;
+        saw_hole=1;
+        /*This is just a warning.
+          As long as the timestamps are still contiguous we're okay.*/
+        fprintf(stderr,"\nHole in PCM data at sample %li\n",(long)pcm_offset);
+        continue;
+      }
+      else if(ret<=0){
+        fprintf(stderr,"\nFailed to read PCM data: %i\n",ret);
         exit(EXIT_FAILURE);
       }
+      saw_hole=0;
       /*If we have gaps in the PCM positions, seeking is not likely to work
          near them.*/
       next_pcm_offset=op_pcm_tell(of);
@@ -310,8 +334,8 @@ int main(int _argc,const char **_argv){
       if(pcm_offset>=pcm_print_offset+48000){
         next_bitrate=op_bitrate_instant(of);
         if(next_bitrate>=0)bitrate=next_bitrate;
-        fprintf(stderr,"\rLoading... [%li left] (%0.3f kbps)               ",
-         nsamples-si,bitrate/1000.0);
+        fprintf(stderr,"\r%s... [%li left] (%0.3f kbps)               ",
+         bigassbuffer==NULL?"Scanning":"Loading",nsamples-si,bitrate/1000.0);
         pcm_print_offset=pcm_offset;
       }
     }
@@ -396,6 +420,7 @@ int main(int _argc,const char **_argv){
      nreal_seeks,nreal_seeks/(double)NSEEK_TESTS);
     nreal_seeks=0;
     fprintf(stderr,"OK.\n");
+    _ogg_free(bigassbuffer);
   }
   else{
     fprintf(stderr,"Input was not seekable.\n");
