@@ -164,15 +164,15 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
   if(_bigassbuffer!=NULL){
     for(i=0;i<nsamples*nchannels;i++){
       if(!MATCH(buffer[i],_bigassbuffer[pcm_offset*nchannels+i])){
+        ogg_int64_t j;
         fprintf(stderr,"\nData after seek doesn't match declared PCM "
          "position: mismatch %G\n",
          (double)buffer[i]-_bigassbuffer[pcm_offset*nchannels+i]);
-        for(i=0;i<duration-nsamples;i++){
-          int j;
-          for(j=0;j<nsamples*nchannels;j++){
-            if(!MATCH(buffer[j],_bigassbuffer[i*nchannels+j]))break;
+        for(j=0;j<duration-nsamples;j++){
+          for(i=0;i<nsamples*nchannels;i++){
+            if(!MATCH(buffer[i],_bigassbuffer[j*nchannels+i]))break;
           }
-          if(j==nsamples*nchannels){
+          if(i==nsamples*nchannels){
             fprintf(stderr,"\nData after seek appears to match position %li.\n",
              (long)i);
           }
