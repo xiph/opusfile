@@ -248,7 +248,12 @@ int main(int _argc,const char **_argv){
   }
   memset(&cb,0,sizeof(cb));
   if(strcmp(_argv[1],"-")==0)fp=op_fdopen(&cb,fileno(stdin),"rb");
-  else fp=op_fopen(&cb,_argv[1],"rb");
+  else{
+    /*Try to treat the argument as a URL.*/
+    fp=op_url_stream_create(&cb,_argv[1],OP_SSL_SKIP_CERTIFICATE_CHECK);
+    /*Fall back assuming it's a regular file name.*/
+    if(fp==NULL)fp=op_fopen(&cb,_argv[1],"rb");
+  }
   if(cb.seek!=NULL){
     real_seek=cb.seek;
     cb.seek=seek_stat_counter;

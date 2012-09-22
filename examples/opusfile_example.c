@@ -43,14 +43,14 @@ int main(int _argc,const char **_argv){
     of=op_open_url(_argv[1],OP_SSL_SKIP_CERTIFICATE_CHECK,&ret);
 #if 0
     if(of==NULL){
-        OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
-        void              *fp;
-        /*For debugging: force a file to not be seekable.*/
-        fp=op_fopen(&cb,_argv[1],"rb");
-        cb.seek=NULL;
-        cb.tell=NULL;
-        of=op_open_callbacks(fp,&cb,NULL,0,NULL);
-      }
+      OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
+      void              *fp;
+      /*For debugging: force a file to not be seekable.*/
+      fp=op_fopen(&cb,_argv[1],"rb");
+      cb.seek=NULL;
+      cb.tell=NULL;
+      of=op_open_callbacks(fp,&cb,NULL,0,NULL);
+    }
 #else
     if(of==NULL)of=op_open_file(_argv[1],&ret);
 #endif
