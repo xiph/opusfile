@@ -1064,15 +1064,13 @@ static int op_make_decode_ready(OggOpusFile *_of){
   return 0;
 }
 
-static int op_open_seekable2(OggOpusFile *_of){
+static int op_open_seekable2_impl(OggOpusFile *_of){
   /*64 seek records should be enough for anybody.
     Actually, with a bisection search in a 63-bit range down to OP_CHUNK_SIZE
      granularity, much more than enough.*/
   op_seek_record sr[64];
   opus_int64     data_offset;
   ogg_int64_t    end_gp;
-  int            ret;
-  /*We're partially open and have a first link header state in storage in _of.*/
   /*We can seek, so set out learning all about this file.*/
   (*_of->callbacks.seek)(_of->source,0,SEEK_END);
   _of->offset=_of->end=(*_of->callbacks.tell)(_of->source);
@@ -1090,11 +1088,31 @@ static int op_open_seekable2(OggOpusFile *_of){
   _of->end=sr[0].offset+sr[0].size;
   if(OP_UNLIKELY(_of->end<data_offset))return OP_EBADLINK;
   /*Now enumerate the bitstream structure.*/
-  ret=op_bisect_forward_serialno(_of,data_offset,end_gp,sr,
+  return op_bisect_forward_serialno(_of,data_offset,end_gp,sr,
    sizeof(sr)/sizeof(*sr),&_of->serialnos,&_of->nserialnos,&_of->cserialnos);
+}
+
+static int op_open_seekable2(OggOpusFile *_of){
+  ogg_sync_state oy_start;
+  opus_int64     start_offset;
+  int            ret;
+  /*We're partially open and have a first link header state in storage in _of.
+    Save off that stream state so we can come back to it.*/
+  *&oy_start=_of->oy;
+  start_offset=_of->offset;
+  OP_ASSERT((*_of->callbacks.tell)(_of->source)==
+   start_offset+oy_start.fill-oy_start.returned);
+  ogg_sync_init(&_of->oy);
+  ret=op_open_seekable2_impl(_of);
+  /*Restore the old sync state.*/
+  ogg_sync_clear(&_of->oy);
+  *&_of->oy=*&oy_start;
+  _of->offset=start_offset;
   if(OP_UNLIKELY(ret<0))return ret;
   /*And seek back to the start of the first link.*/
-  return op_raw_seek(_of,data_offset);
+  ret=(*_of->callbacks.seek)(_of->source,
+   start_offset+oy_start.fill-oy_start.returned,SEEK_SET);
+  return OP_UNLIKELY(ret<0)?OP_EREAD:0;
 }
 
 /*Clear out the current logical bitstream decoder.*/
@@ -1217,19 +1235,18 @@ static int op_open2(OggOpusFile *_of){
     _of->ready_state=OP_OPENED;
     ret=op_open_seekable2(_of);
   }
-  else{
+  else ret=0;
+  if(OP_LIKELY(ret>=0)){
     /*We have buffered packets from op_find_initial_pcm_offset().
       Move to OP_INITSET so we can use them.*/
     _of->ready_state=OP_STREAMSET;
     ret=op_make_decode_ready(_of);
+    if(OP_LIKELY(ret>=0))return 0;
   }
-  if(OP_UNLIKELY(ret<0)){
-    /*Don't auto-close the stream on failure.*/
-    _of->callbacks.close=NULL;
-    op_clear(_of);
-    return ret;
-  }
-  return 0;
+  /*Don't auto-close the stream on failure.*/
+  _of->callbacks.close=NULL;
+  op_clear(_of);
+  return ret;
 }
 
 OggOpusFile *op_test_callbacks(void *_source,const OpusFileCallbacks *_cb,
