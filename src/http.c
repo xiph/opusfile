@@ -1190,7 +1190,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     last_host=host;
     last_port=port;
     /*Initialize the SSL library if necessary.*/
-    if(OP_URL_IS_SSL(&_stream->url)){
+    if(OP_URL_IS_SSL(&_stream->url)&&_stream->ssl_ctx==NULL){
       SSL_CTX *ssl_ctx;
       /*We need to establish a CONNECT tunnel to handle https proxying.
         This isn't supported yet.*/
@@ -1406,6 +1406,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
       if(last_host!=_proxy_host)_ogg_free((void *)last_host);
       return ret;
     }
+    op_http_conn_close(_stream,_stream->conns+0);
   }
   /*Redirection limit reached.*/
   return OP_FALSE;
