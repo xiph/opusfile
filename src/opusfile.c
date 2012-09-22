@@ -808,7 +808,6 @@ static int op_find_final_pcm_offset(OggOpusFile *_of,
  const ogg_uint32_t *_serialnos,int _nserialnos,OggOpusLink *_link,
  ogg_int64_t _end_gp,ogg_uint32_t _end_serialno,opus_int64 _offset,
  ogg_int64_t *_total_duration){
-  opus_int64   offset;
   ogg_int64_t  total_duration;
   ogg_int64_t  duration;
   ogg_uint32_t cur_serialno;
@@ -889,6 +888,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
   for(;;){
     opus_int64 data_offset;
     opus_int64 end_searched;
+    opus_int64 bisect;
     opus_int64 next;
     opus_int64 last;
     int        sri;
@@ -918,15 +918,32 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     end_searched=next=_sr[sri-1].offset;
     if(sri<nsr)_searched=_sr[sri].offset+_sr[sri].size;
     nsr=sri;
+    bisect=-1;
+    /*If we've already found the end of at least one link, try to pick the
+       first bisection point at twice the average link size.
+      This is a good choice for files with lots of links that are all about the
+       same size.*/
+    if(nlinks>1){
+      opus_int64 last_offset;
+      opus_int64 avg_link_size;
+      opus_int64 upper_limit;
+      last_offset=links[nlinks-1].offset;
+      avg_link_size=last_offset/(nlinks-1);
+      upper_limit=end_searched-OP_CHUNK_SIZE-avg_link_size;
+      if(OP_LIKELY(last_offset>_searched-avg_link_size)
+       &&OP_LIKELY(last_offset<upper_limit)){
+        bisect=last_offset+avg_link_size;
+        if(OP_LIKELY(bisect<upper_limit))bisect+=avg_link_size;
+      }
+    }
     /*We guard against garbage separating the last and first pages of two
        links below.*/
     while(_searched<end_searched){
-      opus_int64 bisect;
-      if(OP_UNLIKELY(end_searched-_searched<OP_CHUNK_SIZE))bisect=_searched;
       /*TODO: We might be able to do a better job estimating the start of
          subsequent links by assuming its initial PCM offset is 0 and using two
          sightings of the same stream to estimate a bitrate.*/
-      else bisect=_searched+(end_searched-_searched>>1);
+      if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
+      if(OP_UNLIKELY(bisect-_searched<OP_CHUNK_SIZE))bisect=_searched;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
       last=op_get_next_page(_of,&og,_of->end);
@@ -947,6 +964,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
         }
       }
       else _searched=_of->offset;
+      bisect=-1;
     }
     /*Bisection point found.
       Get the final granule position of the previous link, assuming
