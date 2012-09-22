@@ -1259,6 +1259,20 @@ OggOpusFile *op_open_memory(const unsigned char *_data,size_t _size,
    _error);
 }
 
+OggOpusFile *op_open_url(const char *_url,int _flags,int *_error){
+  OpusFileCallbacks cb;
+  return op_open_close_on_failure(
+   op_url_stream_create(&cb,_url,_flags),&cb,_error);
+}
+
+OggOpusFile *op_open_url_with_proxy(const char *_url,int _flags,
+ const char *_proxy_host,unsigned _proxy_port,
+ const char *_proxy_user,const char *_proxy_pass,int *_error){
+  OpusFileCallbacks cb;
+  return op_open_close_on_failure(op_url_stream_create_with_proxy(&cb,_url,
+   _flags,_proxy_host,_proxy_port,_proxy_pass,_proxy_user),&cb,_error);
+}
+
 /*Convenience routine to clean up from failure for the open functions that
    create their own streams.*/
 static OggOpusFile *op_test_close_on_failure(void *_source,
@@ -1283,6 +1297,20 @@ OggOpusFile *op_test_memory(const unsigned char *_data,size_t _size,
   OpusFileCallbacks cb;
   return op_test_close_on_failure(op_mem_stream_create(&cb,_data,_size),&cb,
    _error);
+}
+
+OggOpusFile *op_test_url(const char *_url,int _flags,int *_error){
+  OpusFileCallbacks cb;
+  return op_test_close_on_failure(
+   op_url_stream_create(&cb,_url,_flags),&cb,_error);
+}
+
+OggOpusFile *op_test_url_with_proxy(const char *_url,int _flags,
+ const char *_proxy_host,unsigned _proxy_port,
+ const char *_proxy_user,const char *_proxy_pass,int *_error){
+  OpusFileCallbacks cb;
+  return op_test_close_on_failure(op_url_stream_create_with_proxy(&cb,_url,
+   _flags,_proxy_host,_proxy_port,_proxy_pass,_proxy_user),&cb,_error);
 }
 
 int op_test_open(OggOpusFile *_of){

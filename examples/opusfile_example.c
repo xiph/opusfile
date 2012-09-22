@@ -38,19 +38,23 @@ int main(int _argc,const char **_argv){
     OpusFileCallbacks cb={NULL,NULL,NULL,NULL};
     of=op_open_callbacks(op_fdopen(&cb,fileno(stdin),"rb"),&cb,NULL,0,&ret);
   }
-#if 0
-  /*For debugging: force a file to not be seekable.*/
   else{
-    OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
-    void              *fp;
-    fp=op_fopen(&cb,_argv[1],"rb");
-    cb.seek=NULL;
-    cb.tell=NULL;
-    of=op_open_callbacks(fp,&cb,NULL,0,NULL);
-  }
+    /*Try to treat the argument as a URL.*/
+    of=op_open_url(_argv[1],OP_SSL_SKIP_CERTIFICATE_CHECK,&ret);
+#if 0
+    if(of==NULL){
+        OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
+        void              *fp;
+        /*For debugging: force a file to not be seekable.*/
+        fp=op_fopen(&cb,_argv[1],"rb");
+        cb.seek=NULL;
+        cb.tell=NULL;
+        of=op_open_callbacks(fp,&cb,NULL,0,NULL);
+      }
 #else
-  else of=op_open_file(_argv[1],&ret);
+    if(of==NULL)of=op_open_file(_argv[1],&ret);
 #endif
+  }
   if(of==NULL){
     fprintf(stderr,"Failed to open file '%s': %i\n",_argv[1],ret);
     return EXIT_FAILURE;

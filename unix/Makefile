@@ -13,25 +13,36 @@ FOO_TARGET = foo
 # The command to use to generate dependency information
 MAKEDEPEND = ${CC} -MM
 #MAKEDEPEND = makedepend -f- -Y --
-# The location of include files.
-# Modify these to point to your Ogg and Vorbis include directories if they are
-#  not installed in a standard location.
-CINCLUDE = `pkg-config --cflags ogg opus`
-# These are gcc-only, but not actually critical.
+# Optional features to enable
+#CFLAGS := $(CFLAGS) -DOP_HAVE_LRINTF
+CFLAGS := $(CFLAGS) -DOP_ENABLE_HTTP
 # Extra compilation flags.
 # You may get speed increases by including flags such as -O2 or -O3 or
 #  -ffast-math, or additional flags, depending on your system and compiler.
 # The -g flag will generally include debugging information.
 CFLAGS := -g $(CFLAGS)
 CFLAGS := -DOP_ENABLE_ASSERTIONS $(CFLAGS)
+# These are gcc-only, but not actually critical.
 CFLAGS := -fPIC $(CFLAGS)
 CFLAGS := -std=c89 -pedantic $(CFLAGS)
 CFLAGS := -fvisibility=hidden $(CFLAGS)
 CFLAGS := -Wextra -Wno-parentheses -Wno-long-long $(CFLAGS)
 CFLAGS := -Wall $(CFLAGS)
+# The list of pkg-config packages we depend on.
+PACKAGES := ogg opus
+ifeq ($(findstring -DOP_ENABLE_HTTP,${CFLAGS}),-DOP_ENABLE_HTTP)
+PACKAGES += openssl
+endif
+# The location of include files.
+# Modify these to point to your Ogg and Vorbis include directories if they are
+#  not installed in a standard location.
+CINCLUDE := `pkg-config --cflags ${PACKAGES}`
 
 # Libraries to link with, and the location of library files.
-LIBS = `pkg-config --libs ogg opus`
+LIBS := `pkg-config --libs ${PACKAGES}`
+ifeq ($(findstring -DOP_HAVE_LRINTF,${CFLAGS}),-DOP_HAVE_LRINTF)
+LIBS := -lm $(LIBS)
+endif
 
 #TODO: tests
 FOO_LIBS =
@@ -45,6 +56,7 @@ WORKDIR = objs
 
 # C source file lists
 LIBOPUSFILE_CSOURCES = \
+http.c \
 info.c \
 internal.c \
 opusfile.c \

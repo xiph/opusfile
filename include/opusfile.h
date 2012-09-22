@@ -55,6 +55,15 @@ typedef struct OggOpusFile OggOpusFile;
 #  define OP_ARG_NONNULL(_x)
 # endif
 
+/**\defgroup error_codes Error Codes*/
+/*@{*/
+/**\name List of possible error codes
+   Many of the functions in this library return a negative error code when a
+    function fails.
+   This list provides a brief explanation of the common errors.
+   See each individual function for more details on what a specific error code
+    means in that context.*/
+/*@{*/
 /**A request did not succeed.*/
 #define OP_FALSE         (-1)
 /*Currently not used externally.*/
@@ -97,6 +106,11 @@ typedef struct OggOpusFile OggOpusFile;
 #define OP_ENOSEEK       (-138)
 /**The first or last granule position of a link failed basic validity checks.*/
 #define OP_EBADTIMESTAMP (-139)
+/*@}*/
+/*@}*/
+
+/**\defgroup header_info Header Information*/
+/*@{*/
 
 /**The maximum number of channels in an Ogg Opus stream.*/
 #define OPUS_CHANNEL_COUNT_MAX (255)
@@ -337,6 +351,23 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 
 /*@}*/
 
+/*@}*/
+
+/**\defgroup url_flags URL Reading Flags*/
+/*@{*/
+/**\name Flags for op_url_create_with_proxy() and associated functions.
+   These may be expanded in the future.*/
+/*@{*/
+
+/**Skip the certificate check when connecting via TLS/SSL (https).*/
+#define OP_SSL_SKIP_CERTIFICATE_CHECK (1)
+
+/*@}*/
+/*@}*/
+
+/*\defgroup file_callbacks Abstract Stream Reading Functions*/
+/*@{*/
+
 /**\name Functions for reading from streams
    These functions define the interface used to read from and seek in a stream
     of data.
@@ -418,7 +449,8 @@ struct OpusFileCallbacks{
                       filled in here.
    \param      _path The path to the file to open.
    \param      _mode The mode to open the file in.
-   \return A stream handle to use with the callbacks, or NULL on error.*/
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
 OP_WARN_UNUSED_RESULT void *op_fopen(OpusFileCallbacks *_cb,
  const char *_path,const char *_mode) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2)
  OP_ARG_NONNULL(3);
@@ -434,7 +466,8 @@ OP_WARN_UNUSED_RESULT void *op_fopen(OpusFileCallbacks *_cb,
                       filled in here.
    \param      _fd   The file descriptor to open.
    \param      _mode The mode to open the file in.
-   \return A stream handle to use with the callbacks, or NULL on error.*/
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
 OP_WARN_UNUSED_RESULT void *op_fdopen(OpusFileCallbacks *_cb,
  int _fd,const char *_mode) OP_ARG_NONNULL(1) OP_ARG_NONNULL(3);
 
@@ -451,7 +484,8 @@ OP_WARN_UNUSED_RESULT void *op_fdopen(OpusFileCallbacks *_cb,
    \param      _mode   The mode to open the file in.
    \param      _stream A stream previously returned by op_fopen(), op_fdopen(),
                         or op_freopen().
-   \return A stream handle to use with the callbacks, or NULL on error.*/
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
 OP_WARN_UNUSED_RESULT void *op_freopen(OpusFileCallbacks *_cb,
  const char *_path,const char *_mode,void *_stream) OP_ARG_NONNULL(1)
  OP_ARG_NONNULL(2) OP_ARG_NONNULL(3) OP_ARG_NONNULL(4);
@@ -464,9 +498,65 @@ OP_WARN_UNUSED_RESULT void *op_freopen(OpusFileCallbacks *_cb,
                       filled in here.
    \param      _data The block of memory to read from.
    \param      _size The size of the block of memory.
-   \return A stream handle to use with the callbacks, or NULL on error.*/
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
 OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
- const unsigned char *_data,size_t _size);
+ const unsigned char *_data,size_t _size) OP_ARG_NONNULL(1);
+
+/**Creates a stream that reads from the given URL.
+   This is equivalent to calling op_url_stream_create_with_proxy() with
+    <code>NULL</code> for \a _proxy_host.
+   \param[out] _cb    The callbacks to use for this stream.
+                      If there is an error creating the stream, nothing will be
+                       filled in here.
+   \param      _url   The URL to read from.
+                      Currently only the "file:", "http:", and "https:" schemes
+                       are supported.
+                      Both "http:" and "https:" may be disabled at compile
+                       time, in which case opening such URLs will fail.
+   \param      _flags The <a href="#url_flags">optional flags</a> to use.
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
+OP_WARN_UNUSED_RESULT void *op_url_stream_create(OpusFileCallbacks *_cb,
+ const char *_url,int _flags) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+
+/**Creates a stream that reads from the given URL using the specified proxy.
+   \param[out] _cb         The callbacks to use for this stream.
+                           If there is an error creating the stream, nothing
+                            will be filled in here.
+   \param      _url        The URL to read from.
+                           Currently only the "file:", "http:", and "https:"
+                            schemes are supported.
+                           Both "http:" and "https:" may be disabled at compile
+                            time, in which case opening such URLs will fail.
+   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
+   \param      _proxy_host The host of the proxy to connect to.
+                           This may be <code>NULL</code> if you do not wish to
+                            use a proxy.
+                           The proxy information is ignored if \a _url is a
+                            <file:> URL.
+   \param      _proxy_port The port of the proxy to connect to.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_user The username to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_pass The password to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if either \a _proxy_host or
+                            \a _proxy_user are <code>NULL</code>.
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
+OP_WARN_UNUSED_RESULT void *op_url_stream_create_with_proxy(
+ OpusFileCallbacks *_cb,const char *_url,int _flags,
+  const char *_proxy_host,unsigned _proxy_port,
+  const char *_proxy_user,const char *_proxy_pass) OP_ARG_NONNULL(1)
+  OP_ARG_NONNULL(2);
+
+/*@}*/
 
 /*@}*/
 
@@ -510,11 +600,12 @@ int op_test(OpusHead *_head,
 /**Open a stream from the given file path.
    \param      _path  The path to the file to open.
    \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in NULL if you don't want the failure code.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
                       The failure code will be #OP_EFAULT if the file could not
                        be opened, or one of the other failure codes from
                        op_open_callbacks() otherwise.
-   \return An #OggOpusFile pointer on success, or NULL on error.*/
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_file(const char *_path,int *_error)
  OP_ARG_NONNULL(1);
 
@@ -522,11 +613,63 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_file(const char *_path,int *_error)
    \param      _data  The memory buffer to open.
    \param      _size  The number of bytes in the buffer.
    \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in NULL if you don't want the failure code.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
                       See op_open_callbacks() for a full list of failure codes.
-   \return An #OggOpusFile pointer on success, or NULL on error.*/
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
  size_t _size,int *_error);
+
+/**Open a stream from a URL.
+   \param      _url   The URL to open.
+                      Currently only the <file:>, <http:>, and <https:> schemes
+                       are supported.
+                      Both "http:" and "https:" may be disabled at compile
+                       time, in which case opening such URLs will fail.
+   \param      _flags The <a href="#url_flags">optional flags</a> to use.
+   \param[out] _error Returns 0 on success, or a failure code on error.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
+                      See op_open_callbacks() for a full list of failure codes.
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
+ int _flags,int *_error) OP_ARG_NONNULL(1);
+
+/**Open a stream from a URL using the specified proxy.
+   \param      _url        The URL to open.
+                           Currently only the <file:>, <http:>, and <https:>
+                            schemes are supported.
+                           Both "http:" and "https:" may be disabled at compile
+                            time, in which case opening such URLs will fail.
+   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
+   \param      _proxy_host The host of the proxy to connect to.
+                           This may be <code>NULL</code> if you do not wish to
+                            use a proxy.
+                           The proxy information is ignored if \a _url is a
+                            <file:> URL.
+   \param      _proxy_port The port of the proxy to connect to.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_user The username to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_pass The password to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if either \a _proxy_host or
+                            \a _proxy_user are <code>NULL</code>.
+   \param[out] _error      Returns 0 on success, or a failure code on error.
+                           You may pass in <code>NULL</code> if you don't want
+                            the failure code.
+                           See op_open_callbacks() for a full list of failure
+                            codes.
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url_with_proxy(const char *_url,
+ int _flags,const char *_proxy_host,unsigned _proxy_port,
+ const char *_proxy_user,const char *_proxy_pass,int *_error)
+ OP_ARG_NONNULL(1);
 
 /**Open a stream using the given set of callbacks to access it.
    \param _source        The stream to read from (e.g., a <code>FILE *</code>).
@@ -562,8 +705,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
                          Otherwise, seeking to absolute positions will
                           generate inconsistent results.
    \param[out] _error    Returns 0 on success, or a failure code on error.
-                         You may pass in NULL if you don't want the failure
-                          code.
+                         You may pass in <code>NULL</code> if you don't want
+                          the failure code.
                          The failure code will be one of
                          <dl>
                            <dt>#OP_EREAD</dt>
@@ -609,25 +752,82 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_callbacks(void *_source,
 void op_free(OggOpusFile *_of);
 
 /**Partially open a stream from the given file path.
+   \see op_test_callbacks
    \param      _path  The path to the file to open.
    \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in NULL if you don't want the failure code.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
                       The failure code will be #OP_EFAULT if the file could not
                        be opened, or one of the other failure codes from
                        op_open_callbacks() otherwise.
-   \return An #OggOpusFile pointer on success, or NULL on error.*/
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_test_file(const char *_path,int *_error)
  OP_ARG_NONNULL(1);
 
 /**Partially open a stream from a memory buffer.
+   \see op_test_callbacks
    \param      _data  The memory buffer to open.
    \param      _size  The number of bytes in the buffer.
    \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in NULL if you don't want the failure code.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
                       See op_open_callbacks() for a full list of failure codes.
-   \return An #OggOpusFile pointer on success, or NULL on error.*/
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_test_memory(const unsigned char *_data,
  size_t _size,int *_error);
+
+/**Partially open a stream from a URL.
+   \see op_test_callbacks
+   \param      _url   The URL to open.
+                      Currently only the <file:>, <http:>, and <https:> schemes
+                       are supported.
+                      Both "http:" and "https:" may be disabled at compile
+                       time, in which case opening such URLs will fail.
+   \param      _flags The <a href="#url_flags">optional flags</a> to use.
+   \param[out] _error Returns 0 on success, or a failure code on error.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
+                      See op_open_callbacks() for a full list of failure codes.
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,int _flags,
+ int *_error) OP_ARG_NONNULL(1);
+
+/**Partially open a stream from a URL using the specified proxy.
+   \see op_test_callbacks
+   \param      _url        The URL to open.
+                           Currently only the <file:>, <http:>, and <https:>
+                            schemes are supported.
+                           Both "http:" and "https:" may be disabled at compile
+                            time, in which case opening such URLs will fail.
+   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
+   \param      _proxy_host The host of the proxy to connect to.
+                           This may be <code>NULL</code> if you do not wish to
+                            use a proxy.
+                           The proxy information is ignored if \a _url is a
+                            <file:> URL.
+   \param      _proxy_port The port of the proxy to connect to.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_user The username to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if \a _proxy_host is
+                            <code>NULL</code>.
+   \param      _proxy_pass The password to use with the specified proxy.
+                           This may be <code>NULL</code> if no authorization is
+                            required.
+                           This is ignored if either \a _proxy_host or
+                            \a _proxy_user are <code>NULL</code>.
+   \param[out] _error      Returns 0 on success, or a failure code on error.
+                           You may pass in <code>NULL</code> if you don't want
+                            the failure code.
+                           See op_open_callbacks() for a full list of failure
+                            codes.
+   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url_with_proxy(const char *_url,
+ int _flags,const char *_proxy_host,unsigned _proxy_port,
+ const char *_proxy_user,const char *_proxy_pass,int *_error)
+ OP_ARG_NONNULL(1);
 
 /**Partially open a stream using the given set of callbacks to access it.
    This tests for Opusness and loads the headers for the first link.
@@ -668,8 +868,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_memory(const unsigned char *_data,
                          Otherwise, seeking to absolute positions will
                           generate inconsistent results.
    \param[out] _error    Returns 0 on success, or a failure code on error.
-                         You may pass in NULL if you don't want the failure
-                          code.
+                         You may pass in <code>NULL</code> if you don't want
+                          the failure code.
                          See op_open_callbacks() for a full list of failure
                           codes.
    \return A freshly opened #OggOpusFile, or <code>NULL</code> on error.*/
@@ -712,7 +912,7 @@ int op_link_count(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Returns whether or not the data source being read is seekable.
    This is true if
-   a) The seek and tell callbacks are both non-NULL,
+   a) The seek and tell callbacks are both non-<code>NULL</code>,
    b) The seek callback was successfully executed at least once, and
    c) The tell callback was successfully able to report the position indicator
     afterwards.
@@ -913,7 +1113,8 @@ ogg_int64_t op_pcm_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
    \param[out] _li       The index of the link this data was decoded from.
-                         You may pass NULL if you do not need this information.
+                         You may pass <code>NULL</code> if you do not need this
+                          information.
                          If this function fails (returning a negative value),
                           this parameter is left unset.
    \return The number of samples read per channel on success, or a negative
@@ -963,7 +1164,8 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
    \param[out] _li       The index of the link this data was decoded from.
-                         You may pass NULL if you do not need this information.
+                         You may pass <code>NULL</code> if you do not need this
+                          information.
                          If this function fails (returning a negative value),
                           this parameter is left unset.
    \return The number of samples read per channel on success, or a negative
