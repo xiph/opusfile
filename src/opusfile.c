@@ -2008,7 +2008,7 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
       OP_ASSERT(!ret);
       /*Take a (pretty decent) guess.*/
       bisect=begin+op_rescale64(diff,diff2,end-begin)-OP_CHUNK_SIZE;
-      if(bisect<begin+OP_CHUNK_SIZE)bisect=begin;
+      if(bisect-OP_CHUNK_SIZE<begin)bisect=begin;
     }
     ret=op_seek_helper(_of,bisect);
     if(OP_UNLIKELY(ret<0))return ret;
