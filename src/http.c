@@ -161,7 +161,7 @@ static const char *op_parse_file_url(const char *_src){
 # include <sys/socket.h>
 # include <sys/timeb.h>
 # include <arpa/inet.h>
-# include <netient/in.h>
+# include <netinet/in.h>
 # include <fcntl.h>
 # include <netdb.h>
 # include <poll.h>
