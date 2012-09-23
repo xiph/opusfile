@@ -265,15 +265,10 @@ int main(int _argc,const char **_argv){
   }
   if(op_seekable(of)){
     op_sample   *bigassbuffer;
-    op_sample    smallerbuffer[120*48*8];
     ogg_int64_t  size;
-    ogg_int64_t  pcm_print_offset;
     ogg_int64_t  pcm_offset;
     ogg_int64_t  pcm_length;
     ogg_int64_t  nsamples;
-    ogg_int64_t  si;
-    opus_int32   bitrate;
-    int          saw_hole;
     int          nlinks;
     int          ret;
     int          li;
@@ -289,64 +284,78 @@ int main(int _argc,const char **_argv){
     for(li=0;li<nlinks;li++){
       nsamples+=op_pcm_total(of,li)*op_channel_count(of,li);
     }
+/*Until we find another way to do the comparisons that solves the MATCH_TOL
+   problem, disable this.*/
+#if 0
     bigassbuffer=_ogg_malloc(sizeof(*bigassbuffer)*nsamples);
     if(bigassbuffer==NULL){
       fprintf(stderr,
        "Buffer allocation failed. Seek offset detection disabled.\n");
     }
+#else
+    bigassbuffer=NULL;
+#endif
     pcm_offset=op_pcm_tell(of);
     if(pcm_offset!=0){
       fprintf(stderr,"Initial PCM offset was not 0, got %li instead.!\n",
        (long)pcm_offset);
       exit(EXIT_FAILURE);
     }
-    pcm_print_offset=pcm_offset-48000;
-    bitrate=0;
-    saw_hole=0;
-    for(si=0;si<nsamples;){
-      ogg_int64_t next_pcm_offset;
-      opus_int32  next_bitrate;
-      op_sample  *buf;
-      int         buf_size;
-      buf=bigassbuffer==NULL?smallerbuffer:bigassbuffer+si;
-      buf_size=(int)OP_MIN(nsamples-si,
-       (int)(sizeof(smallerbuffer)/sizeof(*smallerbuffer))),
-      ret=op_read_native(of,buf,buf_size,&li);
-      if(ret==OP_HOLE){
-        /*Only warn once in a row.*/
-        if(saw_hole)continue;
-        saw_hole=1;
-        /*This is just a warning.
-          As long as the timestamps are still contiguous we're okay.*/
-        fprintf(stderr,"\nHole in PCM data at sample %li\n",(long)pcm_offset);
-        continue;
-      }
-      else if(ret<=0){
-        fprintf(stderr,"\nFailed to read PCM data: %i\n",ret);
-        exit(EXIT_FAILURE);
-      }
-      saw_hole=0;
-      /*If we have gaps in the PCM positions, seeking is not likely to work
-         near them.*/
-      next_pcm_offset=op_pcm_tell(of);
-      if(pcm_offset+ret!=next_pcm_offset){
-        fprintf(stderr,"\nGap in PCM offset: expecting %li, got %li\n",
-         (long)(pcm_offset+ret),(long)next_pcm_offset);
-        exit(EXIT_FAILURE);
-      }
-      pcm_offset=next_pcm_offset;
-      si+=ret*op_channel_count(of,li);
-      if(pcm_offset>=pcm_print_offset+48000){
-        next_bitrate=op_bitrate_instant(of);
-        if(next_bitrate>=0)bitrate=next_bitrate;
-        fprintf(stderr,"\r%s... [%li left] (%0.3f kbps)               ",
-         bigassbuffer==NULL?"Scanning":"Loading",nsamples-si,bitrate/1000.0);
-        pcm_print_offset=pcm_offset;
-      }
-    }
+/*Disabling the linear scan for now.
+  Only test on non-borken files!*/
+#if 0
     {
-      op_sample tmp[8];
-      ret=op_read_native(of,tmp,sizeof(tmp)/sizeof(*tmp),&li);
+      op_sample    smallerbuffer[120*48*8];
+      ogg_int64_t  pcm_print_offset;
+      ogg_int64_t  si;
+      opus_int32   bitrate;
+      int          saw_hole;
+      pcm_print_offset=pcm_offset-48000;
+      bitrate=0;
+      saw_hole=0;
+      for(si=0;si<nsamples;){
+        ogg_int64_t next_pcm_offset;
+        opus_int32  next_bitrate;
+        op_sample  *buf;
+        int         buf_size;
+        buf=bigassbuffer==NULL?smallerbuffer:bigassbuffer+si;
+        buf_size=(int)OP_MIN(nsamples-si,
+         (int)(sizeof(smallerbuffer)/sizeof(*smallerbuffer))),
+        ret=op_read_native(of,buf,buf_size,&li);
+        if(ret==OP_HOLE){
+          /*Only warn once in a row.*/
+          if(saw_hole)continue;
+          saw_hole=1;
+          /*This is just a warning.
+            As long as the timestamps are still contiguous we're okay.*/
+          fprintf(stderr,"\nHole in PCM data at sample %li\n",
+           (long)pcm_offset);
+          continue;
+        }
+        else if(ret<=0){
+          fprintf(stderr,"\nFailed to read PCM data: %i\n",ret);
+          exit(EXIT_FAILURE);
+        }
+        saw_hole=0;
+        /*If we have gaps in the PCM positions, seeking is not likely to work
+           near them.*/
+        next_pcm_offset=op_pcm_tell(of);
+        if(pcm_offset+ret!=next_pcm_offset){
+          fprintf(stderr,"\nGap in PCM offset: expecting %li, got %li\n",
+           (long)(pcm_offset+ret),(long)next_pcm_offset);
+          exit(EXIT_FAILURE);
+        }
+        pcm_offset=next_pcm_offset;
+        si+=ret*op_channel_count(of,li);
+        if(pcm_offset>=pcm_print_offset+48000){
+          next_bitrate=op_bitrate_instant(of);
+          if(next_bitrate>=0)bitrate=next_bitrate;
+          fprintf(stderr,"\r%s... [%li left] (%0.3f kbps)               ",
+           bigassbuffer==NULL?"Scanning":"Loading",nsamples-si,bitrate/1000.0);
+          pcm_print_offset=pcm_offset;
+        }
+      }
+      ret=op_read_native(of,smallerbuffer,8,&li);
       if(ret<0){
         fprintf(stderr,"Failed to read PCM data: %i\n",ret);
         exit(EXIT_FAILURE);
@@ -356,6 +365,7 @@ int main(int _argc,const char **_argv){
         exit(EXIT_FAILURE);
       }
     }
+#endif
     pcm_length=op_pcm_total(of,-1);
     size=op_raw_total(of,-1);
     fprintf(stderr,"\rLoaded (%0.3f kbps average).                        \n",
