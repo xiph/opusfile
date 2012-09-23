@@ -1549,14 +1549,12 @@ int op_seekable(OggOpusFile *_of){
 
 ogg_uint32_t op_serialno(OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
-  if(!_of->seekable&&_li!=0)_li=0;
+  if(!_of->seekable)_li=0;
   return _of->links[_li<0?_of->cur_link:_li].serialno;
 }
 
 int op_channel_count(OggOpusFile *_of,int _li){
-  if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
-  if(!_of->seekable&&_li!=0)_li=0;
-  return _of->links[_li<0?_of->cur_link:_li].head.channel_count;
+  return op_head(_of,_li)->channel_count;
 }
 
 opus_int64 op_raw_total(OggOpusFile *_of,int _li){
@@ -1602,15 +1600,19 @@ ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li){
 }
 
 const OpusHead *op_head(OggOpusFile *_of,int _li){
+  if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable)_li=0;
-  else if(_li<0)_li=_of->ready_state>=OP_STREAMSET?_of->cur_link:0;
-  return _li>=_of->nlinks?NULL:&_of->links[_li].head;
+  return &_of->links[_li<0?_of->cur_link:_li].head;
 }
 
 const OpusTags *op_tags(OggOpusFile *_of,int _li){
-  if(!_of->seekable)_li=0;
+  if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
+  if(!_of->seekable){
+    if(_of->ready_state<OP_STREAMSET)return NULL;
+    _li=0;
+  }
   else if(_li<0)_li=_of->ready_state>=OP_STREAMSET?_of->cur_link:0;
-  return _li>=_of->nlinks?NULL:&_of->links[_li].tags;
+  return &_of->links[_li].tags;
 }
 
 int op_current_link(OggOpusFile *_of){

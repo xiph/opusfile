@@ -17,6 +17,41 @@
 #if !defined(_opusfile_h)
 # define _opusfile_h (1)
 
+/**\mainpage
+   \section Introduction
+
+   This is the documentation for the <tt>libopusfile</tt> C API.
+
+   The <tt>libopusfile</tt> package provides a convenient high-level API for
+    decoding and basic manipulation of all Ogg Opus audio streams.
+   <tt>libopusfile</tt> is implemented as a layer on top of Xiph.Org's
+    reference
+    <tt><a href="https://www.xiph.org/ogg/doc/libogg/reference.html">libogg</a></tt>
+    and
+    <tt><a href="https://mf4.xiph.org/jenkins/view/opus/job/opus/ws/doc/html/index.html">libopus</a></tt>
+    libraries.
+
+   <tt>libopusfile</tt> provides serveral sets of built-in routines for
+    file/stream access, and may also use custom stream I/O routines provided by
+    the embedded environment.
+   There are built-in I/O routines provided for ANSI-compliant
+    <code>stdio</code> (<code>FILE *</code>), memory buffers, and URLs
+    (including "file:" URLs, plus optionally "http:" and "https:" URLs).
+
+   \section Organization
+
+   The main API is divided into several sections:
+   - \ref stream_open_close
+   - \ref stream_info
+   - \ref stream_decoding
+   - \ref stream_seeking
+
+   Several additional sections are not tied to the main API.
+   - \ref stream_callbacks
+   - \ref header_info
+   - \ref error_codes*/
+
+
 # if defined(__cplusplus)
 extern "C" {
 # endif
@@ -215,8 +250,12 @@ struct OpusTags{
 };
 
 /**\name Functions for manipulating header data
+
    These functions manipulate the #OpusHead and #OpusTags structures,
-    which describe the audio parameters and tag-value metadata, respectively.*/
+    which describe the audio parameters and tag-value metadata, respectively.
+   These can be used to query the headers returned by <tt>libopusfile</tt>, or
+    to parse Opus headers from sources other than an Ogg Opus stream, provided
+    they use the same format.*/
 /*@{*/
 
 /**Parses the contents of the ID header packet of an Ogg Opus stream.
@@ -292,10 +331,10 @@ void opus_tags_init(OpusTags *_tags) OP_ARG_NONNULL(1);
     containing embedded NULs, although the bitstream format does support them.
    To add such tags, you will need to manipulate the #OpusTags structure
     directly.
-   \param _tags    The #OpusTags structure to add the (tag, value) pair to.
-   \param _tag     A NUL-terminated, case-insensitive, ASCII string containing
-                    the tag to add (without an '=' character).
-   \param _comment A NUL-terminated UTF-8 containing the corresponding value.
+   \param _tags  The #OpusTags structure to add the (tag, value) pair to.
+   \param _tag   A NUL-terminated, case-insensitive, ASCII string containing
+                  the tag to add (without an '=' character).
+   \param _value A NUL-terminated UTF-8 containing the corresponding value.
    \return 0 on success, or a negative value on failure.
    \retval OP_EFAULT An internal memory allocation failed.*/
 int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value)
@@ -365,17 +404,16 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 /*@}*/
 /*@}*/
 
-/*\defgroup file_callbacks Abstract Stream Reading Functions*/
+/**\defgroup stream_callbacks Abstract Stream Reading Interface*/
 /*@{*/
-
 /**\name Functions for reading from streams
    These functions define the interface used to read from and seek in a stream
     of data.
    A stream does not need to implement seeking, but the decoder will not be
     able to seek if it does not do so.
    These functions also include some convenience routines for working with
-    standard FILE pointers or complete streams stored in a single block of
-    memory.*/
+    standard <code>FILE</code> pointers, complete streams stored in a single
+    block of memory, or URLs.*/
 /*@{*/
 
 typedef struct OpusFileCallbacks OpusFileCallbacks;
@@ -414,7 +452,7 @@ typedef opus_int64 (*op_tell_func)(void *_stream);
                <code>errno</code> need not be set.*/
 typedef int (*op_close_func)(void *_stream);
 
-/**The callbacks used to access non-FILE stream resources.
+/**The callbacks used to access non-<code>FILE</code> stream resources.
    The function prototypes are basically the same as for the stdio functions
     <code>fread()</code>, <code>fseek()</code>, <code>ftell()</code>, and
     <code>fclose()</code>.
@@ -557,8 +595,17 @@ OP_WARN_UNUSED_RESULT void *op_url_stream_create_with_proxy(
   OP_ARG_NONNULL(2);
 
 /*@}*/
-
 /*@}*/
+
+/**\defgroup stream_open_close Opening and Closing Streams*/
+/*@{*/
+/**\name Functions for opening and closing streams
+
+   These functions allow you to test a stream to see if it is Opus, open it,
+    and close it.
+   Several flavors are provided for each of the built-in stream types, plus a
+    more general version which takes a set of application-provided callbacks.*/
+/*@{*/
 
 /**Test to see if this is an Opus stream.
    For good results, you will need at least 57 bytes (for a pure Opus-only
@@ -605,7 +652,7 @@ int op_test(OpusHead *_head,
                       The failure code will be #OP_EFAULT if the file could not
                        be opened, or one of the other failure codes from
                        op_open_callbacks() otherwise.
-   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+   \return A freshly opened #OggOpusFile, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_file(const char *_path,int *_error)
  OP_ARG_NONNULL(1);
 
@@ -616,7 +663,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_file(const char *_path,int *_error)
                       You may pass in <code>NULL</code> if you don't want the
                        failure code.
                       See op_open_callbacks() for a full list of failure codes.
-   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+   \return A freshly opened #OggOpusFile, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
  size_t _size,int *_error);
 
@@ -631,7 +678,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
                       You may pass in <code>NULL</code> if you don't want the
                        failure code.
                       See op_open_callbacks() for a full list of failure codes.
-   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+   \return A freshly opened #OggOpusFile, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
  int _flags,int *_error) OP_ARG_NONNULL(1);
 
@@ -665,7 +712,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                             the failure code.
                            See op_open_callbacks() for a full list of failure
                             codes.
-   \return An #OggOpusFile pointer on success, or <code>NULL</code> on error.*/
+   \return A freshly opened #OggOpusFile, or <code>NULL</code> on error.*/
 OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url_with_proxy(const char *_url,
  int _flags,const char *_proxy_host,unsigned _proxy_port,
  const char *_proxy_user,const char *_proxy_pass,int *_error)
@@ -748,7 +795,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_callbacks(void *_source,
  const OpusFileCallbacks *_cb,const unsigned char *_initial_data,
  size_t _initial_bytes,int *_error) OP_ARG_NONNULL(2);
 
-/**Release all memory used by an #OggOpusFile.*/
+/**Release all memory used by an #OggOpusFile.
+   \param _of The #OggOpusFile to free.*/
 void op_free(OggOpusFile *_of);
 
 /**Partially open a stream from the given file path.
@@ -881,6 +929,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_callbacks(void *_source,
     the associated convenience functions.
    If this function fails, you are still responsible for freeing the
     #OggOpusFile with op_free().
+   \param _of The #OggOpusFile to finish opening.
    \return 0 on success, or a negative value on error.
    \retval #OP_EREAD         An underlying read, seek, or tell operation failed
                               when it should have succeeded.
@@ -904,7 +953,31 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_callbacks(void *_source,
                               validity checks.*/
 int op_test_open(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
+/*@}*/
+/*@}*/
+
+/**\defgroup stream_info Stream Information*/
+/*@{*/
+/**\name Functions for obtaining information about streams
+
+   These functions allow you to get basic information about a stream, including
+    seekability, the number of links (for chained streams), plus the size,
+    duration, bitrate, header parameters, and meta information for each link
+    (or, where available, the stream as a whole).
+   Some of these (size, duration) are only available for seekable streams.
+   You can also query the current stream position, link, and playback time,
+    and instantaneous bitrate during playback.
+
+   Some of these functions may be used successfully on the partially open
+    streams returned by op_test_callbacks() or its associated functions.
+   Their documention will indicate so explicitly.*/
+/*@{*/
+
 /**Returns the number of links in this chained stream.
+   This function may be called on partially-opened streams, but it will always
+    return 1.
+   The actual number of links is not known until the stream is fully opened.
+   \param _of The #OggOpusFile from which to retrieve the link count.
    \return For seekable sources, this returns the total number of links in the
             whole stream.
            For unseekable sources, this always returns 1.*/
@@ -912,15 +985,25 @@ int op_link_count(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Returns whether or not the data source being read is seekable.
    This is true if
-   a) The seek and tell callbacks are both non-<code>NULL</code>,
-   b) The seek callback was successfully executed at least once, and
-   c) The tell callback was successfully able to report the position indicator
-    afterwards.
+   <ol>
+   <li>The <code><a href="#op_seek_func">seek()</a></code> and
+    <code><a href="#op_tell_func">tell()</a></code> callbacks are both
+    non-<code>NULL</code>,</li>
+   <li>The <code><a href="#op_seek_func">seek()</a></code> callback was
+    successfully executed at least once, and</li>
+   <li>The <code><a href="#op_tell_func">tell()</a></code> callback was
+    successfully able to report the position indicator afterwards.</li>
+   </ol>
+   This function may be called on partially-opened streams.
+   \param _of The #OggOpusFile whose seekable status is to be returned.
    \return A non-zero value if seekable, and 0 if unseekable.*/
 int op_seekable(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Get the serial number of the given link in a (possibly-chained) Ogg Opus
     stream.
+   This function may be called on partially-opened streams, but it will always
+    return the serial number of the Opus stream in the first link.
+   \param _of The #OggOpusFile from which to retrieve the serial number.
    \param _li The index of the link whose serial number should be retrieved.
               Use a negative number to get the serial number of the current
                link.
@@ -931,10 +1014,13 @@ int op_seekable(OggOpusFile *_of) OP_ARG_NONNULL(1);
             of the current link.*/
 opus_uint32 op_serialno(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
-/**Get the channel count of the given link in a (possibly-chained Ogg Opus
+/**Get the channel count of the given link in a (possibly-chained) Ogg Opus
     stream.
    This is equivalent to <code>op_head(_of,_li)->channel_count</code>, but
     is provided for convenience.
+   This function may be called on partially-opened streams, but it will always
+    return the serial number of the Opus stream in the first link.
+   \param _of The #OggOpusFile from which to retrieve the channel count.
    \param _li The index of the link whose channel count should be retrieved.
               Use a negative number to get the channel count of the current
                link.
@@ -948,12 +1034,16 @@ int op_channel_count(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 /**Get the total (compressed) size of the stream, or of an individual link in
     a (possibly-chained) Ogg Opus stream, including all headers and Ogg muxing
     overhead.
+   \param _of The #OggOpusFile from which to retrieve the compressed size.
    \param _li The index of the link whose compressed size should be computed.
               Use a negative number to get the compressed size of the entire
                stream.
    \return The compressed size of the entire stream if \a _li is negative, the
             compressed size of link \a _li if it is non-negative, or a negative
             value on error.
+           The compressed size of the entire stream may be smaller than that
+            of the underlying source if trailing garbage was detected in the
+            file.
    \retval #OP_EINVAL The source is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
@@ -966,6 +1056,7 @@ opus_int64 op_raw_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    Because timestamps in Opus are fixed at 48 kHz, there is no need for a
     separate function to convert this to seconds (and leaving it out avoids
     introducing floating point to the API, for those that wish to avoid it).
+   \param _of The #OggOpusFile from which to retrieve the PCM offset.
    \param _li The index of the link whose PCM length should be computed.
               Use a negative number to get the PCM length of the entire stream.
    \return The PCM length of the entire stream if \a _li is negative, the PCM
@@ -974,10 +1065,14 @@ opus_int64 op_raw_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \retval #OP_EINVAL The source is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
-ogg_int64_t op_pcm_total(OggOpusFile *_of,int i) OP_ARG_NONNULL(1);
+ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the ID header information for the given link in a (possibly chained) Ogg
     Opus stream.
+   This function may be called on partially-opened streams, but it will always
+    return the ID header information of the Opus stream in the first link.
+   \param _of The #OggOpusFile from which to retrieve the ID header
+               information.
    \param _li The index of the link whose ID header information should be
                retrieved.
               Use a negative number to get the ID header information of the
@@ -985,14 +1080,13 @@ ogg_int64_t op_pcm_total(OggOpusFile *_of,int i) OP_ARG_NONNULL(1);
               For an unseekable stream, \a _li is ignored, and the ID header
                information for the current link is always returned, if
                available.
-   \return The contents of the ID header for the given link, or
-            <code>NULL</code> if either \a _li is larger than the number of
-            links or the current link was requested, but the stream was only
-            partially open.*/
+   \return The contents of the ID header for the given link.*/
 const OpusHead *op_head(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the comment header information for the given link in a (possibly
     chained) Ogg Opus stream.
+   \param _of The #OggOpusFile from which to retrieve the comment header
+               information.
    \param _li The index of the link whose comment header information should be
                retrieved.
               Use a negative number to get the comment header information of
@@ -1001,9 +1095,8 @@ const OpusHead *op_head(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
                header information for the current link is always returned, if
                available.
    \return The contents of the comment header for the given link, or
-            <code>NULL</code> if either \a _li is larger than the number of
-            links or the current link was requested, but the stream was only
-            partially open.*/
+            <code>NULL</code> if either the stream was only partially open or
+            this is an unseekable stream that encountered an invalid link.*/
 const OpusTags *op_tags(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Retrieve the index of the current link.
@@ -1012,6 +1105,7 @@ const OpusTags *op_tags(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
     that the seek target landed in.
    Reading more data may advance the link index (even on the first read after a
     seek).
+   \param _of The #OggOpusFile from which to retrieve the current link index.
    \return The index of the current link on success, or a negative value on
             failture.
            For seekable streams, this is a number between 0 and the value
@@ -1026,6 +1120,7 @@ int op_current_link(OggOpusFile *_of) OP_ARG_NONNULL(1);
     stream.
    The stream must be seekable to compute the bitrate.
    For unseekable streams, use op_bitrate_instant() to get periodic estimates.
+   \param _of The #OggOpusFile from which to retrieve the bitrate.
    \param _li The index of the link whose bitrate should be computed.
               USe a negative number to get the bitrate of the whole stream.
    \return The bitrate on success, or a negative value on error.
@@ -1035,21 +1130,69 @@ int op_current_link(OggOpusFile *_of) OP_ARG_NONNULL(1);
 opus_int32 op_bitrate(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Compute the instantaneous bitrate, measured as the ratio of bits to playable
-    samples decoed since a) the last call to op_bitrate_instant(), b) the last
+    samples decoded since a) the last call to op_bitrate_instant(), b) the last
     seek, or c) the start of playback, whichever was most recent.
    This will spike somewhat after a seek or at the start/end of a chain
     boundary, as pre-skip, pre-roll, and end-trimming causes samples to be
     decoded but not played.
+   \param _of The #OggOpusFile from which to retrieve the bitrate.
    \return The bitrate, in bits per second, or a negative value on error.
    \retval #OP_EFALSE No data has been decoded since any of the events
                        described above.
    \retval #OP_EINVAL The stream was not fully open.*/
 opus_int32 op_bitrate_instant(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
+/**Obtain the current value of the position indicator for \a _of.
+   \param _of The #OggOpusFile from which to retrieve the position indicator.
+   \return The byte position that is currently being read from.
+   \retval #OP_EINVAL The stream was not fully open.*/
+opus_int64 op_raw_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+
+/**Obtain the PCM offset of the next sample to be read.
+   If the stream is not properly timestamped, this might not increment by the
+    proper amount between reads, or even return monotonically increasing
+    values.
+   \param _of The #OggOpusFile from which to retrieve the PCM offset.
+   \return The PCM offset of the next sample to be read.
+   \retval #OP_EINVAL The stream was not fully open.*/
+ogg_int64_t op_pcm_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+
+/*@}*/
+/*@}*/
+
+/**\defgroup stream_seeking Seeking*/
+/*@{*/
+/**\name Functions for seeking in Opus streams
+
+   These functions let you seek in Opus streams, if the underlying source
+    support it.
+   Seeking is implemented for all built-in stream I/O routines, though some
+    individual sources may not be seekable (pipes, live HTTP streams, or HTTP
+    streams from a server that does not support <code>Range</code> requests).
+
+   op_raw_seek() is the fastest: it is guaranteed to perform at most one
+    physical seek, but, since the target is a byte position, makes no guarantee
+    how close to a given time it will come.
+   op_pcm_seek() provides sample-accurate seeking.
+   The number of physical seeks it requires is still quite small (often 1 or
+    2, even in highly variable bitrate streams).
+
+   Seeking in Opus requires decoding some pre-roll amount before playback to
+    allow the internal state to converge (as if recovering from packet loss).
+   This is handled internally by <tt>libopusfile</tt>, but means there is
+    little extra overhead for decoding up to the exact position requested
+    (since it must decode some amount of audio anyway).
+   It also means that decoding after seeking may not return exactly the same
+    values as would be obtained by decoding the stream straight through.
+   However, such differences are expected to be smaller than the loss
+    introduced by Opus's lossy compression.*/
+/*@{*/
+
 /**Seek to a byte offset relative to the <b>compressed</b> data.
    This also scans packets to update the PCM cursor.
    It will cross a logical bitstream boundary, but only if it can't get any
     packets out of the tail of the link to which it seeks.
+   \param _of          The #OggOpusFile in which to seek.
    \param _byte_offset The byte position to seek to.
    \return 0 on success, or a negative error code on failure.
    \retval #OP_EREAD    The seek failed.
@@ -1064,6 +1207,7 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _byte_offset) OP_ARG_NONNULL(1);
     quickly arrive at the requested position.
    This is faster than sample-granularity seeking because it doesn't do the
     last bit of decode to find a specific sample.
+   \param _of         The #OggOpusFile in which to seek.
    \param _pcm_offset The PCM offset to seek to.
                       This is in samples at 48 kHz relative to the start of the
                        stream.
@@ -1077,6 +1221,7 @@ int op_pcm_seek_page(OggOpusFile *_of,ogg_int64_t _pcm_offset)
 
 /**Seek to the specified PCM offset, such that decoding will begin at exactly
     the requested position.
+   \param _of         The #OggOpusFile in which to seek.
    \param _pcm_offset The PCM offset to seek to.
                       This is in samples at 48 kHz relative to the start of the
                        stream.
@@ -1087,18 +1232,41 @@ int op_pcm_seek_page(OggOpusFile *_of,ogg_int64_t _pcm_offset)
    \retval #OP_ENOSEEK This stream is not seekable.*/
 int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
 
-/**Obtain the current value of the position indicator for \a _of.
-   \return The byte position that is currently being read from.*/
-opus_int64 op_raw_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+/*@}*/
+/*@}*/
 
-/**Obtain the PCM offset of the next sample to be read.
-   If the stream is not properly timestamped, this might not increment by the
-    proper amount between reads, or even return monotonically increasing
-    values.
-   \return The PCM offset of the next sample to be read.*/
-ogg_int64_t op_pcm_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+/**\defgroup stream_decoding Decoding*/
+/*@{*/
+/**\name Functions for decoding audio data
+
+   These functions retrieve actual decoded audio data from the stream.
+   The general functions, op_read() and op_read_float() return 16-bit or
+    floating-point output, both using native endian ordering.
+   The number of channels returned can change from link to link in a chained
+    stream.
+   There are special functions, op_read_stereo() and op_read_float_stereo(),
+    which always output two channels, to simplify applications which do not
+    wish to handle multichannel audio.
+   These downmix multichannel files to two channels, so they can always return
+    samples in the same format for every link in a chained file.
+
+   If the rest of your audio processing chain can handle floating point, those
+    routines should be preferred, as floating point output avoids introducing
+    clipping and other issues which might be avoided entirely if, e.g., you
+    scale down the volume at some other stage.
+   However, if you intend to direct consume 16-bit samples, the conversion in
+    <tt>libopusfile</tt> provides noise-shaping dithering API.
+
+   <tt>libopusfile</tt> can also be configured at compile time to use the
+    fixed-point <tt>libopus</tt> API.
+   If so, the floating-point API may also be disabled.
+   In that configuration, nothing in <tt>libopusfile</tt> will use any
+    floating-point operations, to simplify support on devices without an
+    adequate FPU.*/
+/*@{*/
 
 /**Reads more samples from the stream.
+   \param _of            The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed native-endian 16-bit values with a nominal
                           range of <code>[-32768,32767)</code>.
@@ -1150,6 +1318,7 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
  opus_int16 *_pcm,int _buf_size,int *_li) OP_ARG_NONNULL(1);
 
 /**Reads more samples from the stream.
+   \param _of            The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples as
                           signed floats with a nominal range of
                           <code>[-1.0,1.0]</code>.
@@ -1204,6 +1373,7 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
    This function is intended for simple players that want a uniform output
     format, even if the channel count changes between links in a chained
     stream.
+   \param _of            The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed native-endian 16-bit values with a nominal
                           range of <code>[-32768,32767)</code>.
@@ -1250,6 +1420,7 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
    This function is intended for simple players that want a uniform output
     format, even if the channel count changes between links in a chained
     stream.
+   \param _of            The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed floats with a nominal range of
                           <code>[-1.0,1.0]</code>.
@@ -1291,6 +1462,9 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
                               checks.*/
 OP_WARN_UNUSED_RESULT int op_read_float_stereo(OggOpusFile *_of,
  float *_pcm,int _buf_size) OP_ARG_NONNULL(1);
+
+/*@}*/
+/*@}*/
 
 # if OP_GNUC_PREREQ(4,0)
 #  pragma GCC visibility pop
