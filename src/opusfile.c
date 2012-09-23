@@ -70,7 +70,7 @@
 #define OP_CHUNK_SIZE     (65536)
 /*The maximum amount to seek backwards per step when trying to find the
    previous page.*/
-#define OP_CHUNK_SIZE_MAX (1024*1024)
+#define OP_CHUNK_SIZE_MAX (1024*(opus_int32)1024)
 /*A smaller read size is needed for low-rate streaming.*/
 #define OP_READ_SIZE      (2048)
 
