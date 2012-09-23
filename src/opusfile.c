@@ -132,6 +132,8 @@ int op_test(OpusHead *_head,
   return err;
 }
 
+/*The read/seek functions track absolute position within the stream.*/
+
 /*Read a little more data from the file/pipe into the ogg_sync framer.*/
 static int op_get_data(OggOpusFile *_of){
   char *buffer;
@@ -158,7 +160,13 @@ static int op_seek_helper(OggOpusFile *_of,opus_int64 _offset){
   return 0;
 }
 
-/*The read/seek functions track absolute position within the stream.*/
+/*Get the current position indicator of the underlying source.
+  This should be the same as the value reported by tell().*/
+static opus_int64 op_position(OggOpusFile *_of){
+  /*The current position indicator is _not_ simply offset.
+    We may also have unprocessed, buffered data in the sync state.*/
+  return _of->offset+_of->oy.fill-_of->oy.returned;
+}
 
 /*From the head of the stream, get the next page.
   _boundary specifies if the function is allowed to fetch more data from the
@@ -190,7 +198,7 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
            including buffered sync data, then treat this as EOF.
           Otherwise treat it as a read error.*/
         if(_boundary<0)_boundary=_of->end;
-        read_offset=_of->offset+_of->oy.fill-_of->oy.returned;
+        read_offset=op_position(_of);
         return read_offset>=_boundary?OP_FALSE:ret;
       }
     }
@@ -1247,8 +1255,7 @@ static int op_open_seekable2(OggOpusFile *_of){
   *&os_start=_of->os;
   start_offset=_of->offset;
   memcpy(op_start,_of->op,sizeof(*op_start)*start_op_count);
-  OP_ASSERT((*_of->callbacks.tell)(_of->source)==
-   start_offset+oy_start.fill-oy_start.returned);
+  OP_ASSERT((*_of->callbacks.tell)(_of->source)==op_position(_of));
   ogg_sync_init(&_of->oy);
   ogg_stream_init(&_of->os,-1);
   ret=op_open_seekable2_impl(_of);
@@ -1264,9 +1271,8 @@ static int op_open_seekable2(OggOpusFile *_of){
   _of->prev_packet_gp=_of->links[0].pcm_start;
   _of->cur_discard_count=_of->links[0].head.pre_skip;
   if(OP_UNLIKELY(ret<0))return ret;
-  /*And seek back to the start of the first link.*/
-  ret=(*_of->callbacks.seek)(_of->source,
-   start_offset+oy_start.fill-oy_start.returned,SEEK_SET);
+  /*And restore the position indicator.*/
+  ret=(*_of->callbacks.seek)(_of->source,op_position(_of),SEEK_SET);
   return OP_UNLIKELY(ret<0)?OP_EREAD:0;
 }
 
