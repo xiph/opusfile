@@ -513,8 +513,9 @@ static void op_http_stream_init(OpusHTTPStream *_stream){
     *pnext=_stream->conns+ci;
     pnext=&_stream->conns[ci].next;
   }
-  op_parsed_url_init(&_stream->url);
   _stream->ssl_ctx=NULL;
+  _stream->lru_head=NULL;
+  op_parsed_url_init(&_stream->url);
   op_sb_init(&_stream->request);
   _stream->seekable=0;
 }
