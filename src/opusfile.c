@@ -243,6 +243,27 @@ static int op_lookup_page_serialno(ogg_page *_og,
   return op_lookup_serialno(ogg_page_serialno(_og),_serialnos,_nserialnos);
 }
 
+typedef struct OpusSeekRecord OpusSeekRecord;
+
+/*We use this to remember the pages we found while enumerating the links of a
+   chained stream.
+  We only need to know the starting and ending byte offsets and the serial
+   number, so we can tell if the page belonged to the current chain or not,
+   and where to bisect.*/
+struct OpusSeekRecord{
+  /*The earliest byte we know of such that reading forward from it causes
+     capture to be regained at this page.*/
+  opus_int64   search_start;
+  /*The offset of this page.*/
+  opus_int64   offset;
+  /*The size of this page.*/
+  opus_int32   size;
+  /*The serial number of this page.*/
+  ogg_uint32_t serialno;
+  /*The granule position of this page.*/
+  ogg_int64_t  gp;
+};
+
 /*Find the last page beginning before _offset with a valid granule position.
   There is no '_boundary' parameter as it will always have to read more data.
   This is much dirtier than the above, as Ogg doesn't have any backward search
@@ -253,80 +274,78 @@ static int op_lookup_page_serialno(ogg_page *_og,
    matching serial number, instead of the very last page.
   If no page of the specified serial number is seen, it will return the info of
    the last page and update *_serialno.
-  Return: The offset of the start of the page, or a negative value on failure.
+  Return: 0 on success, or a negative value on failure.
           OP_EREAD:    Failed to read more data (error or EOF).
           OP_EBADLINK: We couldn't find a page even after seeking back to the
                         start of the stream.*/
-static opus_int64 op_get_prev_page_serial(OggOpusFile *_of,
- const ogg_uint32_t *_serialnos,int _nserialnos,opus_int64 _offset,
- opus_int32 *_chunk_size,ogg_uint32_t *_serialno,opus_int32 *_page_size,
- ogg_int64_t *_gp){
-  ogg_page     og;
-  opus_int64   begin;
-  opus_int64   end;
-  opus_int64   original_end;
-  opus_int64   offset;
-  opus_int64   preferred_offset;
-  ogg_uint32_t preferred_serialno;
-  ogg_int64_t  ret_serialno;
-  opus_int32   ret_size;
-  ogg_int64_t  ret_gp;
-  opus_int32   chunk_size;
+static int op_get_prev_page_serial(OggOpusFile *_of,
+ OpusSeekRecord *_sr,opus_int32 *_chunk_size,opus_int64 _offset,
+ ogg_uint32_t _serialno,const ogg_uint32_t *_serialnos,int _nserialnos){
+  OpusSeekRecord preferred_sr;
+  ogg_page       og;
+  opus_int64     begin;
+  opus_int64     end;
+  opus_int64     original_end;
+  opus_int32     chunk_size;
+  int            preferred_found;
   original_end=end=begin=_offset;
-  preferred_offset=offset=-1;
-  ret_serialno=-1;
-  ret_size=-1;
-  ret_gp=-1;
-  preferred_serialno=*_serialno;
+  preferred_found=0;
+  _offset=-1;
   chunk_size=_chunk_size==NULL?OP_CHUNK_SIZE:*_chunk_size;
   do{
-    int ret;
+    opus_int64 search_start;
+    int        ret;
     OP_ASSERT(chunk_size>=OP_PAGE_SIZE);
     begin=OP_MAX(begin-chunk_size,0);
     ret=op_seek_helper(_of,begin);
     if(OP_UNLIKELY(ret<0))return ret;
+    search_start=begin;
     while(_of->offset<end){
-      opus_int64 llret;
+      opus_int64   llret;
+      ogg_uint32_t serialno;
+      int          prev_preferred_found;
       llret=op_get_next_page(_of,&og,end-_of->offset);
-      if(OP_UNLIKELY(llret<OP_FALSE))return llret;
+      if(OP_UNLIKELY(llret<OP_FALSE))return (int)llret;
       else if(llret==OP_FALSE)break;
-      ret_serialno=ogg_page_serialno(&og);
-      ret_gp=ogg_page_granulepos(&og);
-      offset=llret;
-      OP_ASSERT(_of->offset-offset>=0);
-      OP_ASSERT(_of->offset-offset<=OP_PAGE_SIZE);
-      ret_size=(opus_int32)(_of->offset-offset);
-      if(ret_serialno==preferred_serialno){
-        preferred_offset=offset;
-        *_page_size=ret_size;
-        *_gp=ret_gp;
+      serialno=ogg_page_serialno(&og);
+      prev_preferred_found=preferred_found;
+      /*Save the information for this page.
+        We're not interested in the page itself... just the serial number, byte
+         offset, page size, and granule position.*/
+      _sr->search_start=search_start;
+      _sr->offset=_offset=llret;
+      _sr->serialno=serialno;
+      OP_ASSERT(_of->offset-_offset>=0);
+      OP_ASSERT(_of->offset-_offset<=OP_PAGE_SIZE);
+      _sr->size=(opus_int32)(_of->offset-_offset);
+      _sr->gp=ogg_page_granulepos(&og);
+      /*If this page is from the stream we're looking for, remember it.*/
+      if(serialno==_serialno){
+        preferred_found=1;
+        *&preferred_sr=*_sr;
       }
-      if(!op_lookup_serialno(ret_serialno,_serialnos,_nserialnos)){
+      if(!op_lookup_serialno(serialno,_serialnos,_nserialnos)){
         /*We fell off the end of the link, which means we seeked back too far
            and shouldn't have been looking in that link to begin with.
           If we found the preferred serial number, forget that we saw it.*/
-        preferred_offset=-1;
+        preferred_found=0;
       }
+      search_start=llret+1;
     }
     /*We started from the beginning of the stream and found nothing.
       This should be impossible unless the contents of the source changed out
        from under us after we read from it.*/
-    if(OP_UNLIKELY(!begin)&&OP_UNLIKELY(offset==-1))return OP_EBADLINK;
+    if(OP_UNLIKELY(!begin)&&OP_UNLIKELY(_offset<0))return OP_EBADLINK;
     /*Bump up the chunk size.
       This is mildly helpful when seeks are very expensive (http).*/
     chunk_size=OP_MIN(2*chunk_size,OP_CHUNK_SIZE_MAX);
     /*Avoid quadratic complexity if we hit an invalid patch of the file.*/
     end=OP_MIN(begin+OP_PAGE_SIZE-1,original_end);
   }
-  while(offset==-1);
+  while(_offset<0);
   if(_chunk_size!=NULL)*_chunk_size=chunk_size;
-  /*We're not interested in the page... just the serial number, byte offset,
-     page size, and granule position.*/
-  if(preferred_offset>=0)return preferred_offset;
-  *_serialno=(ogg_uint32_t)ret_serialno;
-  *_page_size=ret_size;
-  *_gp=ret_gp;
-  return offset;
+  if(preferred_found)*_sr=*&preferred_sr;
+  return 0;
 }
 
 /*Uses the local ogg_stream storage in _of.
@@ -806,31 +825,32 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
    backwards until it reaches the start, and then fail.*/
 static int op_find_final_pcm_offset(OggOpusFile *_of,
  const ogg_uint32_t *_serialnos,int _nserialnos,OggOpusLink *_link,
- ogg_int64_t _end_gp,ogg_uint32_t _end_serialno,opus_int64 _offset,
+ opus_int64 _offset,ogg_uint32_t _end_serialno,ogg_int64_t _end_gp,
  ogg_int64_t *_total_duration){
-  ogg_int64_t  total_duration;
-  ogg_int64_t  duration;
-  ogg_uint32_t cur_serialno;
-  ogg_uint32_t test_serialno;
-  opus_int32   chunk_size;
+  OpusSeekRecord sr;
+  ogg_int64_t    total_duration;
+  ogg_int64_t    duration;
+  ogg_uint32_t   cur_serialno;
+  opus_int32     chunk_size;
   /*For the time being, fetch end PCM offset the simple way.*/
   cur_serialno=_link->serialno;
-  test_serialno=_end_serialno;
+  sr.offset=_offset;
+  sr.serialno=_end_serialno;
+  sr.gp=_end_gp;
   /*Keep track of the growing chunk size to better handle being multiplexed
      with another high-bitrate stream.*/
   chunk_size=OP_CHUNK_SIZE;
-  while(_end_gp==-1||test_serialno!=cur_serialno){
-    opus_int32 page_size;
-    test_serialno=cur_serialno;
-    _offset=op_get_prev_page_serial(_of,_serialnos,_nserialnos,_offset,
-     &chunk_size,&test_serialno,&page_size,&_end_gp);
-    if(OP_UNLIKELY(_offset<0))return (int)_offset;
+  while(sr.gp==-1||sr.serialno!=cur_serialno){
+    int ret;
+    ret=op_get_prev_page_serial(_of,&sr,&chunk_size,sr.offset,
+     cur_serialno,_serialnos,_nserialnos);
+    if(OP_UNLIKELY(ret<0))return ret;
   }
   /*This implementation requires that difference between the first and last
      granule positions in each link be representable in a signed, 64-bit
      number, and that each link also have at least as many samples as the
      pre-skip requires.*/
-  if(OP_UNLIKELY(op_granpos_diff(&duration,_end_gp,_link->pcm_start)<0)
+  if(OP_UNLIKELY(op_granpos_diff(&duration,sr.gp,_link->pcm_start)<0)
    ||OP_UNLIKELY(duration<_link->head.pre_skip)){
     return OP_EBADTIMESTAMP;
   }
@@ -840,28 +860,111 @@ static int op_find_final_pcm_offset(OggOpusFile *_of,
   total_duration=*_total_duration;
   if(OP_UNLIKELY(OP_INT64_MAX-duration<total_duration))return OP_EBADTIMESTAMP;
   *_total_duration=total_duration+duration;
-  _link->pcm_end=_end_gp;
-  _link->end_offset=_offset;
+  _link->pcm_end=sr.gp;
+  _link->end_offset=sr.offset;
   return 0;
 }
 
-typedef struct op_seek_record op_seek_record;
+/*Rescale the number _x from the range [0,_from] to [0,_to].
+  _from and _to must be positive.*/
+opus_int64 op_rescale64(opus_int64 _x,opus_int64 _from,opus_int64 _to){
+  opus_int64 frac;
+  opus_int64 ret;
+  int        i;
+  if(_x>=_from)return _to;
+  if(_x<=0)return 0;
+  frac=0;
+  for(i=0;i<63;i++){
+    frac<<=1;
+    OP_ASSERT(_x<=_from);
+    if(_x>=_from>>1){
+      _x-=_from-_x;
+      frac|=1;
+    }
+    else _x<<=1;
+  }
+  ret=0;
+  for(i=0;i<63;i++){
+    if(frac&1)ret=(ret&_to&1)+(ret>>1)+(_to>>1);
+    else ret>>=1;
+    frac>>=1;
+  }
+  return ret;
+}
 
-/*We use this to remember the pages we found while enumerating the links of a
-   chained stream.
-  We only need to know the starting and ending byte offsets and the serial
-   number, so we can tell if the page belonged to the current chain or not,
-   and where to bisect.*/
-struct op_seek_record{
-  opus_int64   offset;
-  opus_int32   size;
-  ogg_uint32_t serialno;
-};
+/*The minimum granule position spacing allowed for making predictions.
+  This corresponds to about 1 second of audio at 48 kHz for both Opus and
+   Vorbis, or one keyframe interval in Theora with the default keyframe spacing
+   of 256.*/
+#define OP_GP_SPACING_MIN (48000)
+
+/*Try to estimate the location of the next link using the current seek
+   records, assuming the initial granule position of any streams we've found is
+   0.*/
+static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
+ opus_int64 _searched,opus_int64 _end_searched){
+  opus_int64 bisect;
+  int        sri;
+  int        srj;
+  /*Require that we be at least OP_CHUNK_SIZE from the end.
+    We don't require that we be at least OP_CHUNK_SIZE from the beginning,
+     because if we are we'll just scan forward without seeking.*/
+  _end_searched-=OP_CHUNK_SIZE;
+  if(_searched>=_end_searched)return -1;
+  bisect=_end_searched;
+  for(sri=0;sri<_nsr;sri++){
+    ogg_int64_t  gp1;
+    ogg_int64_t  gp2_min;
+    ogg_uint32_t serialno1;
+    opus_int64   offset1;
+    /*If the granule position is negative, either it's invalid or we'd cause
+       overflow.*/
+    gp1=_sr[sri].gp;
+    if(gp1<0)continue;
+    /*We require some minimum distance between granule positions to make an
+       estimate.
+      We don't actually know what granule position scheme is being used,
+       because we have no idea what kind of stream these came from.
+      Therefore we require a minimum spacing between them, with the
+       expectation that while bitrates and granule position increments might
+       vary locally in quite complex ways, they are globally smooth.*/
+    if(OP_UNLIKELY(op_granpos_add(&gp2_min,gp1,OP_GP_SPACING_MIN)<0)){
+      /*No granule position would satisfy us.*/
+      continue;
+    }
+    offset1=_sr[sri].offset;
+    serialno1=_sr[sri].serialno;
+    for(srj=0;srj<sri;srj++){
+      ogg_int64_t  gp2;
+      opus_int64   offset2;
+      opus_int64   num;
+      ogg_int64_t  den;
+      ogg_int64_t  ipart;
+      gp2=_sr[srj].gp;
+      if(gp2<gp2_min)continue;
+      /*Oh, and also make sure these came from the same stream.*/
+      if(_sr[srj].serialno!=serialno1)continue;
+      offset2=_sr[srj].offset;
+      /*For once, we can subtract with impunity.*/
+      den=gp2-gp1;
+      ipart=gp2/den;
+      num=offset2-offset1;
+      OP_ASSERT(num>0);
+      if(ipart>0&&(offset2-_searched)/ipart<num)continue;
+      offset2-=ipart*num;
+      gp2-=ipart*den;
+      offset2-=op_rescale64(gp2,den,num);
+      if(offset2<_searched)continue;
+      bisect=OP_MIN(bisect,offset2);
+    }
+  }
+  return bisect>=_end_searched?-1:bisect;
+}
 
 /*Finds each bitstream link, one at a time, using a bisection search.
   This has to begin by knowing the offset of the first link's initial page.*/
 static int op_bisect_forward_serialno(OggOpusFile *_of,
- opus_int64 _searched,ogg_int64_t _end_gp,op_seek_record *_sr,int _csr,
+ opus_int64 _searched,OpusSeekRecord *_sr,int _csr,
  ogg_uint32_t **_serialnos,int *_nserialnos,int *_cserialnos){
   ogg_page      og;
   OggOpusLink  *links;
@@ -915,7 +1018,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     if(sri<=0)break;
     /*Last page wasn't found.
       We have at least one more link.*/
-    end_searched=next=_sr[sri-1].offset;
+    end_searched=next=_sr[sri-1].search_start;
     if(sri<nsr)_searched=_sr[sri].offset+_sr[sri].size;
     nsr=sri;
     bisect=-1;
@@ -939,9 +1042,6 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     /*We guard against garbage separating the last and first pages of two
        links below.*/
     while(_searched<end_searched){
-      /*TODO: We might be able to do a better job estimating the start of
-         subsequent links by assuming its initial PCM offset is 0 and using two
-         sightings of the same stream to estimate a bitrate.*/
       if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
       if(OP_UNLIKELY(bisect-_searched<OP_CHUNK_SIZE))bisect=_searched;
       ret=op_seek_helper(_of,bisect);
@@ -956,15 +1056,17 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
         next=last;
         /*In reality we should always have enough room, but be paranoid.*/
         if(OP_LIKELY(nsr+1<_csr)){
+          _sr[nsr].search_start=bisect;
           _sr[nsr].offset=last;
           OP_ASSERT(_of->offset-last>=0);
           OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE);
           _sr[nsr].size=(opus_int32)(_of->offset-last);
+          _sr[nsr].gp=ogg_page_granulepos(&og);
           nsr++;
         }
       }
       else _searched=_of->offset;
-      bisect=-1;
+      bisect=op_predict_link_start(_sr,nsr,_searched,end_searched);
     }
     /*Bisection point found.
       Get the final granule position of the previous link, assuming
@@ -972,7 +1074,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        empty.*/
     if(OP_LIKELY(links[nlinks-1].pcm_end==-1)){
       ret=op_find_final_pcm_offset(_of,serialnos,nserialnos,
-       links+nlinks-1,-1,0,next,&total_duration);
+       links+nlinks-1,next,0,-1,&total_duration);
       if(OP_UNLIKELY(ret<0))return ret;
     }
     /*Restore the cursor position after the seek.
@@ -1003,7 +1105,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
      didn't already determine the link was empty).*/
   if(OP_LIKELY(links[nlinks-1].pcm_end==-1)){
     ret=op_find_final_pcm_offset(_of,serialnos,nserialnos,
-     links+nlinks-1,_end_gp,_sr[0].serialno,_sr[0].offset,&total_duration);
+     links+nlinks-1,_sr[0].offset,_sr[0].serialno,_sr[0].gp,&total_duration);
     if(OP_UNLIKELY(ret<0))return ret;
   }
   /*Trim back the links array if necessary.*/
@@ -1068,9 +1170,9 @@ static int op_open_seekable2_impl(OggOpusFile *_of){
   /*64 seek records should be enough for anybody.
     Actually, with a bisection search in a 63-bit range down to OP_CHUNK_SIZE
      granularity, much more than enough.*/
-  op_seek_record sr[64];
+  OpusSeekRecord sr[64];
   opus_int64     data_offset;
-  ogg_int64_t    end_gp;
+  int            ret;
   /*We can seek, so set out learning all about this file.*/
   (*_of->callbacks.seek)(_of->source,0,SEEK_END);
   _of->offset=_of->end=(*_of->callbacks.tell)(_of->source);
@@ -1080,16 +1182,15 @@ static int op_open_seekable2_impl(OggOpusFile *_of){
   /*Get the offset of the last page of the physical bitstream, or, if we're
      lucky, the last Opus page of the first link, as most Ogg Opus files will
      contain a single logical bitstream.*/
-  sr[0].serialno=_of->links[0].serialno;
-  sr[0].offset=op_get_prev_page_serial(_of,_of->serialnos,_of->nserialnos,
-   _of->end,NULL,&sr[0].serialno,&sr[0].size,&end_gp);
-  if(OP_UNLIKELY(sr[0].offset<0))return (int)sr[0].offset;
+  ret=op_get_prev_page_serial(_of,sr,NULL,_of->end,
+   _of->links[0].serialno,_of->serialnos,_of->nserialnos);
+  if(OP_UNLIKELY(ret<0))return ret;
   /*If there's any trailing junk, forget about it.*/
   _of->end=sr[0].offset+sr[0].size;
   if(OP_UNLIKELY(_of->end<data_offset))return OP_EBADLINK;
   /*Now enumerate the bitstream structure.*/
-  return op_bisect_forward_serialno(_of,data_offset,end_gp,sr,
-   sizeof(sr)/sizeof(*sr),&_of->serialnos,&_of->nserialnos,&_of->cserialnos);
+  return op_bisect_forward_serialno(_of,data_offset,sr,sizeof(sr)/sizeof(*sr),
+   &_of->serialnos,&_of->nserialnos,&_of->cserialnos);
 }
 
 static int op_open_seekable2(OggOpusFile *_of){
@@ -1851,33 +1952,6 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
     _pcm_offset-=duration;
   }
   return -1;
-}
-
-/*Rescale the number _x from the range [0,_from] to [0,_to].
-  _from and _to must be positive.*/
-opus_int64 op_rescale64(opus_int64 _x,opus_int64 _from,opus_int64 _to){
-  opus_int64 frac;
-  opus_int64 ret;
-  int        i;
-  if(_x>=_from)return _to;
-  if(_x<=0)return 0;
-  frac=0;
-  for(i=0;i<63;i++){
-    frac<<=1;
-    OP_ASSERT(_x<=_from);
-    if(_x>=_from>>1){
-      _x-=_from-_x;
-      frac|=1;
-    }
-    else _x<<=1;
-  }
-  ret=0;
-  for(i=0;i<63;i++){
-    if(frac&1)ret=(ret&_to&1)+(ret>>1)+(_to>>1);
-    else ret>>=1;
-    frac>>=1;
-  }
-  return ret;
 }
 
 /*Search within link _li for the page with the highest granule position
