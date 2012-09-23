@@ -934,7 +934,7 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
     }
     offset1=_sr[sri].offset;
     serialno1=_sr[sri].serialno;
-    for(srj=0;srj<sri;srj++){
+    for(srj=sri;srj-->0;){
       ogg_int64_t  gp2;
       opus_int64   offset2;
       opus_int64   num;
@@ -956,6 +956,7 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
       offset2-=op_rescale64(gp2,den,num);
       if(offset2<_searched)continue;
       bisect=OP_MIN(bisect,offset2);
+      break;
     }
   }
   return bisect>=_end_searched?-1:bisect;
@@ -989,12 +990,13 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
      improve the lower bound on the location where the next link starts.*/
   nsr=1;
   for(;;){
-    opus_int64 data_offset;
-    opus_int64 end_searched;
-    opus_int64 bisect;
-    opus_int64 next;
-    opus_int64 last;
-    int        sri;
+    opus_int64  data_offset;
+    opus_int64  end_searched;
+    opus_int64  bisect;
+    opus_int64  next;
+    opus_int64  last;
+    ogg_int64_t end_gp;
+    int         sri;
     serialnos=*_serialnos;
     nserialnos=*_nserialnos;
     if(OP_UNLIKELY(nlinks>=clinks)){
@@ -1018,8 +1020,13 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     if(sri<=0)break;
     /*Last page wasn't found.
       We have at least one more link.*/
+    last=-1;
     end_searched=next=_sr[sri-1].search_start;
-    if(sri<nsr)_searched=_sr[sri].offset+_sr[sri].size;
+    end_gp=-1;
+    if(sri<nsr){
+      _searched=_sr[sri].offset+_sr[sri].size;
+      if(_sr[sri].serialno==links[nlinks-1].serialno)end_gp=_sr[sri].gp;
+    }
     nsr=sri;
     bisect=-1;
     /*If we've already found the end of at least one link, try to pick the
@@ -1044,6 +1051,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     while(_searched<end_searched){
       if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
       if(OP_UNLIKELY(bisect-_searched<OP_CHUNK_SIZE))bisect=_searched;
+      else end_gp=-1;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
       last=op_get_next_page(_of,&og,_of->end);
@@ -1051,6 +1059,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       if(OP_UNLIKELY(last<0))return OP_EBADLINK;
       OP_ASSERT(nsr<_csr);
       _sr[nsr].serialno=ogg_page_serialno(&og);
+      _sr[nsr].gp=ogg_page_granulepos(&og);
       if(!op_lookup_serialno(_sr[nsr].serialno,serialnos,nserialnos)){
         end_searched=bisect;
         next=last;
@@ -1061,11 +1070,13 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
           OP_ASSERT(_of->offset-last>=0);
           OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE);
           _sr[nsr].size=(opus_int32)(_of->offset-last);
-          _sr[nsr].gp=ogg_page_granulepos(&og);
           nsr++;
         }
       }
-      else _searched=_of->offset;
+      else{
+        _searched=_of->offset;
+        if(_sr[nsr].serialno==links[nlinks-1].serialno)end_gp=_sr[nsr].gp;
+      }
       bisect=op_predict_link_start(_sr,nsr,_searched,end_searched);
     }
     /*Bisection point found.
@@ -1074,17 +1085,20 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        empty.*/
     if(OP_LIKELY(links[nlinks-1].pcm_end==-1)){
       ret=op_find_final_pcm_offset(_of,serialnos,nserialnos,
-       links+nlinks-1,next,0,-1,&total_duration);
+       links+nlinks-1,next,links[nlinks-1].serialno,end_gp,&total_duration);
       if(OP_UNLIKELY(ret<0))return ret;
+      if(end_gp==-1)last=-1;
     }
     /*Restore the cursor position after the seek.
       This only performs an actual seek if the last page in the link did not
        belong to our Opus stream.
       TODO: Read forward instead, or let seek implementations do that?*/
-    ret=op_seek_helper(_of,next);
-    if(OP_UNLIKELY(ret<0))return ret;
+    if(last!=next){
+      ret=op_seek_helper(_of,next);
+      if(OP_UNLIKELY(ret<0))return ret;
+    }
     ret=op_fetch_headers(_of,&links[nlinks].head,&links[nlinks].tags,
-     _serialnos,_nserialnos,_cserialnos,NULL);
+     _serialnos,_nserialnos,_cserialnos,last!=next?NULL:&og);
     if(OP_UNLIKELY(ret<0))return ret;
     links[nlinks].offset=next;
     links[nlinks].data_offset=_of->offset;
@@ -2027,10 +2041,8 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
         if(bisect<=begin+1)end=begin;
         else{
           bisect=OP_MAX(bisect-OP_CHUNK_SIZE,begin+1);
-          if(bisect!=_of->offset){
-            ret=op_seek_helper(_of,bisect);
-            if(OP_UNLIKELY(ret<0))return ret;
-          }
+          ret=op_seek_helper(_of,bisect);
+          if(OP_UNLIKELY(ret<0))return ret;
         }
       }
       else{
