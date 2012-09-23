@@ -1093,21 +1093,38 @@ static int op_open_seekable2_impl(OggOpusFile *_of){
 }
 
 static int op_open_seekable2(OggOpusFile *_of){
-  ogg_sync_state oy_start;
-  opus_int64     start_offset;
-  int            ret;
+  ogg_sync_state    oy_start;
+  ogg_stream_state  os_start;
+  ogg_packet       *op_start;
+  opus_int64        start_offset;
+  int               start_op_count;
+  int               ret;
   /*We're partially open and have a first link header state in storage in _of.
     Save off that stream state so we can come back to it.*/
+  start_op_count=_of->op_count;
+  /*This is a bit too large to put on the stack unconditionally.*/
+  op_start=(ogg_packet *)_ogg_malloc(sizeof(*op_start)*start_op_count);
+  if(op_start==NULL)return OP_EFAULT;
   *&oy_start=_of->oy;
+  *&os_start=_of->os;
   start_offset=_of->offset;
+  memcpy(op_start,_of->op,sizeof(*op_start)*start_op_count);
   OP_ASSERT((*_of->callbacks.tell)(_of->source)==
    start_offset+oy_start.fill-oy_start.returned);
   ogg_sync_init(&_of->oy);
+  ogg_stream_init(&_of->os,-1);
   ret=op_open_seekable2_impl(_of);
-  /*Restore the old sync state.*/
+  /*Restore the old stream state.*/
+  ogg_stream_clear(&_of->os);
   ogg_sync_clear(&_of->oy);
   *&_of->oy=*&oy_start;
+  *&_of->os=*&os_start;
   _of->offset=start_offset;
+  _of->op_count=start_op_count;
+  memcpy(_of->op,op_start,sizeof(*_of->op)*start_op_count);
+  _ogg_free(op_start);
+  _of->prev_packet_gp=_of->links[0].pcm_start;
+  _of->cur_discard_count=_of->links[0].head.pre_skip;
   if(OP_UNLIKELY(ret<0))return ret;
   /*And seek back to the start of the first link.*/
   ret=(*_of->callbacks.seek)(_of->source,
