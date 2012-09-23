@@ -846,7 +846,7 @@ static int op_find_final_pcm_offset(OggOpusFile *_of,
      cur_serialno,_serialnos,_nserialnos);
     if(OP_UNLIKELY(ret<0))return ret;
   }
-  /*This implementation requires that difference between the first and last
+  /*This implementation requires that the difference between the first and last
      granule positions in each link be representable in a signed, 64-bit
      number, and that each link also have at least as many samples as the
      pre-skip requires.*/
@@ -995,6 +995,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     opus_int64  bisect;
     opus_int64  next;
     opus_int64  last;
+    ogg_int64_t end_offset;
     ogg_int64_t end_gp;
     int         sri;
     serialnos=*_serialnos;
@@ -1025,7 +1026,10 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     end_gp=-1;
     if(sri<nsr){
       _searched=_sr[sri].offset+_sr[sri].size;
-      if(_sr[sri].serialno==links[nlinks-1].serialno)end_gp=_sr[sri].gp;
+      if(_sr[sri].serialno==links[nlinks-1].serialno){
+        end_gp=_sr[sri].gp;
+        end_offset=_sr[sri].offset;
+      }
     }
     nsr=sri;
     bisect=-1;
@@ -1049,8 +1053,12 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     /*We guard against garbage separating the last and first pages of two
        links below.*/
     while(_searched<end_searched){
+      /*If we don't have a better estimate, use simple bisection.*/
       if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
-      if(OP_UNLIKELY(bisect-_searched<OP_CHUNK_SIZE))bisect=_searched;
+      /*If we're within OP_CHUNK_SIZE of the start, scan forward.*/
+      if(bisect-_searched<OP_CHUNK_SIZE)bisect=_searched;
+      /*Otherwise we're skipping data.
+        Forget the end page, if we saw one, as we might miss a later one.*/
       else end_gp=-1;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
@@ -1075,7 +1083,13 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       }
       else{
         _searched=_of->offset;
-        if(_sr[nsr].serialno==links[nlinks-1].serialno)end_gp=_sr[nsr].gp;
+        if(_sr[nsr].serialno==links[nlinks-1].serialno){
+          /*This page was from the stream we want, remember it.
+            If it's the last such page in the link, we won't have to go back
+             looking for it later.*/
+          end_gp=_sr[nsr].gp;
+          end_offset=last;
+        }
       }
       bisect=op_predict_link_start(_sr,nsr,_searched,end_searched);
     }
@@ -1084,16 +1098,25 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        op_find_initial_pcm_offset() didn't already determine the link was
        empty.*/
     if(OP_LIKELY(links[nlinks-1].pcm_end==-1)){
+      if(end_gp==-1){
+        /*If we don't know where the end page is, we'll have to seek back and
+           look for it, starting from the end of the link.*/
+        end_offset=next;
+        /*Also forget the last page we read.
+          It won't be available after the seek.*/
+        last=-1;
+      }
       ret=op_find_final_pcm_offset(_of,serialnos,nserialnos,
-       links+nlinks-1,next,links[nlinks-1].serialno,end_gp,&total_duration);
+       links+nlinks-1,end_offset,links[nlinks-1].serialno,end_gp,
+       &total_duration);
       if(OP_UNLIKELY(ret<0))return ret;
-      if(end_gp==-1)last=-1;
     }
-    /*Restore the cursor position after the seek.
-      This only performs an actual seek if the last page in the link did not
-       belong to our Opus stream.
-      TODO: Read forward instead, or let seek implementations do that?*/
     if(last!=next){
+      /*The last page we read was not the first page the next link.
+        Move the cursor position to the offset of that first page.
+        This only performs an actual seek if the first page of the next link
+         does not start at the end of the last page from the current Opus
+         stream with a valid granule position.*/
       ret=op_seek_helper(_of,next);
       if(OP_UNLIKELY(ret<0))return ret;
     }
