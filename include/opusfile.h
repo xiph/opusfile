@@ -423,11 +423,12 @@ typedef struct OpusFileCallbacks OpusFileCallbacks;
    \return The number of items successfully read (i.e., not the number of
             characters).
            Unlike normal <code>fread()</code>, this function is allowed to
-            return fewer bytes than requested (e.g., if reading more would
+            return fewer items than requested (e.g., if reading more would
             block), as long as <em>some</em> data is returned when no error
             occurs and EOF has not been reached.
            If an error occurs, or the end-of-file is reached, the return
-            value is zero.*/
+            value is zero.
+           <code>errno</code> need not be set.*/
 typedef size_t (*op_read_func)(void *_ptr,size_t _size,size_t _nmemb,
  void *_stream);
 
@@ -597,7 +598,7 @@ OP_WARN_UNUSED_RESULT void *op_url_stream_create_with_proxy(
 /*@}*/
 /*@}*/
 
-/**\defgroup stream_open_close Opening and Closing Streams*/
+/**\defgroup stream_open_close Opening and Closing*/
 /*@{*/
 /**\name Functions for opening and closing streams
 
@@ -614,9 +615,9 @@ OP_WARN_UNUSED_RESULT void *op_url_stream_create_with_proxy(
     multiplexed streams.
    This function is meant to be a quick-rejection filter.
    Its purpose is not to guarantee that a stream is a valid Opus stream, but to
-    ensure that looks enough like Opus that it isn't going to be recognized as
-    some other format (except possibly an Opus stream that is also multiplexed
-    with other codecs, such as video).
+    ensure that it looks enough like Opus that it isn't going to be recognized
+    as some other format (except possibly an Opus stream that is also
+    multiplexed with other codecs, such as video).
    If you need something that gives a much better guarantee that this stream
     can be opened successfully, use op_test_callbacks() or one of the
     associated convenience functions.
@@ -795,10 +796,6 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_callbacks(void *_source,
  const OpusFileCallbacks *_cb,const unsigned char *_initial_data,
  size_t _initial_bytes,int *_error) OP_ARG_NONNULL(2);
 
-/**Release all memory used by an #OggOpusFile.
-   \param _of The #OggOpusFile to free.*/
-void op_free(OggOpusFile *_of);
-
 /**Partially open a stream from the given file path.
    \see op_test_callbacks
    \param      _path  The path to the file to open.
@@ -953,6 +950,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_callbacks(void *_source,
                               validity checks.*/
 int op_test_open(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
+/**Release all memory used by an #OggOpusFile.
+   \param _of The #OggOpusFile to free.*/
+void op_free(OggOpusFile *_of);
+
 /*@}*/
 /*@}*/
 
@@ -969,7 +970,8 @@ int op_test_open(OggOpusFile *_of) OP_ARG_NONNULL(1);
     and instantaneous bitrate during playback.
 
    Some of these functions may be used successfully on the partially open
-    streams returned by op_test_callbacks() or its associated functions.
+    streams returned by op_test_callbacks() or one of the associated
+    convenience functions.
    Their documention will indicate so explicitly.*/
 /*@{*/
 
