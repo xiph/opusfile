@@ -34,7 +34,7 @@ ifeq ($(findstring -DOP_ENABLE_HTTP,${CFLAGS}),-DOP_ENABLE_HTTP)
 PACKAGES += openssl
 endif
 # The location of include files.
-# Modify these to point to your Ogg and Vorbis include directories if they are
+# Modify these to point to your Ogg and Opus include directories if they are
 #  not installed in a standard location.
 CINCLUDE := `pkg-config --cflags ${PACKAGES}`
 

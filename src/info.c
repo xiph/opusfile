@@ -1,3 +1,14 @@
+/********************************************************************
+ *                                                                  *
+ * THIS FILE IS PART OF THE libopusfile SOFTWARE CODEC SOURCE CODE. *
+ * USE, DISTRIBUTION AND REPRODUCTION OF THIS LIBRARY SOURCE IS     *
+ * GOVERNED BY A BSD-STYLE SOURCE LICENSE INCLUDED WITH THIS SOURCE *
+ * IN 'COPYING'. PLEASE READ THESE TERMS BEFORE DISTRIBUTING.       *
+ *                                                                  *
+ * THE libopusfile SOURCE CODE IS (C) COPYRIGHT 2012                *
+ * by the Xiph.Org Foundation and contributors http://www.xiph.org/ *
+ *                                                                  *
+ ********************************************************************/
 #include "internal.h"
 #include <limits.h>
 #include <string.h>
