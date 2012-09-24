@@ -118,9 +118,10 @@ typedef struct OggOpusFile OggOpusFile;
 #define OP_EIMPL         (-130)
 /**One or more parameters to a function were invalid.*/
 #define OP_EINVAL        (-131)
-/**A purported Ogg Opus stream did not begin with an Ogg page, or a purported
+/**A purported Ogg Opus stream did not begin with an Ogg page, a purported
     header packet did not start with one of the required strings, "OpusHead" or
-    "OpusTags".*/
+    "OpusTags", or a link in a chained file was encountered that did not
+    contain any logical Opus streams.*/
 #define OP_ENOTFORMAT    (-132)
 /**A required header packet was not properly formatted, contained illegal
     values, or was missing altogether.*/
@@ -1268,7 +1269,27 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
 /*@{*/
 
 /**Reads more samples from the stream.
-   \param _of            The #OggOpusFile from which to read.
+   \note Although \a _buf_size must indicate the total number of values that
+    can be stored in \a _pcm, the return value is the number of samples
+    <em>per channel</em>.
+   This is done because
+   <ol>
+   <li>The channel count cannot be known a prior (reading more samples might
+        advance us into the next link, with a different channel count), so
+        \a _buf_size cannot also be in units of samples per channel,</li>
+   <li>Returning the samples per channel matches the <code>libopus</code> API
+        as closely as we're able,</li>
+   <li>Returning the total number of values instead of samples per channel
+        would mean the caller would need a division to compute the samples per
+        channel, and might worry about the possibility of getting back samples
+        for some channels and not others, and</li>
+   <li>This approach is relatively fool-proof: if an application passes too
+        small a value to \a _buf_size, they will simply get fewer samples back,
+        and if they assume the return value is the total number of values, then
+        they will simply read too few (rather than reading too many and going
+        off the end of the buffer).</li>
+   </ol>
+   \param      _of       The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed native-endian 16-bit values with a nominal
                           range of <code>[-32768,32767)</code>.
@@ -1282,6 +1303,9 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
                           values per channel).
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
+                         If less than \a _buf_size values are returned,
+                          <tt>libopusfile</tt> makes no guarantee that the
+                          remaining data in \a _pcm will be unmodified.
    \param[out] _li       The index of the link this data was decoded from.
                          You may pass <code>NULL</code> if you do not need this
                           information.
@@ -1303,8 +1327,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
                               an unsupported channel family.
    \retval #OP_EINVAL        The stream was not fully open.
    \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
-                              contained a link that did not have any logical
-                              Opus streams in it.
+                              did not have any logical Opus streams in it.
    \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
                               required header packet that was not properly
                               formatted, contained illegal values, or was
@@ -1320,7 +1343,26 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
  opus_int16 *_pcm,int _buf_size,int *_li) OP_ARG_NONNULL(1);
 
 /**Reads more samples from the stream.
-   \param _of            The #OggOpusFile from which to read.
+   \note Although \a _buf_size must indicate the total number of values that
+    can be stored in \a _pcm, the return value is the number of samples
+    <em>per channel</em>.
+   <ol>
+   <li>The channel count cannot be known a prior (reading more samples might
+        advance us into the next link, with a different channel count), so
+        \a _buf_size cannot also be in units of samples per channel,</li>
+   <li>Returning the samples per channel matches the <code>libopus</code> API
+        as closely as we're able,</li>
+   <li>Returning the total number of values instead of samples per channel
+        would mean the caller would need a division to compute the samples per
+        channel, and might worry about the possibility of getting back samples
+        for some channels and not others, and</li>
+   <li>This approach is relatively fool-proof: if an application passes too
+        small a value to \a _buf_size, they will simply get fewer samples back,
+        and if they assume the return value is the total number of values, then
+        they will simply read too few (rather than reading too many and going
+        off the end of the buffer).</li>
+   </ol>
+   \param      _of       The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples as
                           signed floats with a nominal range of
                           <code>[-1.0,1.0]</code>.
@@ -1334,6 +1376,9 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
                           samples per channel).
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
+                         If less than \a _buf_size values are returned,
+                          <tt>libopusfile</tt> makes no guarantee that the
+                          remaining data in \a _pcm will be unmodified.
    \param[out] _li       The index of the link this data was decoded from.
                          You may pass <code>NULL</code> if you do not need this
                           information.
@@ -1355,8 +1400,7 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
                               an unsupported channel family.
    \retval #OP_EINVAL        The stream was not fully open.
    \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
-                              contained a link that did not have any logical
-                              Opus streams in it.
+                              did not have any logical Opus streams in it.
    \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
                               required header packet that was not properly
                               formatted, contained illegal values, or was
@@ -1375,7 +1419,11 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
    This function is intended for simple players that want a uniform output
     format, even if the channel count changes between links in a chained
     stream.
-   \param _of            The #OggOpusFile from which to read.
+   \note \a _buf_size indicates the total number of values that can be stored
+    in \a _pcm, while the return value is the number of samples <em>per
+    channel</em>, even though the channel count is known, for consistency with
+    op_read().
+   \param      _of       The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed native-endian 16-bit values with a nominal
                           range of <code>[-32768,32767)</code>.
@@ -1388,6 +1436,9 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
                           values total).
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
+                         If less than \a _buf_size values are returned,
+                          <tt>libopusfile</tt> makes no guarantee that the
+                          remaining data in \a _pcm will be unmodified.
    \return The number of samples read per channel on success, or a negative
             value on failure.
            The number of samples returned may be 0 if the buffer was too small
@@ -1402,8 +1453,7 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
                               an unsupported channel family.
    \retval #OP_EINVAL        The stream was not fully open.
    \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
-                              contained a link that did not have any logical
-                              Opus streams in it.
+                              did not have any logical Opus streams in it.
    \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
                               required header packet that was not properly
                               formatted, contained illegal values, or was
@@ -1422,7 +1472,11 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
    This function is intended for simple players that want a uniform output
     format, even if the channel count changes between links in a chained
     stream.
-   \param _of            The #OggOpusFile from which to read.
+   \note \a _buf_size indicates the total number of values that can be stored
+    in \a _pcm, while the return value is the number of samples <em>per
+    channel</em>, even though the channel count is known, for consistency with
+    op_read_float().
+   \param      _of       The #OggOpusFile from which to read.
    \param[out] _pcm      A buffer in which to store the output PCM samples, as
                           signed floats with a nominal range of
                           <code>[-1.0,1.0]</code>.
@@ -1435,6 +1489,9 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
                           values total).
                          Smaller buffers will simply return less data, possibly
                           consuming more memory to buffer the data internally.
+                         If less than \a _buf_size values are returned,
+                          <tt>libopusfile</tt> makes no guarantee that the
+                          remaining data in \a _pcm will be unmodified.
    \return The number of samples read per channel on success, or a negative
             value on failure.
            The number of samples returned may be 0 if the buffer was too small
@@ -1449,8 +1506,7 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
                               an unsupported channel family.
    \retval #OP_EINVAL        The stream was not fully open.
    \retval #OP_ENOTFORMAT    An unseekable stream encountered a new link that
-                              contained a link that did not have any logical
-                              Opus streams in it.
+                              that did not have any logical Opus streams in it.
    \retval #OP_EBADHEADER    An unseekable stream encountered a new link with a
                               required header packet that was not properly
                               formatted, contained illegal values, or was
