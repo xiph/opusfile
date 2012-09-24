@@ -99,6 +99,7 @@ typedef struct OggOpusFile OggOpusFile;
    See each individual function for more details on what a specific error code
     means in that context.*/
 /*@{*/
+
 /**A request did not succeed.*/
 #define OP_FALSE         (-1)
 /*Currently not used externally.*/
@@ -142,6 +143,7 @@ typedef struct OggOpusFile OggOpusFile;
 #define OP_ENOSEEK       (-138)
 /**The first or last granule position of a link failed basic validity checks.*/
 #define OP_EBADTIMESTAMP (-139)
+
 /*@}*/
 /*@}*/
 
@@ -395,7 +397,8 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 
 /**\defgroup url_flags URL Reading Flags*/
 /*@{*/
-/**\name Flags for op_url_create_with_proxy() and associated functions.
+/**\name URL reading flags
+   Flags for op_url_create_with_proxy() and associated functions.
    These may be expanded in the future.*/
 /*@{*/
 

@@ -26,8 +26,10 @@ static char *op_string_range_dup(const char *_start,const char *_end){
   OP_ASSERT(_start<=_end);
   len=_end-_start;
   ret=(char *)_ogg_malloc(sizeof(*ret)*(len+1));
-  memcpy(ret,_start,sizeof(*ret)*(len));
-  ret[len]='\0';
+  if(OP_LIKELY(ret!=NULL)){
+    memcpy(ret,_start,sizeof(*ret)*(len));
+    ret[len]='\0';
+  }
   return ret;
 }
 
@@ -493,6 +495,8 @@ struct OpusHTTPStream{
   OpusHTTPConn     conns[OP_NCONNS_MAX];
   /*The context object used as a framework for TLS/SSL functions.*/
   SSL_CTX         *ssl_ctx;
+  /*The cached session to reuse for future connections.*/
+  SSL_SESSION     *ssl_session;
   /*The LRU list (ordered from MRU to LRU) of connections.*/
   OpusHTTPConn    *lru_head;
   /*The free list.*/
@@ -536,6 +540,7 @@ static void op_http_stream_init(OpusHTTPStream *_stream){
     pnext=&_stream->conns[ci].next;
   }
   _stream->ssl_ctx=NULL;
+  _stream->ssl_session=NULL;
   _stream->lru_head=NULL;
   op_parsed_url_init(&_stream->url);
   op_sb_init(&_stream->request);
@@ -555,6 +560,7 @@ static void op_http_conn_close(OpusHTTPStream *_stream,OpusHTTPConn *_conn){
 
 static void op_http_stream_clear(OpusHTTPStream *_stream){
   while(_stream->lru_head!=NULL)op_http_conn_close(_stream,_stream->lru_head);
+  if(_stream->ssl_session!=NULL)SSL_SESSION_free(_stream->ssl_session);
   if(_stream->ssl_ctx!=NULL)SSL_CTX_free(_stream->ssl_ctx);
   op_sb_clear(&_stream->request);
   op_parsed_url_clear(&_stream->url);
@@ -583,11 +589,11 @@ static int op_sock_set_nonblocking(int _fd,int _nonblocking){
 
 /*Try to start a connection to the next address in the given list of a given
    type.
-  _fd:         The socket to connect with.
-  [out] _addr: A pointer to the list of addresses.
-               This will be advanced to the first one that matches the given
-                address family (possibly the current one).
-  _ai_family:  The address family to connect to.
+  _fd:           The socket to connect with.
+  [inout] _addr: A pointer to the list of addresses.
+                 This will be advanced to the first one that matches the given
+                  address family (possibly the current one).
+  _ai_family:    The address family to connect to.
   Return: 1        If the connection was successful.
           0        If the connection is in progress.
           OP_FALSE If the connection failed and there were no more addresses
@@ -741,11 +747,25 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
     if(OP_LIKELY(ssl_conn!=NULL)){
       ssl_bio=BIO_new_socket(fds[pi].fd,BIO_NOCLOSE);
       if(OP_LIKELY(ssl_bio!=NULL)){
+# if !defined(OPENSSL_NO_TLSEXT)
+        /*Support for RFC 6066 Server Name Indication.*/
+        SSL_set_tlsext_host_name(ssl_conn,_stream->url.host);
+# endif
+        /*Resume a previous session if available.*/
+        if(_stream->ssl_session!=NULL){
+          SSL_set_session(ssl_conn,_stream->ssl_session);
+        }
         SSL_set_bio(ssl_conn,ssl_bio,ssl_bio);
         SSL_set_connect_state(ssl_conn);
         ret=op_do_ssl_step(ssl_conn,fds[pi].fd,SSL_connect);
         if(OP_LIKELY(ret>0)){
-          ret=op_do_ssl_step(ssl_conn,fds[pi].fd,SSL_do_handshake);
+          if(_stream->ssl_session==NULL){
+            /*Save a session for later resumption.*/
+            ret=op_do_ssl_step(ssl_conn,fds[pi].fd,SSL_do_handshake);
+            if(OP_LIKELY(ret>0)){
+              _stream->ssl_session=SSL_get1_session(ssl_conn);
+            }
+          }
           if(OP_LIKELY(ret>0)){
             _conn->ssl_conn=ssl_conn;
             _conn->fd=fds[pi].fd;
@@ -911,10 +931,11 @@ static void op_http_conn_read_rate_update(OpusHTTPConn *_conn){
   opus_int64   read_delta_bytes;
   opus_int64   read_rate;
   int          ret;
+  read_delta_bytes=_conn->read_bytes;
+  if(read_delta_bytes<=0)return;
   ret=ftime(&read_time);
   OP_ASSERT(!ret);
   read_delta_ms=op_time_diff_ms(&read_time,&_conn->read_time);
-  read_delta_bytes=_conn->read_bytes;
   read_rate=_conn->read_rate;
   read_delta_ms=OP_MAX(read_delta_ms,1);
   read_rate+=read_delta_bytes*1000/read_delta_ms-read_rate+4>>3;
@@ -1252,6 +1273,11 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     addrs=NULL;
     if(last_host!=NULL){
       if(strcmp(last_host,host)==0&&last_port==port)addrs=&_stream->addr_info;
+      else if(_stream->ssl_session!=NULL){
+        /*Forget any cached SSL session from the last host.*/
+        SSL_SESSION_free(_stream->ssl_session);
+        _stream->ssl_session=NULL;
+      }
       if(last_host!=_proxy_host)_ogg_free((void *)last_host);
     }
     last_host=host;
@@ -1588,7 +1614,10 @@ static size_t op_http_stream_read(void *_ptr,size_t _size,size_t _nmemb,
   if(_size!=1){
     ptrdiff_t n;
     nread=0;
-    /*Read individual items one at a time.*/
+    /*libopusfile doesn't read multi-byte items, but our abstract stream API
+       requires it for stdio compatibility.
+      Implement it for completeness' sake by reading individual items one at a
+       time.*/
     do{
       ptrdiff_t nread_item;
       nread_item=0;
@@ -1794,7 +1823,7 @@ void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
     char *unescaped_path;
     void *ret;
     unescaped_path=op_string_dup(path);
-    if(unescaped_path==NULL)return NULL;
+    if(OP_UNLIKELY(unescaped_path==NULL))return NULL;
     ret=op_fopen(_cb,op_unescape_url_component(unescaped_path),"rb");
     _ogg_free(unescaped_path);
     return ret;
@@ -1805,7 +1834,7 @@ void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
     OpusHTTPStream *stream;
     int             ret;
     stream=(OpusHTTPStream *)_ogg_malloc(sizeof(*stream));
-    if(stream==NULL)return NULL;
+    if(OP_UNLIKELY(stream==NULL))return NULL;
     op_http_stream_init(stream);
     ret=op_http_stream_open(stream,_url,_flags,
      _proxy_host,_proxy_port,_proxy_user,_proxy_pass);
