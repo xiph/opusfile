@@ -554,7 +554,7 @@ OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
                        are supported.
                       Both "http:" and "https:" may be disabled at compile
                        time, in which case opening such URLs will fail.
-   \param      _flags The <a href="#url_flags">optional flags</a> to use.
+   \param      _flags The \ref url_flags "optional flags" to use.
    \return A stream handle to use with the callbacks, or <code>NULL</code> on
             error.*/
 OP_WARN_UNUSED_RESULT void *op_url_stream_create(OpusFileCallbacks *_cb,
@@ -569,7 +569,7 @@ OP_WARN_UNUSED_RESULT void *op_url_stream_create(OpusFileCallbacks *_cb,
                             schemes are supported.
                            Both "http:" and "https:" may be disabled at compile
                             time, in which case opening such URLs will fail.
-   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
+   \param      _flags      The \ref url_flags "optional flags" to use.
    \param      _proxy_host The host of the proxy to connect to.
                            This may be <code>NULL</code> if you do not wish to
                             use a proxy.
@@ -675,7 +675,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
                        are supported.
                       Both "http:" and "https:" may be disabled at compile
                        time, in which case opening such URLs will fail.
-   \param      _flags The <a href="#url_flags">optional flags</a> to use.
+   \param      _flags The \ref url_flags "optional flags" to use.
    \param[out] _error Returns 0 on success, or a failure code on error.
                       You may pass in <code>NULL</code> if you don't want the
                        failure code.
@@ -690,7 +690,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                             schemes are supported.
                            Both "http:" and "https:" may be disabled at compile
                             time, in which case opening such URLs will fail.
-   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
+   \param      _flags      The \ref url_flags "optional flags" to use.
    \param      _proxy_host The host of the proxy to connect to.
                            This may be <code>NULL</code> if you do not wish to
                             use a proxy.
