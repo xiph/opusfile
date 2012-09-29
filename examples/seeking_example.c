@@ -26,7 +26,9 @@
 #include <opusfile.h>
 
 /*Use shorts, they're smaller.*/
-#define OP_FIXED_POINT (1)
+#if !defined(OP_FIXED_POINT)
+# define OP_FIXED_POINT (1)
+#endif
 
 #if defined(OP_FIXED_POINT)
 
@@ -436,8 +438,8 @@ int main(int _argc,const char **_argv){
     fprintf(stderr,")...\n");
     max_seeks=0;
     for(i=0;i<NSEEK_TESTS;i++){
-      long nseeks_tmp;
       ogg_int64_t pcm_offset2;
+      long        nseeks_tmp;
       nseeks_tmp=nreal_seeks;
       pcm_offset=(ogg_int64_t)(rand()/(double)RAND_MAX*pcm_length);
       fprintf(stderr,"\r\t%3i [PCM position %li]...                ",

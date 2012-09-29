@@ -258,7 +258,9 @@ static int op_parse_url_impl(OpusParsedURL *_dst,const char *_src){
     hostport=userinfo_end+1;
   }
   else{
-    user=NULL;
+    /*We shouldn't have to initialize user_end, but gcc is too dumb to figure
+       out that user!=NULL below means we didn't take this else branch.*/
+    user=user_end=NULL;
     pass=NULL;
     hostport=authority;
   }
@@ -1251,6 +1253,10 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
   int              ret;
   if(_proxy_host!=NULL&&OP_UNLIKELY(_proxy_port>65535U))return OP_EINVAL;
   last_host=NULL;
+  /*We shouldn't have to initialize last_port, but gcc is too dumb to figure
+     out that last_host!=NULL implies we've already taken one trip through the
+     loop.*/
+  last_port=0;
   ret=op_parse_url(&_stream->url,_url);
   if(OP_UNLIKELY(ret<0))return ret;
   for(nredirs=0;nredirs<OP_REDIRECT_LIMIT;nredirs++){

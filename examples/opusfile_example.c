@@ -24,6 +24,14 @@
 #endif
 #include <opusfile.h>
 
+#if defined(OP_FIXED_POINT)
+typedef opus_int16 op_sample;
+# define op_read_native_stereo op_read_stereo
+#else
+typedef float op_sample;
+# define op_read_native_stereo op_read_float_stereo
+#endif
+
 int main(int _argc,const char **_argv){
   OggOpusFile *of;
   ogg_int64_t  pcm_offset;
@@ -85,9 +93,9 @@ int main(int _argc,const char **_argv){
   }
   for(;;){
     ogg_int64_t next_pcm_offset;
-    float       pcm[120*48*2];
+    op_sample   pcm[120*48*2];
     int         li;
-    ret=op_read_float_stereo(of,pcm,sizeof(pcm)/sizeof(*pcm));
+    ret=op_read_native_stereo(of,pcm,sizeof(pcm)/sizeof(*pcm));
     if(ret<0){
       fprintf(stderr,"Error decoding '%s': %i\n",_argv[1],ret);
       ret=EXIT_FAILURE;

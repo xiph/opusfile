@@ -712,6 +712,11 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
   if(_og==NULL)_og=&og;
   serialno=_of->os.serialno;
   cur_page_gp=-1;
+  op_count=0;
+  /*We shouldn't have to initialize total_duration, but gcc is too dumb to
+     figure out that op_count>0 implies we've been through the whole loop at
+     least once.*/
+  total_duration=0;
   do{
     /*We should get a page unless the file is truncated or mangled.
       Otherwise there are no audio data packets in the whole logical stream.*/
@@ -2553,6 +2558,7 @@ static int op_short2float_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_sample *_src,int _nsamples,int _nchannels){
   float *dst;
   int    i;
+  _of=_of;
   dst=(float *)_dst;
   if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
   _dst_sz=_nsamples*_nchannels;
@@ -2586,7 +2592,7 @@ static int op_short2float_stereo_filter(OggOpusFile *_of,
   return op_short2float_filter(_of,dst,_dst_sz,_src,_nsamples,2);
 }
 
-int op_read_stereo_float(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
+int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
   return op_read_native_filter(_of,_pcm,_buf_size,
    op_short2float_stereo_filter,NULL);
 }
