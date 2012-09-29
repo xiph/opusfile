@@ -1,12 +1,12 @@
 # Process with doxygen to generate API documentation
 
 PROJECT_NAME           = "opusfile"
-PROJECT_NUMBER         =
+PROJECT_NUMBER         = @VERSION@
 PROJECT_BRIEF          = "Stand alone decoder library for .opus files."
-INPUT                  = ../include/opusfile.h
+INPUT                  = @top_srcdir@/include/opusfile.h
 OPTIMIZE_OUTPUT_FOR_C  = YES
 
-FILE_VERSION_FILTER    = "/bin/sh git-version.sh"
+FILE_VERSION_FILTER    = "/bin/sh @top_srcdir@/doc/git-version.sh"
 
 QUIET                  = YES
 WARNINGS               = YES
