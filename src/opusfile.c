@@ -1801,8 +1801,13 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
       int        durations[255];
       int        op_count;
       total_duration=op_collect_audio_packets(_of,durations);
-      /*Report holes to the caller.*/
-      if(OP_UNLIKELY(total_duration<0)&&!_ignore_holes)return OP_HOLE;
+      if(OP_UNLIKELY(total_duration<0)){
+        /*Drain the packets from the page anyway.*/
+        total_duration=op_collect_audio_packets(_of,durations);
+        OP_ASSERT(total_duration>=0);
+        /*Report holes to the caller.*/
+        if(!_ignore_holes)return OP_HOLE;
+      }
       op_count=_of->op_count;
       /*If we found at least one audio data packet, compute per-packet granule
          positions for them.*/
