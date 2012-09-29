@@ -280,6 +280,7 @@ int main(int _argc,const char **_argv){
     ogg_int64_t  pcm_offset;
     ogg_int64_t  pcm_length;
     ogg_int64_t  nsamples;
+    long         max_seeks;
     int          nlinks;
     int          ret;
     int          li;
@@ -383,8 +384,11 @@ int main(int _argc,const char **_argv){
      op_bitrate(of,-1)/1000.0);
     fprintf(stderr,"Testing raw seeking to random places in %li bytes...\n",
      (long)size);
+    max_seeks=0;
     for(i=0;i<NSEEK_TESTS;i++){
+      long nseeks_tmp;
       opus_int64 byte_offset;
+      nseeks_tmp=nreal_seeks;
       byte_offset=(opus_int64)(rand()/(double)RAND_MAX*size);
       fprintf(stderr,"\r\t%3i [raw position %li]...                ",
        i,(long)byte_offset);
@@ -397,15 +401,20 @@ int main(int _argc,const char **_argv){
         i=28;
       }
       verify_seek(of,byte_offset,-1,pcm_length,bigassbuffer);
+      nseeks_tmp=nreal_seeks-nseeks_tmp;
+      max_seeks=nseeks_tmp>max_seeks?nseeks_tmp:max_seeks;
     }
-    fprintf(stderr,"\rTotal seek operations: %li (%.3f per raw seek).\n",
-     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS);
+    fprintf(stderr,"\rTotal seek operations: %li (%.3f per raw seek, %li maximum).\n",
+     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS,max_seeks);
     nreal_seeks=0;
     fprintf(stderr,"Testing PCM page seeking to random places in %li "
      "samples (",(long)pcm_length);
     print_duration(stderr,pcm_length);
     fprintf(stderr,")...\n");
+    max_seeks=0;
     for(i=0;i<NSEEK_TESTS;i++){
+      long nseeks_tmp;
+      nseeks_tmp=nreal_seeks;
       pcm_offset=(ogg_int64_t)(rand()/(double)RAND_MAX*pcm_length);
       fprintf(stderr,"\r\t%3i [PCM position %li]...                ",
        i,(long)pcm_offset);
@@ -415,16 +424,21 @@ int main(int _argc,const char **_argv){
         exit(EXIT_FAILURE);
       }
       verify_seek(of,-1,pcm_offset,pcm_length,bigassbuffer);
+      nseeks_tmp=nreal_seeks-nseeks_tmp;
+      max_seeks=nseeks_tmp>max_seeks?nseeks_tmp:max_seeks;
     }
-    fprintf(stderr,"\rTotal seek operations: %li (%.3f per page seek).\n",
-     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS);
+    fprintf(stderr,"\rTotal seek operations: %li (%.3f per page seek, %li maximum).\n",
+     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS,max_seeks);
     nreal_seeks=0;
     fprintf(stderr,"Testing exact PCM seeking to random places in %li "
      "samples (",(long)pcm_length);
     print_duration(stderr,pcm_length);
     fprintf(stderr,")...\n");
+    max_seeks=0;
     for(i=0;i<NSEEK_TESTS;i++){
+      long nseeks_tmp;
       ogg_int64_t pcm_offset2;
+      nseeks_tmp=nreal_seeks;
       pcm_offset=(ogg_int64_t)(rand()/(double)RAND_MAX*pcm_length);
       fprintf(stderr,"\r\t%3i [PCM position %li]...                ",
        i,(long)pcm_offset);
@@ -441,9 +455,11 @@ int main(int _argc,const char **_argv){
         exit(EXIT_FAILURE);
       }
       verify_seek(of,-1,pcm_offset,pcm_length,bigassbuffer);
+      nseeks_tmp=nreal_seeks-nseeks_tmp;
+      max_seeks=nseeks_tmp>max_seeks?nseeks_tmp:max_seeks;
     }
-    fprintf(stderr,"\rTotal seek operations: %li (%.3f per exact seek).\n",
-     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS);
+    fprintf(stderr,"\rTotal seek operations: %li (%.3f per exact seek, %li maximum).\n",
+     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS,max_seeks);
     nreal_seeks=0;
     fprintf(stderr,"OK.\n");
     _ogg_free(bigassbuffer);
