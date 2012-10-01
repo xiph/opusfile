@@ -2034,6 +2034,8 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
   opus_int64    end;
   opus_int64    best;
   opus_int64    page_offset;
+  opus_int64    d[3];
+  int           force_bisect;
   int           ret;
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
@@ -2056,34 +2058,52 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
   OP_ASSERT(!ret);
   end=op_granpos_cmp(_target_gp,pcm_pre_skip)<0?begin:link->end_offset;
   page_offset=-1;
+  /*Initialize the interval size history.*/
+  d[2]=d[1]=end-begin;
+  force_bisect=0;
   while(begin<end){
     opus_int64 bisect;
+    opus_int32 chunk_size;
     if(end-begin<OP_CHUNK_SIZE)bisect=begin;
     else{
-      ogg_int64_t diff2;
-      ret=op_granpos_diff(&diff,_target_gp,pcm_start);
-      OP_ASSERT(!ret);
-      ret=op_granpos_diff(&diff2,pcm_end,pcm_start);
-      OP_ASSERT(!ret);
-      /*Take a (pretty decent) guess.*/
-      bisect=begin+op_rescale64(diff,diff2,end-begin)-OP_CHUNK_SIZE;
+      /*Update the interval size history.*/
+      d[0]=d[1]>>1;
+      d[1]=d[2]>>1;
+      d[2]=end-begin>>1;
+      if(force_bisect)bisect=begin+(end-begin>>1)-OP_CHUNK_SIZE;
+      else{
+        ogg_int64_t diff2;
+        ret=op_granpos_diff(&diff,_target_gp,pcm_start);
+        OP_ASSERT(!ret);
+        ret=op_granpos_diff(&diff2,pcm_end,pcm_start);
+        OP_ASSERT(!ret);
+        /*Take a (pretty decent) guess.*/
+        bisect=begin+op_rescale64(diff,diff2,end-begin)-OP_CHUNK_SIZE;
+      }
       if(bisect-OP_CHUNK_SIZE<begin)bisect=begin;
+      force_bisect=0;
     }
     if(bisect!=_of->offset){
       page_offset=-1;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
     }
+    chunk_size=OP_CHUNK_SIZE;
     while(begin<end){
       page_offset=op_get_next_page(_of,&og,end-_of->offset);
       if(page_offset==OP_EREAD)return OP_EBADLINK;
       if(page_offset<0){
-        /*Found it.*/
+        /*There are no more pages in our interval from our stream with a valid
+           timestamp that start at position bisect or later.*/
+        /*If we scanned the whole interval, we're done.*/
         if(bisect<=begin+1)end=begin;
         else{
-          bisect=OP_MAX(bisect-OP_CHUNK_SIZE,begin+1);
+          /*Otherwise, back up one chunk.*/
+          bisect=OP_MAX(bisect-chunk_size,begin);
           ret=op_seek_helper(_of,bisect);
           if(OP_UNLIKELY(ret<0))return ret;
+          /*Bump up the chunk size.*/
+          chunk_size=OP_MIN(2*chunk_size,OP_CHUNK_SIZE_MAX);
         }
       }
       else{
@@ -2092,45 +2112,43 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
         gp=ogg_page_granulepos(&og);
         if(gp==-1)continue;
         if(op_granpos_cmp(gp,_target_gp)<0){
-          /*Advance to the raw offset of the next page.*/
+          /*We found a page that ends before our target.
+            Advance to the raw offset of the next page.*/
           begin=_of->offset;
-          /*Don't let pcm_start get smaller!
-            That could happen with an invalid timestamp.*/
-          if(op_granpos_cmp(pcm_start,gp)<=0){
-            /*Save the byte offset of the end of the page with this granule
-               position.*/
-            best=_of->offset;
-            best_gp=pcm_start=gp;
-          }
-          if(OP_UNLIKELY(op_granpos_diff(&diff,_target_gp,pcm_start)<0)
-           ||diff>48000){
+          if(OP_UNLIKELY(op_granpos_cmp(pcm_start,gp)>0)
+           ||OP_UNLIKELY(op_granpos_cmp(pcm_end,gp)<0)){
+            /*Don't let pcm_start get out of range!
+              That could happen with an invalid timestamp.*/
             break;
           }
-          /*NOT begin+1.*/
+          /*Save the byte offset of the end of the page with this granule
+             position.*/
+          best=begin;
+          best_gp=pcm_start=gp;
+          ret=op_granpos_diff(&diff,_target_gp,pcm_start);
+          OP_ASSERT(!ret);
+          /*If we're more than a second away from our target, break out and
+             do another bisection.*/
+          if(diff>48000)break;
+          /*Otherwise, keep scanning forward (do NOT use begin+1).*/
           bisect=begin;
         }
         else{
-          /*Found it.*/
+          /*We found a page that ends after our target.*/
+          /*If we scanned the whole interval before we found it, we're done.*/
           if(bisect<=begin+1)end=begin;
           else{
-            /*We're pretty close.
-              We'd be stuck in an endless loop otherwise.*/
-            if(end==_of->offset){
-              end=page_offset;
-              bisect=OP_MAX(bisect-OP_CHUNK_SIZE,begin+1);
-              if(bisect!=_of->offset){
-                page_offset=-1;
-                ret=op_seek_helper(_of,bisect);
-                if(OP_UNLIKELY(ret<0))return ret;
-              }
+            end=bisect;
+            /*If we're not making much progress shrinking the interval size,
+               start forcing straight bisection to limit the worst case.*/
+            force_bisect=end-begin>d[0]*2;
+            /*Don't let pcm_end get out of range!
+              That could happen with an invalid timestamp.*/
+            if(OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0)
+             &&OP_LIKELY(op_granpos_cmp(pcm_start,gp)<=0)){
+              pcm_end=gp;
             }
-            else{
-              end=bisect;
-              /*Don't let pcm_end get larger!
-                That could happen with an invalid timestamp.*/
-              if(OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0))pcm_end=gp;
-              break;
-            }
+            break;
           }
         }
       }
