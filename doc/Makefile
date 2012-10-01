@@ -20,7 +20,7 @@ distclean: clean
 # run autoconf-like replacements to finalize our config
 GIT_VERSION := $(shell /bin/sh git-version.sh)
 Doxyfile: Doxyfile.in Makefile
-	cat $< | sed -e 's/@PACKAGE@/opusfile/' \
-		     -e 's/@VERSION@/$(GIT_VERSION)/' \
-		     -e 's/@top_srcdir@/../' \
-	       > $@
+	sed -e 's/@PACKAGE@/opusfile/' \
+	    -e 's/@VERSION@/$(GIT_VERSION)/' \
+	    -e 's/@top_srcdir@/../' \
+	  < $< > $@
