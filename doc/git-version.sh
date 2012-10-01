@@ -9,4 +9,4 @@ else
   VERSION=${GIT_VERSION}
 fi
 
-echo ${VERSION}
+echo -n ${VERSION}

@@ -13,4 +13,4 @@ test -z "$srcdir" && srcdir=.
 cd "$srcdir"
 
 echo "Updating build configuration files for $package, please wait...."
-autoreconf -is
+autoreconf -isf
