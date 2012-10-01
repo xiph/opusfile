@@ -18,7 +18,7 @@ distclean: clean
 .PHONY: all clean distclean doxygen pdf
 
 # run autoconf-like replacements to finalize our config
-GIT_VERSION := $(shell /bin/sh git-version.sh)
+GIT_VERSION := $(shell git-version.sh)
 Doxyfile: Doxyfile.in Makefile
 	sed -e 's/@PACKAGE@/opusfile/' \
 	    -e 's/@VERSION@/$(GIT_VERSION)/' \
