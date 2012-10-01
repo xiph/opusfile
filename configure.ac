@@ -1,4 +1,4 @@
-AC_INIT([libopusfile], [0.0])
+AC_INIT([opusfile], [0.0])
 
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
