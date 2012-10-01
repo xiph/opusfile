@@ -65,7 +65,7 @@ AS_IF([test "x$enable_fixed_point" = "xyes"],
    AC_SEARCH_LIBS([lrintf], [m], [
       AC_DEFINE([OP_HAVE_LRINTF], [1], [Enable use of lrintf function])
       lrintf_notice="
-  Library for lrintf() ....... : ${ac_cv_search_lrintf}"
+    Library for lrintf() ......... ${ac_cv_search_lrintf}"
    ])
   ]
 )
@@ -101,12 +101,17 @@ AC_OUTPUT([
 ])
 
 AC_MSG_NOTICE([
-Summary:
+------------------------------------------------------------------------
+  $PACKAGE $VERSION: Automatic configuration OK.
 
-Assertions ................... : ${enable_assertions}
-HTTP support ................. : ${enable_http}
-Fixed-point .................. : ${enable_fixed_point}
-Floating-point API ........... : ${enable_float}${lrintf_notice}
-Hidden visibility ............ : ${cc_cv_flag_visibility}
-API documentation ............ : ${enable_doc}
+    Assertions ................... ${enable_assertions}
+
+    HTTP support ................. ${enable_http}
+    Fixed-point .................. ${enable_fixed_point}
+    Floating-point API ........... ${enable_float}${lrintf_notice}
+
+    Hidden visibility ............ ${cc_cv_flag_visibility}
+
+    API documentation ............ ${enable_doc}
+------------------------------------------------------------------------
 ])
