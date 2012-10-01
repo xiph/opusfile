@@ -311,12 +311,10 @@ static int op_get_prev_page_serial(OggOpusFile *_of,
     while(_of->offset<end){
       opus_int64   llret;
       ogg_uint32_t serialno;
-      int          prev_preferred_found;
       llret=op_get_next_page(_of,&og,end-_of->offset);
       if(OP_UNLIKELY(llret<OP_FALSE))return (int)llret;
       else if(llret==OP_FALSE)break;
       serialno=ogg_page_serialno(&og);
-      prev_preferred_found=preferred_found;
       /*Save the information for this page.
         We're not interested in the page itself... just the serial number, byte
          offset, page size, and granule position.*/
@@ -711,7 +709,6 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
   int          pi;
   if(_og==NULL)_og=&og;
   serialno=_of->os.serialno;
-  cur_page_gp=-1;
   op_count=0;
   /*We shouldn't have to initialize total_duration, but gcc is too dumb to
      figure out that op_count>0 implies we've been through the whole loop at
@@ -986,13 +983,11 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
   int           clinks;
   ogg_uint32_t *serialnos;
   int           nserialnos;
-  opus_int64    begin;
   ogg_int64_t   total_duration;
   int           nsr;
   int           ret;
   links=_of->links;
   nlinks=clinks=_of->nlinks;
-  begin=0;
   total_duration=0;
   /*We start with one seek record, for the last page in the file.
     We build up a list of records for places we seek to during link
@@ -1003,7 +998,6 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
      improve the lower bound on the location where the next link starts.*/
   nsr=1;
   for(;;){
-    opus_int64  data_offset;
     opus_int64  end_searched;
     opus_int64  bisect;
     opus_int64  next;
@@ -1021,7 +1015,6 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       if(OP_UNLIKELY(links==NULL))return OP_EFAULT;
       _of->links=links;
     }
-    data_offset=_searched;
     /*Invariants:
       We have the headers and serial numbers for the link beginning at 'begin'.
       We have the offset and granule position of the last page in the file
@@ -1144,7 +1137,6 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        always starts with a seek.*/
     ret=op_find_initial_pcm_offset(_of,links+nlinks,NULL);
     if(OP_UNLIKELY(ret<0))return ret;
-    begin=next;
     _searched=_of->offset;
     /*Mark the current link count so it can be cleaned up on error.*/
     _of->nlinks=++nlinks;
@@ -1942,17 +1934,11 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
 }
 
 int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
-  OggOpusLink *links;
-  int          nlinks;
-  int          cur_link;
   int          ret;
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   /*Don't dump the decoder state if we can't seek.*/
   if(OP_UNLIKELY(!_of->seekable))return OP_ENOSEEK;
   if(OP_UNLIKELY(_pos<0)||OP_UNLIKELY(_pos>_of->end))return OP_EINVAL;
-  links=_of->links;
-  nlinks=_of->nlinks;
-  cur_link=_of->cur_link;
   /*Clear out any buffered, decoded data.*/
   op_decode_clear(_of);
   _of->bytes_tracked=0;
@@ -1963,10 +1949,11 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
   /*If we hit EOF, op_fetch_and_process_page() leaves us uninitialized.
     Instead, jump to the end.*/
   if(ret==OP_EOF){
-    cur_link=nlinks-1;
+    int cur_link;
     op_decode_clear(_of);
+    cur_link=_of->nlinks-1;
     _of->cur_link=cur_link;
-    _of->prev_packet_gp=links[cur_link].pcm_end;
+    _of->prev_packet_gp=_of->links[cur_link].pcm_end;
     _of->cur_discard_count=0;
     ret=0;
   }
@@ -2276,12 +2263,14 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
   OggOpusLink *links;
   ogg_int64_t  pcm_offset;
   ogg_int64_t  delta;
+  int          ret;
   int          li;
   links=_of->links;
   pcm_offset=0;
   OP_ASSERT(_li<_of->nlinks);
   for(li=0;li<_li;li++){
-    op_granpos_diff(&delta,links[li].pcm_end,links[li].pcm_start);
+    ret=op_granpos_diff(&delta,links[li].pcm_end,links[li].pcm_start);
+    OP_ASSERT(!ret);
     delta-=links[li].head.pre_skip;
     pcm_offset+=delta;
   }
@@ -2290,7 +2279,8 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
     _gp=links[_li].pcm_end;
   }
   if(OP_LIKELY(op_granpos_cmp(_gp,links[_li].pcm_start)>0)){
-    op_granpos_diff(&delta,_gp,links[_li].pcm_start);
+    ret=op_granpos_diff(&delta,_gp,links[_li].pcm_start);
+    OP_ASSERT(!ret);
     if(delta<links[_li].head.pre_skip)delta=0;
     else delta-=links[_li].head.pre_skip;
     pcm_offset+=delta;
@@ -2327,7 +2317,7 @@ static int op_init_buffer(OggOpusFile *_of){
     int          li;
     links=_of->links;
     nlinks=_of->nlinks;
-    nchannels_max=0;
+    nchannels_max=1;
     for(li=0;li<nlinks;li++){
       nchannels_max=OP_MAX(nchannels_max,links[li].head.channel_count);
     }

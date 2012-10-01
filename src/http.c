@@ -142,8 +142,6 @@ static const char *op_parse_file_url(const char *_src){
   if(OP_UNLIKELY(op_validate_url_escapes(scheme_end+1)<0))return NULL;
   if(scheme_end[1]=='/'&&scheme_end[2]=='/'){
     const char *host;
-    const char *host_end;
-    char        host_buf[28];
     /*file: URLs can have a host!
       Yeah, I was surprised, too, but that's what RFC 1738 says.
       It also says, "The file URL scheme is unusual in that it does not specify
@@ -153,21 +151,25 @@ static const char *op_parse_file_url(const char *_src){
     host=scheme_end+3;
     /*The empty host is what we expect.*/
     if(OP_LIKELY(*host!='/'))path=host;
-    /*RFC 1738 says localhost "is interpreted as `the machine from which the
-       URL is being interpreted,'" so let's check for it.*/
-    host_end=host+strspn(host,OP_URL_PCHAR_BASE);
-    /*No <port> allowed.
-      This also rejects IP-Literals.*/
-    if(*host_end!='/')return NULL;
-    /*An escaped "localhost" can take at most 27 characters.*/
-    if(OP_UNLIKELY(host_end-host>27))return NULL;
-    memcpy(host_buf,host,sizeof(*host_buf)*(host_end-host));
-    host_buf[host_end-host]='\0';
-    op_unescape_url_component(host_buf);
-    op_string_tolower(host_buf);
-    /*Some other host: give up.*/
-    if(OP_UNLIKELY(strcmp(host_buf,"localhost")!=0))return NULL;
-    path=host_end;
+    else{
+      const char *host_end;
+      char        host_buf[28];
+      /*RFC 1738 says localhost "is interpreted as `the machine from which the
+         URL is being interpreted,'" so let's check for it.*/
+      host_end=host+strspn(host,OP_URL_PCHAR_BASE);
+      /*No <port> allowed.
+        This also rejects IP-Literals.*/
+      if(*host_end!='/')return NULL;
+      /*An escaped "localhost" can take at most 27 characters.*/
+      if(OP_UNLIKELY(host_end-host>27))return NULL;
+      memcpy(host_buf,host,sizeof(*host_buf)*(host_end-host));
+      host_buf[host_end-host]='\0';
+      op_unescape_url_component(host_buf);
+      op_string_tolower(host_buf);
+      /*Some other host: give up.*/
+      if(OP_UNLIKELY(strcmp(host_buf,"localhost")!=0))return NULL;
+      path=host_end;
+    }
   }
   else path=scheme_end+1;
   path_end=path+strspn(path,OP_URL_PATH);

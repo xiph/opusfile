@@ -164,8 +164,10 @@ int opus_tags_parse_impl(OpusTags *_tags,
     _data+=count;
     len-=count;
   }
-  _tags->user_comments[ncomments]=NULL;
-  _tags->comment_lengths[ncomments]=0;
+  if(_tags!=NULL){
+    _tags->user_comments[ncomments]=NULL;
+    _tags->comment_lengths[ncomments]=0;
+  }
   return 0;
 }
 
