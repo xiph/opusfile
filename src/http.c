@@ -37,6 +37,17 @@ static char *op_string_dup(const char *_s){
   return op_string_range_dup(_s,_s+strlen(_s));
 }
 
+static char *op_string_tolower(char *_s){
+  int i;
+  for(i=0;_s[i]!='\0';i++){
+    int c;
+    c=_s[i];
+    if(c>='A'&&c<='Z')c+='a'-'A';
+    _s[i]=(char)c;
+  }
+  return _s;
+}
+
 /*Is this an https URL?
   For now we can simply check the last letter.*/
 #define OP_URL_IS_SSL(_url) ((_url)->scheme[4]=='s')
@@ -153,8 +164,9 @@ static const char *op_parse_file_url(const char *_src){
     memcpy(host_buf,host,sizeof(*host_buf)*(host_end-host));
     host_buf[host_end-host]='\0';
     op_unescape_url_component(host_buf);
+    op_string_tolower(host_buf);
     /*Some other host: give up.*/
-    if(OP_UNLIKELY(op_strncasecmp(host_buf,"localhost",9)!=0))return NULL;
+    if(OP_UNLIKELY(strcmp(host_buf,"localhost")!=0))return NULL;
     path=host_end;
   }
   else path=scheme_end+1;
@@ -180,17 +192,6 @@ static const char *op_parse_file_url(const char *_src){
 # include <poll.h>
 # include <unistd.h>
 # include <openssl/ssl.h>
-
-static char *op_string_tolower(char *_s){
-  int i;
-  for(i=0;_s[i]!='\0';i++){
-    int c;
-    c=_s[i];
-    if(c>='A'&&c<='Z')c+='a'-'A';
-    _s[i]=(char)c;
-  }
-  return _s;
-}
 
 struct OpusParsedURL{
   /*Either "http" or "https".*/
