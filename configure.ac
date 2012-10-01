@@ -42,8 +42,9 @@ AS_IF([test "x$enable_http" != "xno"],
   [openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
 ])
+AC_SUBST(openssl)
 
-PKG_CHECK_MODULES([DEPS], [ogg opus ]${openssl})
+PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1 ]${openssl})
 
 AC_ARG_ENABLE([fixed-point],
   AS_HELP_STRING([--enable-fixed-point], [Enable fixed-point calculation]),,
@@ -68,6 +69,7 @@ AS_IF([test "x$enable_fixed_point" = "xyes"],
    ])
   ]
 )
+AC_SUBST(ac_cv_search_lrintf)
 
 CC_ATTRIBUTE_VISIBILITY([default], [
   CC_FLAG_VISIBILITY([CFLAGS="${CFLAGS} -fvisibility=hidden"])
@@ -93,6 +95,8 @@ AM_CONDITIONAL(HAVE_DOXYGEN,$HAVE_DOXYGEN)
 
 AC_OUTPUT([
   Makefile
+  opusfile.pc
+  opusfile-uninstalled.pc
   doc/Doxyfile
 ])
 

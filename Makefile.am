@@ -23,11 +23,21 @@ examples_seeking_example_LDADD = libopusfile.la
 debug:
 	$(MAKE) CFLAGS="${CFLAGS} -O0 -ggdb -DOP_ENABLE_ASSERTIONS" all
 
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = opusfile.pc
+
+EXTRA_DIST = \
+ opusfile.pc.in \
+ opusfile-uninstalled.pc.in
+
 #API Documentation
 
 if HAVE_DOXYGEN
 
-EXTRA_DIST = doc/Doxyfile.in doc/opus_logo.svg
+EXTRA_DIST += \
+ doc/Doxyfile.in \
+ doc/git-version.sh \
+ doc/opus_logo.svg
 
 all-local: doc/doxygen-build.stamp
 
