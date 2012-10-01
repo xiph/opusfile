@@ -158,6 +158,7 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
   if(nsamples<0){
     fprintf(stderr,"\nFailed to read PCM data after seek: %i\n",nsamples);
     nfailures++;
+    li=op_current_link(_of);
   }
   for(lj=0;lj<li;lj++){
     duration=op_pcm_total(_of,lj);

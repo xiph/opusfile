@@ -232,7 +232,6 @@ static int op_parse_url_impl(OpusParsedURL *_dst,const char *_src){
   const char  *port_end;
   const char  *path;
   const char  *path_end;
-  const char  *fragment_end;
   const char  *uri_end;
   scheme_end=_src+strspn(_src,OP_URL_SCHEME);
   if(OP_UNLIKELY(*scheme_end!=':')
@@ -307,12 +306,10 @@ static int op_parse_url_impl(OpusParsedURL *_dst,const char *_src){
     This doesn't get sent to the server.
     Some day we should add support for Media Fragment URIs
      <http://www.w3.org/TR/media-frags/>.*/
-  if(*path_end=='#'){
-    uri_end=fragment_end=path_end+1+strspn(path_end+1,OP_URL_QUERY_FRAG);
-  }
+  if(*path_end=='#')uri_end=path_end+1+strspn(path_end+1,OP_URL_QUERY_FRAG);
   else uri_end=path_end;
   /*If there's anything left, this was not a valid URL.*/
-  if(OP_UNLIKELY(*path_end!='\0'))return OP_EINVAL;
+  if(OP_UNLIKELY(*uri_end!='\0'))return OP_EINVAL;
   _dst->scheme=op_string_range_dup(_src,scheme_end);
   if(OP_UNLIKELY(_dst->scheme==NULL))return OP_EFAULT;
   op_string_tolower(_dst->scheme);

@@ -1353,7 +1353,6 @@ static int op_open1(OggOpusFile *_of,
   _of->seekable=seekable;
   /*Don't seek yet.
     Set up a 'single' (current) logical bitstream entry for partial open.*/
-  _of->nlinks=1;
   _of->links=(OggOpusLink *)_ogg_malloc(sizeof(*_of->links));
   /*The serialno gets filled in later by op_fetch_headers().*/
   ogg_stream_init(&_of->os,-1);
@@ -1364,6 +1363,7 @@ static int op_open1(OggOpusFile *_of,
     ret=op_fetch_headers(_of,&_of->links[0].head,&_of->links[0].tags,
      &_of->serialnos,&_of->nserialnos,&_of->cserialnos,pog);
     if(OP_UNLIKELY(ret<0))break;
+    _of->nlinks=1;
     _of->links[0].offset=0;
     _of->links[0].data_offset=_of->offset;
     _of->links[0].pcm_end=-1;
@@ -1374,8 +1374,10 @@ static int op_open1(OggOpusFile *_of,
     /*This link was empty, but we already have the BOS page for the next one in
        og.
       We can't seek, so start processing the next link right now.*/
+    opus_tags_clear(&_of->links[0].tags);
+    _of->nlinks=0;
+    if(!seekable)_of->cur_link++;
     pog=&og;
-    _of->cur_link++;
   }
   if(OP_UNLIKELY(ret<0)){
     /*Don't auto-close the stream on failure.*/
