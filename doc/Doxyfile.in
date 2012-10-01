@@ -6,7 +6,7 @@ PROJECT_BRIEF          = "Stand alone decoder library for .opus files."
 INPUT                  = @top_srcdir@/include/opusfile.h
 OPTIMIZE_OUTPUT_FOR_C  = YES
 
-FILE_VERSION_FILTER    = "/bin/sh @top_srcdir@/doc/git-version.sh"
+FILE_VERSION_FILTER    = "echo @VERSION@"
 
 QUIET                  = YES
 WARNINGS               = YES
@@ -16,3 +16,5 @@ WARN_NO_PARAMDOC       = YES
 
 JAVADOC_AUTOBRIEF      = YES
 SORT_MEMBER_DOCS       = NO
+
+PROJECT_LOGO           = @top_srcdir@/doc/opus_logo.svg

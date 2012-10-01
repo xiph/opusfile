@@ -27,11 +27,12 @@ debug:
 
 if HAVE_DOXYGEN
 
-EXTRA_DIST = doc/Doxyfile.in doc/git-version.sh
+EXTRA_DIST = doc/Doxyfile.in doc/opus_logo.svg
 
 all-local: doc/doxygen-build.stamp
 
-doc/doxygen-build.stamp: doc/Doxyfile $(top_srcdir)/include/*.h
+doc/doxygen-build.stamp: doc/Doxyfile $(top_srcdir)/doc/opus_logo.svg \
+ $(top_srcdir)/include/*.h
 	cd doc && doxygen
 	touch "$@"
 
