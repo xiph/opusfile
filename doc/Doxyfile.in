@@ -6,8 +6,6 @@ PROJECT_BRIEF          = "Stand alone decoder library for .opus files."
 INPUT                  = @top_srcdir@/include/opusfile.h
 OPTIMIZE_OUTPUT_FOR_C  = YES
 
-FILE_VERSION_FILTER    = "echo @VERSION@"
-
 QUIET                  = YES
 WARNINGS               = YES
 WARN_IF_UNDOCUMENTED   = YES
