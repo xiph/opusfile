@@ -238,9 +238,17 @@ static void print_duration(FILE *_fp,ogg_int64_t _nsamples){
   days-=weeks*7;
   if(weeks)fprintf(_fp,"%liw",(long)weeks);
   if(weeks||days)fprintf(_fp,"%id",(int)days);
-  if(weeks||days||hours)fprintf(_fp,"%ih",(int)hours);
-  if(weeks||days||hours||minutes)fprintf(_fp,"%im",(int)minutes);
-  fprintf(_fp,"%i.%03is",(int)seconds,(int)(_nsamples+24)/48);
+  if(weeks||days||hours){
+    if(weeks||days)fprintf(_fp,"%02ih",(int)hours);
+    else fprintf(_fp,"%ih",(int)hours);
+  }
+  if(weeks||days||hours||minutes){
+    if(weeks||days||hours)fprintf(_fp,"%02im",(int)minutes);
+    else fprintf(_fp,"%im",(int)minutes);
+    fprintf(_fp,"%02i",(int)seconds);
+  }
+  else fprintf(_fp,"%i",(int)seconds);
+  fprintf(_fp,".%03is",(int)(_nsamples+24)/48);
 }
 
 int main(int _argc,const char **_argv){
