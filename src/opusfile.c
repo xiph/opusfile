@@ -2059,7 +2059,7 @@ static int op_pcm_seek_page_impl(OggOpusFile *_of,
   end=op_granpos_cmp(_target_gp,pcm_pre_skip)<0?begin:link->end_offset;
   page_offset=-1;
   /*Initialize the interval size history.*/
-  d[2]=d[1]=end-begin;
+  d[2]=d[1]=d[0]=end-begin;
   force_bisect=0;
   while(begin<end){
     opus_int64 bisect;
