@@ -4,7 +4,8 @@ AM_CFLAGS = -I$(top_srcdir)/include $(DEPS_CFLAGS)
 
 dist_doc_DATA = COPYING AUTHORS README.txt
 
-include_HEADERS = include/opusfile.h
+opusincludedir = ${includedir}/opus
+opusinclude_HEADERS = include/opusfile.h
 
 lib_LTLIBRARIES = libopusfile.la
 libopusfile_la_SOURCES = \
