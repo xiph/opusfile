@@ -124,6 +124,8 @@ static void write_samples(float *_samples,int _nsamples,int _nchannels){
 
 #endif
 
+static long nfailures;
+
 static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
  ogg_int64_t _pcm_offset,ogg_int64_t _pcm_length,op_sample *_bigassbuffer){
   opus_int64  byte_offset;
@@ -139,39 +141,39 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
   if(_byte_offset!=-1&&byte_offset<_byte_offset){
     fprintf(stderr,"\nRaw position out of tolerance: requested %li, "
      "got %li.\n",(long)_byte_offset,(long)byte_offset);
-    exit(EXIT_FAILURE);
+    nfailures++;
   }
   pcm_offset=op_pcm_tell(_of);
   if(_pcm_offset!=-1&&pcm_offset>_pcm_offset){
     fprintf(stderr,"\nPCM position out of tolerance: requested %li, "
      "got %li.\n",(long)_pcm_offset,(long)pcm_offset);
-    exit(EXIT_FAILURE);
+    nfailures++;
   }
   if(pcm_offset<0||pcm_offset>_pcm_length){
     fprintf(stderr,"\nPCM position out of bounds: got %li.\n",
      (long)pcm_offset);
-    exit(EXIT_FAILURE);
+    nfailures++;
   }
   nsamples=op_read_native(_of,buffer,sizeof(buffer)/sizeof(*buffer),&li);
   if(nsamples<0){
     fprintf(stderr,"\nFailed to read PCM data after seek: %i\n",nsamples);
-    exit(EXIT_FAILURE);
+    nfailures++;
   }
   for(lj=0;lj<li;lj++){
     duration=op_pcm_total(_of,lj);
-    pcm_offset-=duration;
-    if(pcm_offset<0){
+    if(0<=pcm_offset&&pcm_offset<duration){
       fprintf(stderr,"\nPCM data after seek came from the wrong link: "
        "expected %i, got %i.\n",lj,li);
-      exit(EXIT_FAILURE);
+      nfailures++;
     }
+    pcm_offset-=duration;
     if(_bigassbuffer!=NULL)_bigassbuffer+=op_channel_count(_of,lj)*duration;
   }
   duration=op_pcm_total(_of,li);
   if(pcm_offset+nsamples>duration){
     fprintf(stderr,"\nPCM data after seek exceeded link duration: "
      "limit %li, got %li.\n",duration,pcm_offset+nsamples);
-    exit(EXIT_FAILURE);
+    nfailures++;
   }
   nchannels=op_channel_count(_of,li);
   if(_bigassbuffer!=NULL){
@@ -190,7 +192,8 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
              (long)i);
           }
         }
-        exit(EXIT_FAILURE);
+        nfailures++;
+        break;
       }
     }
   }
@@ -313,7 +316,7 @@ int main(int _argc,const char **_argv){
     if(pcm_offset!=0){
       fprintf(stderr,"Initial PCM offset was not 0, got %li instead.!\n",
        (long)pcm_offset);
-      exit(EXIT_FAILURE);
+      nfailures++;
     }
 /*Disabling the linear scan for now.
   Only test on non-borken files!*/
@@ -357,7 +360,7 @@ int main(int _argc,const char **_argv){
         if(pcm_offset+ret!=next_pcm_offset){
           fprintf(stderr,"\nGap in PCM offset: expecting %li, got %li\n",
            (long)(pcm_offset+ret),(long)next_pcm_offset);
-          exit(EXIT_FAILURE);
+          nfailures++;
         }
         pcm_offset=next_pcm_offset;
         si+=ret*op_channel_count(of,li);
@@ -372,11 +375,11 @@ int main(int _argc,const char **_argv){
       ret=op_read_native(of,smallerbuffer,8,&li);
       if(ret<0){
         fprintf(stderr,"Failed to read PCM data: %i\n",ret);
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
       if(ret>0){
         fprintf(stderr,"Read too much PCM data!\n");
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
     }
 #endif
@@ -397,7 +400,7 @@ int main(int _argc,const char **_argv){
       ret=op_raw_seek(of,byte_offset);
       if(ret<0){
         fprintf(stderr,"\nSeek failed: %i.\n",ret);
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
       if(i==28){
         i=28;
@@ -423,7 +426,7 @@ int main(int _argc,const char **_argv){
       ret=op_pcm_seek_page(of,pcm_offset);
       if(ret<0){
         fprintf(stderr,"\nSeek failed: %i.\n",ret);
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
       verify_seek(of,-1,pcm_offset,pcm_length,bigassbuffer);
       nseeks_tmp=nreal_seeks-nseeks_tmp;
@@ -447,14 +450,14 @@ int main(int _argc,const char **_argv){
       ret=op_pcm_seek(of,pcm_offset);
       if(ret<0){
         fprintf(stderr,"\nSeek failed: %i.\n",ret);
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
       pcm_offset2=op_pcm_tell(of);
       if(pcm_offset!=pcm_offset2){
         fprintf(stderr,"\nDeclared PCM position did not perfectly match "
          "request: requested %li, got %li.\n",
          (long)pcm_offset,(long)pcm_offset2);
-        exit(EXIT_FAILURE);
+        nfailures++;
       }
       verify_seek(of,-1,pcm_offset,pcm_length,bigassbuffer);
       nseeks_tmp=nreal_seeks-nseeks_tmp;
@@ -471,5 +474,8 @@ int main(int _argc,const char **_argv){
     exit(EXIT_FAILURE);
   }
   op_free(of);
-  return EXIT_SUCCESS;
+  if(nfailures>0){
+    fprintf(stderr,"FAILED: %li failure conditions encountered.\n",nfailures);
+  }
+  return nfailures!=0?EXIT_FAILURE:EXIT_SUCCESS;
 }
