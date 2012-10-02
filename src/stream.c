@@ -105,7 +105,7 @@ static size_t op_mem_read(void *_ptr,size_t _size,size_t _nmemb,void *_stream){
     _nmemb=(size-pos)/_size;
     total=_size*_nmemb;
   }
-  memcpy(_ptr,stream->data,total);
+  memcpy(_ptr,stream->data+pos,total);
   pos+=total;
   stream->pos=pos;
   return _nmemb;
