@@ -49,7 +49,8 @@ doc/doxygen-build.stamp: doc/Doxyfile $(top_srcdir)/doc/opus_logo.svg \
 
 install-data-local:
 	cd doc && for f in `find html -type f \! -name "installdox"` ; do \
-	  $(INSTALL_DATA) -D $$f $(DESTDIR)$(docdir)/$$f ; \
+         $(INSTALL) -d $(DESTDIR)$(docdir)/html/search;   \
+         $(INSTALL_DATA) $$f $(DESTDIR)$(docdir)/$$f;     \
 	done
 
 clean-local:
