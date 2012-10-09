@@ -38,6 +38,13 @@ typedef opus_int16 op_sample;
 typedef float      op_sample;
 # endif
 
+/*Disable excessive warnings about the order of operations.*/
+# if OP_GNUC_PREREQ(4,2)
+#  pragma GCC diagnostic ignored "-Wparentheses"
+# elif defined(_MSC_VER)
+#  pragma warning(disable:4554)
+# endif
+
 # if OP_GNUC_PREREQ(3,0)
 /*Another alternative is
     (__builtin_constant_p(_x)?!!(_x):__builtin_expect(!!(_x),1))
