@@ -1627,7 +1627,7 @@ static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
     ogg_int64_t den;
     if(OP_UNLIKELY(_bytes/(0x7FFFFFFFF/(48000*8))>=_samples))return 0x7FFFFFFF;
     den=_samples/(48000*8);
-    return (_bytes+(den>>1))/den;
+    return (opus_int32)((_bytes+(den>>1))/den);
   }
   if(OP_UNLIKELY(_samples<=0))return 0x7FFFFFFF;
   /*This can't actually overflow in normal operation: even with a pre-skip of
