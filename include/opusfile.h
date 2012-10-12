@@ -673,6 +673,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
  size_t _size,int *_error);
 
 /**Open a stream from a URL.
+   See the security warning in op_open_url_with_proxy() for information about
+    possible truncation attacks with HTTPS.
    \param      _url   The URL to open.
                       Currently only the <file:>, <http:>, and <https:> schemes
                        are supported.
@@ -688,6 +690,18 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
  int _flags,int *_error) OP_ARG_NONNULL(1);
 
 /**Open a stream from a URL using the specified proxy.
+   \warning HTTPS streams that are not served with a Content-Length header may
+    be vulnerable to truncation attacks.
+   The abstract stream interface is incapable of signaling whether a connection
+    was closed gracefully (with a TLS "close notify" message) or abruptly (and,
+    e.g., possibly by an attacker).
+   If you wish to guarantee that you are not vulnerable to such attacks, you
+    might consider only allowing seekable streams (which must have a valid
+    content length) and verifying the file position reported by op_raw_tell()
+    after decoding to the end is at least as large as that reported by
+    op_raw_total() (though possibly larger).
+   However, this approach will not work for live streams or HTTP/1.0 servers
+    (which do not support Range requets).
    \param      _url        The URL to open.
                            Currently only the <file:>, <http:>, and <https:>
                             schemes are supported.
