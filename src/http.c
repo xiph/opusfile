@@ -1989,8 +1989,6 @@ static int op_http_conn_send_request(OpusHTTPStream *_stream,
  int _try_not_to_block){
   opus_int64 next_end;
   int        ret;
-  /*We can't make a new request on a connection that's reading until EOF.*/
-  OP_ASSERT(_conn->end_pos>=0);
   /*We shouldn't have another request outstanding.*/
   OP_ASSERT(_conn->next_pos<0);
   /*Build the request to send.*/
