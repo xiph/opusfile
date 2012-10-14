@@ -1381,6 +1381,7 @@ static int op_sock_connect_next(int _fd,
     if(addr==NULL)return OP_FALSE;
     if(connect(_fd,addr->ai_addr,addr->ai_addrlen)>=0)return 1;
     if(OP_LIKELY(errno==EINPROGRESS))return 0;
+    addr=addr->ai_next;
   }
 }
 
@@ -1437,8 +1438,8 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
     if(OP_LIKELY(fds[pi].fd>=0)){
       if(OP_LIKELY(op_sock_set_nonblocking(fds[pi].fd,1)>=0)){
         ret=op_sock_connect_next(fds[pi].fd,addrs+pi,ai_family);
-        if(ret>1){
-          /*It succeeded right away, so stop.*/
+        if(OP_UNLIKELY(ret>0)){
+          /*It succeeded right away (technically possible), so stop.*/
           nprotos=pi+1;
           break;
         }
@@ -1462,10 +1463,12 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
       /*Still waiting...*/
       if(!fds[pi].revents)continue;
       errlen=sizeof(err);
-      if(getsockopt(fds[pi].fd,SOL_SOCKET,SO_ERROR,&err,&errlen)>=0&&err==0){
-        /*Success!*/
-        break;
-      }
+      /*Some platforms will return the pending error in &err and return 0.
+        Otherwise will put it in errno and return -1.*/
+      ret=getsockopt(fds[pi].fd,SOL_SOCKET,SO_ERROR,&err,&errlen);
+      if(ret<0)err=errno;
+      /*Success!*/
+      if(err==0||err==EISCONN)break;
       /*Move on to the next address for this protocol.*/
       ai_family=addrs[pi]->ai_family;
       addrs[pi]=addrs[pi]->ai_next;
