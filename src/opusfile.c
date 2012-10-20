@@ -1293,7 +1293,9 @@ static void op_clear(OggOpusFile *_of){
   if(_of->od!=NULL)opus_multistream_decoder_destroy(_of->od);
   links=_of->links;
   if(!_of->seekable){
-    if(_of->ready_state>OP_OPENED)opus_tags_clear(&links[0].tags);
+    if(_of->ready_state>OP_OPENED||_of->ready_state==OP_PARTOPEN){
+      opus_tags_clear(&links[0].tags);
+    }
   }
   else if(OP_LIKELY(links!=NULL)){
     int nlinks;
@@ -1538,12 +1540,12 @@ void op_free(OggOpusFile *_of){
   }
 }
 
-int op_link_count(OggOpusFile *_of){
-  return _of->nlinks;
-}
-
 int op_seekable(OggOpusFile *_of){
   return _of->seekable;
+}
+
+int op_link_count(OggOpusFile *_of){
+  return _of->nlinks;
 }
 
 ogg_uint32_t op_serialno(OggOpusFile *_of,int _li){
@@ -1607,7 +1609,9 @@ const OpusHead *op_head(OggOpusFile *_of,int _li){
 const OpusTags *op_tags(OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable){
-    if(_of->ready_state<OP_STREAMSET)return NULL;
+    if(_of->ready_state<OP_STREAMSET&&_of->ready_state!=OP_PARTOPEN){
+      return NULL;
+    }
     _li=0;
   }
   else if(_li<0)_li=_of->ready_state>=OP_STREAMSET?_of->cur_link:0;
