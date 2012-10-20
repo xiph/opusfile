@@ -16,6 +16,7 @@
 #include <string.h>
 
 /*RFCs referenced in this file:
+  RFC  761: DOD Standard Transmission Control Protocol
   RFC 1738: Uniform Resource Locators (URL)
   RFC 1945: Hypertext Transfer Protocol -- HTTP/1.0
   RFC 2068: Hypertext Transfer Protocol -- HTTP/1.1
@@ -160,7 +161,7 @@ static const char *op_parse_file_url(const char *_src){
        understatement.*/
     host=scheme_end+3;
     /*The empty host is what we expect.*/
-    if(OP_LIKELY(*host!='/'))path=host;
+    if(OP_LIKELY(*host=='/'))path=host;
     else{
       const char *host_end;
       char        host_buf[28];
@@ -223,11 +224,15 @@ static const char *op_parse_file_url(const char *_src){
   Fortunately, 20 is less than infinity.*/
 # define OP_REDIRECT_LIMIT (20)
 
+/*The initial size of the buffer used to read a response message (before the
+   body).*/
+# define OP_RESPONSE_SIZE_MIN (510)
 /*The maximum size of a response message (before the body).
   Responses larger than this will be discarded.
-  The buffer for this is currently stack-allocated, which will have to change
-   if you want to make it much larger.*/
-# define OP_RESPONSE_SIZE_MAX (1024)
+  I've seen a real server return 20 kB of data for a 302 Found response.
+  Increasing this beyond 32kB will cause problems on platforms with a 16-bit
+   int.*/
+# define OP_RESPONSE_SIZE_MAX (32766)
 
 /*The number of milliseconds we will allow a connection to sit idle before we
    refuse to resurrect it.
@@ -479,7 +484,7 @@ static int op_sb_ensure_capacity(OpusStringBuf *_sb,int _capacity){
   buf=_sb->buf;
   cbuf=_sb->cbuf;
   if(_capacity>=cbuf-1){
-    if(OP_UNLIKELY(cbuf>=INT_MAX-1>>1))return OP_EFAULT;
+    if(OP_UNLIKELY(cbuf>INT_MAX-1>>1))return OP_EFAULT;
     if(OP_UNLIKELY(_capacity>=INT_MAX-1))return OP_EFAULT;
     cbuf=OP_MAX(2*cbuf+1,_capacity+1);
     buf=_ogg_realloc(buf,sizeof(*buf)*cbuf);
@@ -487,6 +492,20 @@ static int op_sb_ensure_capacity(OpusStringBuf *_sb,int _capacity){
     _sb->buf=buf;
     _sb->cbuf=cbuf;
   }
+  return 0;
+}
+
+static int op_sb_grow(OpusStringBuf *_sb,int _max_size){
+  char *buf;
+  int   cbuf;
+  buf=_sb->buf;
+  cbuf=_sb->cbuf;
+  OP_ASSERT(_max_size<=INT_MAX-1);
+  cbuf=cbuf<=_max_size-1>>1?2*cbuf+1:_max_size+1;
+  buf=_ogg_realloc(buf,sizeof(*buf)*cbuf);
+  if(OP_UNLIKELY(buf==NULL))return OP_EFAULT;
+  _sb->buf=buf;
+  _sb->cbuf=cbuf;
   return 0;
 }
 
@@ -660,6 +679,8 @@ struct OpusHTTPStream{
   OpusStringBuf    request;
   /*A buffer used to build proxy CONNECT requests.*/
   OpusStringBuf    proxy_connect;
+  /*A buffer used to receive the response headers.*/
+  OpusStringBuf    response;
   /*The Content-Length, if specified, or -1 otherwise.
     This will always be specified for seekable streams.*/
   opus_int64       content_length;
@@ -695,6 +716,7 @@ static void op_http_stream_init(OpusHTTPStream *_stream){
   op_parsed_url_init(&_stream->url);
   op_sb_init(&_stream->request);
   op_sb_init(&_stream->proxy_connect);
+  op_sb_init(&_stream->response);
   _stream->seekable=0;
 }
 
@@ -737,6 +759,7 @@ static void op_http_stream_clear(OpusHTTPStream *_stream){
   }
   if(_stream->ssl_session!=NULL)SSL_SESSION_free(_stream->ssl_session);
   if(_stream->ssl_ctx!=NULL)SSL_CTX_free(_stream->ssl_ctx);
+  op_sb_clear(&_stream->response);
   op_sb_clear(&_stream->proxy_connect);
   op_sb_clear(&_stream->request);
   op_parsed_url_clear(&_stream->url);
@@ -880,8 +903,9 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
         nread_unblocked+=ret;
         continue;
       }
-      /*If we already read some data, return it right now.*/
-      if(nread>0)break;
+      /*If we already read some data or the connection was closed, return
+         right now.*/
+      if(ret==0||nread>0)break;
       err=errno;
       if(err!=EAGAIN&&err!=EWOULDBLOCK)return 0;
       fd.events=POLLIN;
@@ -898,53 +922,112 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
   return nread;
 }
 
-/*Reads the entirety of a response to an HTTP request into a buffer.
+/*Tries to look at the pending data for a connection without consuming it.
+  [out] _buf: Returns the data at which we're peeking.
+  _size:      The size of the buffer.*/
+static int op_http_conn_peek(OpusHTTPConn *_conn,
+ char *_buf,int _size){
+  struct pollfd   fd;
+  SSL            *ssl_conn;
+  int             ret;
+  fd.fd=_conn->fd;
+  ssl_conn=_conn->ssl_conn;
+  for(;;){
+    int err;
+    if(ssl_conn!=NULL){
+      ret=SSL_peek(ssl_conn,_buf,_size);
+      /*Either saw some data or the connection was closed.*/
+      if(ret>=0)return ret;
+      err=SSL_get_error(ssl_conn,ret);
+      if(err==SSL_ERROR_WANT_READ)fd.events=POLLIN;
+      /*Yes, renegotiations can cause SSL_peek() to block for writing.*/
+      else if(err==SSL_ERROR_WANT_WRITE)fd.events=POLLOUT;
+      else return 0;
+    }
+    else{
+      errno=0;
+      ret=(int)recv(fd.fd,_buf,_size,MSG_PEEK);
+      /*Either saw some data or the connection was closed.*/
+      if(ret>=0)return ret;
+      err=errno;
+      if(err!=EAGAIN&&err!=EWOULDBLOCK)return 0;
+      fd.events=POLLIN;
+    }
+    /*Need to wait to get any data at all.*/
+    if(poll(&fd,1,OP_POLL_TIMEOUT_MS)<=0)return 0;
+  }
+}
+
+/*When parsing response headers, RFC 2616 mandates that all lines end in CR LF.
+  However, even in the year 2012, I have seen broken servers use just a LF.
+  This is the evil that Postel's advice from RFC 761 breeds.*/
+
+/*Reads the entirety of a response to an HTTP request into the response buffer.
   Actual parsing and validation is done later.
-  _buf:  The buffer in which to read the response.
-         No terminating NUL is appended.
-  _size: The number of bytes available in the buffer.
   Return: The number of bytes in the response on success, OP_EREAD if the
            connection was closed before reading any data, or another negative
            value on any other error.*/
 static int op_http_conn_read_response(OpusHTTPConn *_conn,
- char *_buf,int _size){
-  /*The remaining size of the buffer.*/
-  int size;
-  /*How many characters we've yet to see from the "\r\n\r\n" terminator.*/
-  int state;
-  size=_size;
-  state=4;
-  while(size>=state){
-    ptrdiff_t ret;
-    int       len;
-    ret=op_http_conn_read(_conn,_buf,state,1);
-    if(ret<=0)return _size==size?OP_EREAD:OP_FALSE;
+ OpusStringBuf *_response){
+  int ret;
+  _response->nbuf=0;
+  ret=op_sb_ensure_capacity(_response,OP_RESPONSE_SIZE_MIN);
+  if(OP_UNLIKELY(ret<0))return ret;
+  for(;;){
+    char *buf;
+    int   size;
+    int   capacity;
+    int   read_limit;
+    int   terminated;
+    size=_response->nbuf;
+    capacity=_response->cbuf-1;
+    if(OP_UNLIKELY(size>=capacity)){
+      ret=op_sb_grow(_response,OP_RESPONSE_SIZE_MAX);
+      if(OP_UNLIKELY(ret<0))return ret;
+      capacity=_response->cbuf-1;
+      /*The response was too large.
+        This prevents a bad server from running us out of memory.*/
+      if(OP_UNLIKELY(size>=capacity))return OP_EIMPL;
+    }
+    buf=_response->buf;
+    ret=op_http_conn_peek(_conn,buf+size,capacity-size);
+    if(OP_UNLIKELY(ret<=0))return size<=0?OP_EREAD:OP_FALSE;
     /*We read some data.*/
-    _buf+=ret;
-    size-=ret;
-    len=_size-size;
     /*Make sure the starting characters are "HTTP".
       Otherwise we could wind up waiting forever for a response from
        something that is not an HTTP server.*/
-    if(len-ret<4&&op_strncasecmp(_buf-len,"HTTP",OP_MIN(len,4))!=0){
+    if(size<4&&op_strncasecmp(buf,"HTTP",OP_MIN(size+ret,4))!=0){
       return OP_FALSE;
     }
-    /*How far along on the "\r\n\r\n" terminator are we?*/
-    if(*(_buf-1)=='\n'){
-      if(len>=2&&*(_buf-2)=='\r'){
-        if(len>=4&&*(_buf-3)=='\n'&&*(_buf-4)=='\r')return len;
-        state=2;
+    /*How far can we read without passing the "\r\n\r\n" terminator?*/
+    buf[size+ret]='\0';
+    terminated=0;
+    for(read_limit=OP_MAX(size-3,0);read_limit<size+ret;read_limit++){
+      /*We don't look for the leading '\r' thanks to broken servers.*/
+      if(buf[read_limit]=='\n'){
+        if(buf[read_limit+1]=='\r'&&OP_LIKELY(buf[read_limit+2]=='\n')){
+          terminated=3;
+          break;
+        }
+        /*This case is for broken servers.*/
+        else if(OP_UNLIKELY(buf[read_limit+1]=='\n')){
+          terminated=2;
+          break;
+        }
       }
-      else state=4;
     }
-    else if(*(_buf-1)=='\r'){
-      state=3;
-      if(len>=3&&*(_buf-2)=='\n'&&*(_buf-3)=='\r')state=1;
-    }
-    else state=4;
+    read_limit+=terminated;
+    OP_ASSERT(size<=read_limit);
+    OP_ASSERT(read_limit<=size+ret);
+    /*Actually consume that data.*/
+    ret=op_http_conn_read(_conn,buf+size,read_limit-size,1);
+    if(OP_UNLIKELY(ret<=0))return OP_FALSE;
+    size+=ret;
+    buf[size]='\0';
+    _response->nbuf=size;
+    /*We found the terminator and read all the data up to and including it.*/
+    if(terminated&&OP_LIKELY(size>=read_limit))return size;
   }
-  /*Not enough space left in the buffer to add the characters we'd need to get
-     a valid terminator.*/
   return OP_EIMPL;
 }
 
@@ -972,6 +1055,8 @@ static int op_http_lwsspn(const char *_s){
   int i;
   for(i=0;;){
     if(_s[0]=='\r'&&_s[1]=='\n'&&(_s[2]=='\t'||_s[2]==' '))i+=3;
+    /*This case is for broken servers.*/
+    else if(_s[0]=='\n'&&(_s[1]=='\t'||_s[1]==' '))i+=2;
     else if(_s[i]=='\t'||_s[i]==' ')i++;
     else return i;
   }
@@ -1021,7 +1106,8 @@ static char *op_http_parse_status_line(int *_v1_1_compat,
   /*The Reason-Phrase can be empty, but the space must be here.*/
   if(OP_UNLIKELY(*next++!=' '))return NULL;
   next+=strcspn(next,OP_HTTP_CREASON_PHRASE);
-  if(OP_UNLIKELY(*next++!='\r'))return NULL;
+  /*We are not mandating this be present thanks to broken servers.*/
+  if(OP_LIKELY(*next=='\r'))next++;
   if(OP_UNLIKELY(*next++!='\n'))return NULL;
   if(_v1_1_compat!=NULL)*_v1_1_compat=v1_1_compat;
   *_status_code=status_code;
@@ -1050,7 +1136,8 @@ static int op_http_get_next_header(char **_header,char **_cdr,char **_s){
   char   *next;
   size_t  d;
   next=*_s;
-  if(next[0]=='\r'&&next[1]=='\n'){
+  /*The second case is for broken servers.*/
+  if(next[0]=='\r'&&next[1]=='\n'||OP_UNLIKELY(next[0]=='\n')){
     /*No more headers.*/
     *_header=NULL;
     *_cdr=NULL;
@@ -1070,7 +1157,8 @@ static int op_http_get_next_header(char **_header,char **_cdr,char **_s){
     next=cdr_end+op_http_lwsspn(cdr_end);
   }
   while(next>cdr_end);
-  if(OP_UNLIKELY(*next++!='\r'))return OP_FALSE;
+  /*We are not mandating this be present thanks to broken servers.*/
+  if(OP_LIKELY(*next=='\r'))next++;
   if(OP_UNLIKELY(*next++!='\n'))return OP_FALSE;
   *header_end='\0';
   *cdr_end='\0';
@@ -1284,7 +1372,6 @@ static BIO_METHOD op_bio_retry_method={
    proxying https URL requests.*/
 int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
  OpusHTTPConn *_conn,int _fd,SSL *_ssl_conn,BIO *_ssl_bio){
-  char  response[OP_RESPONSE_SIZE_MAX];
   BIO  *retry_bio;
   char *status_code;
   char *next;
@@ -1306,9 +1393,9 @@ int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
   /*Only now do we disable write coalescing, to allow the CONNECT
      request and the start of the TLS handshake to be combined.*/
   op_sock_set_tcp_nodelay(_fd,1);
-  ret=op_http_conn_read_response(_conn,response,sizeof(response));
+  ret=op_http_conn_read_response(_conn,&_stream->response);
   if(OP_UNLIKELY(ret<0))return ret;
-  next=op_http_parse_status_line(NULL,&status_code,response);
+  next=op_http_parse_status_line(NULL,&status_code,_stream->response.buf);
   /*According to RFC 2817, "Any successful (2xx) response to a
      CONNECT request indicates that the proxy has established a
      connection to the requested host and port.*/
@@ -1464,7 +1551,7 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
       if(!fds[pi].revents)continue;
       errlen=sizeof(err);
       /*Some platforms will return the pending error in &err and return 0.
-        Otherwise will put it in errno and return -1.*/
+        Others will put it in errno and return -1.*/
       ret=getsockopt(fds[pi].fd,SOL_SOCKET,SO_ERROR,&err,&errlen);
       if(ret<0)err=errno;
       /*Success!*/
@@ -1656,7 +1743,6 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
   for(nredirs=0;nredirs<OP_REDIRECT_LIMIT;nredirs++){
     struct timeb  start_time;
     struct timeb  end_time;
-    char          response[OP_RESPONSE_SIZE_MAX];
     char         *next;
     char         *status_code;
     const char   *host;
@@ -1804,12 +1890,12 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     ret=op_http_conn_write_fully(_stream->conns+0,
      _stream->request.buf,_stream->request.nbuf);
     if(OP_UNLIKELY(ret<0))return ret;
-    ret=op_http_conn_read_response(_stream->conns+0,
-     response,sizeof(response)/sizeof(*response));
+    ret=op_http_conn_read_response(_stream->conns+0,&_stream->response);
     if(OP_UNLIKELY(ret<0))return ret;
     ret=ftime(&end_time);
     OP_ASSERT(!ret);
-    next=op_http_parse_status_line(&v1_1_compat,&status_code,response);
+    next=op_http_parse_status_line(&v1_1_compat,&status_code,
+     _stream->response.buf);
     if(OP_UNLIKELY(next==NULL))return OP_FALSE;
     if(status_code[0]=='2'){
       opus_int64 content_length;
@@ -2046,19 +2132,17 @@ static int op_http_conn_send_request(OpusHTTPStream *_stream,
            negative value on any other error.*/
 static int op_http_conn_handle_response(OpusHTTPStream *_stream,
  OpusHTTPConn *_conn){
-  char        response[OP_RESPONSE_SIZE_MAX];
   char       *next;
   char       *status_code;
   opus_int64  range_length;
   opus_int64  next_pos;
   opus_int64  next_end;
   int         ret;
-  ret=op_http_conn_read_response(_conn,
-   response,sizeof(response)/sizeof(*response));
+  ret=op_http_conn_read_response(_conn,&_stream->response);
   /*If the server just closed the connection on us, we may have just hit a
      connection re-use limit, so we might want to retry.*/
   if(OP_UNLIKELY(ret<0))return ret==OP_EREAD?1:ret;
-  next=op_http_parse_status_line(NULL,&status_code,response);
+  next=op_http_parse_status_line(NULL,&status_code,_stream->response.buf);
   if(OP_UNLIKELY(next==NULL))return OP_FALSE;
   /*We _need_ a 206 Partial Content response.
     Nothing else will do.*/
