@@ -41,6 +41,18 @@ struct OpusMemStream{
   ptrdiff_t            pos;
 };
 
+static int op_fread(void *_stream,unsigned char *_ptr,int _buf_size){
+  FILE   *stream;
+  size_t  ret;
+  /*Check for empty read.*/
+  if(_buf_size<=0)return 0;
+  stream=(FILE *)_stream;
+  ret=fread(_ptr,1,_buf_size,stream);
+  OP_ASSERT(ret<=(size_t)_buf_size);
+  /*If ret==0 and !feof(stream), there was a read error.*/
+  return ret>0||feof(stream)?(int)ret:OP_EREAD;
+}
+
 static int op_fseek(void *_stream,opus_int64 _offset,int _whence){
 #if defined(_MSC_VER)
   return _fseeki64((FILE *)_stream,_offset,_whence);
@@ -58,7 +70,7 @@ static opus_int64 op_ftell(void *_stream){
 }
 
 static const OpusFileCallbacks OP_FILE_CALLBACKS={
-  (op_read_func)fread,
+  op_fread,
   op_fseek,
   op_ftell,
   (op_close_func)fclose
@@ -86,29 +98,23 @@ void *op_freopen(OpusFileCallbacks *_cb,const char *_path,const char *_mode,
   return fp;
 }
 
-static size_t op_mem_read(void *_ptr,size_t _size,size_t _nmemb,void *_stream){
+static int op_mem_read(void *_stream,unsigned char *_ptr,int _buf_size){
   OpusMemStream *stream;
-  size_t         total;
   ptrdiff_t      size;
   ptrdiff_t      pos;
   stream=(OpusMemStream *)_stream;
-  if(_size>OP_MEM_SIZE_MAX)return 0;
-  total=_size*_nmemb;
-  /*Check for overflow/empty read.*/
-  if(total==0||total/_size!=_nmemb)return 0;
+  /*Check for empty read.*/
+  if(_buf_size<=0)return 0;
   size=stream->size;
   pos=stream->pos;
   /*Check for EOF.*/
   if(pos>=size)return 0;
   /*Check for a short read.*/
-  if(total>(size_t)(size-pos)){
-    _nmemb=(size-pos)/_size;
-    total=_size*_nmemb;
-  }
-  memcpy(_ptr,stream->data+pos,total);
-  pos+=total;
+  _buf_size=(int)OP_MAX(size-pos,_buf_size);
+  memcpy(_ptr,stream->data+pos,_buf_size);
+  pos+=_buf_size;
   stream->pos=pos;
-  return _nmemb;
+  return _buf_size;
 }
 
 static int op_mem_seek(void *_stream,opus_int64 _offset,int _whence){

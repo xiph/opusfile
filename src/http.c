@@ -766,20 +766,20 @@ static void op_http_stream_clear(OpusHTTPStream *_stream){
 }
 
 static int op_http_conn_write_fully(OpusHTTPConn *_conn,
- const char *_buf,int _size){
+ const char *_buf,int _buf_size){
   struct pollfd  fd;
   SSL           *ssl_conn;
   fd.fd=_conn->fd;
   ssl_conn=_conn->ssl_conn;
-  while(_size>0){
+  while(_buf_size>0){
     int err;
     if(ssl_conn!=NULL){
       int ret;
-      ret=SSL_write(ssl_conn,_buf,_size);
+      ret=SSL_write(ssl_conn,_buf,_buf_size);
       if(ret>0){
         /*Wrote some data.*/
         _buf+=ret;
-        _size-=ret;
+        _buf_size-=ret;
         continue;
       }
       /*Connection closed.*/
@@ -793,10 +793,10 @@ static int op_http_conn_write_fully(OpusHTTPConn *_conn,
     else{
       ssize_t ret;
       errno=0;
-      ret=write(fd.fd,_buf,_size);
+      ret=write(fd.fd,_buf,_buf_size);
       if(ret>0){
         _buf+=ret;
-        _size-=ret;
+        _buf_size-=ret;
         continue;
       }
       err=errno;
@@ -859,14 +859,17 @@ static void op_http_conn_read_rate_update(OpusHTTPConn *_conn){
 
 /*Tries to read from the given connection.
   [out] _buf: Returns the data read.
-  _size:      The size of the buffer.
-  _blocking:  Whether or not to block until some data is retrieved.*/
-static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
- char *_buf,ptrdiff_t _size,int _blocking){
-  struct pollfd   fd;
-  SSL            *ssl_conn;
-  ptrdiff_t       nread;
-  ptrdiff_t       nread_unblocked;
+  _buf_size:  The size of the buffer.
+  _blocking:  Whether or not to block until some data is retrieved.
+  Return: A positive number of bytes read on success.
+          0:        The read would block, or the connection was closed.
+          OP_EREAD: There was a fatal read error.*/
+static int op_http_conn_read(OpusHTTPConn *_conn,
+ unsigned char *_buf,int _buf_size,int _blocking){
+  struct pollfd  fd;
+  SSL           *ssl_conn;
+  int            nread;
+  int            nread_unblocked;
   fd.fd=_conn->fd;
   ssl_conn=_conn->ssl_conn;
   nread=nread_unblocked=0;
@@ -874,7 +877,8 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
     int err;
     if(ssl_conn!=NULL){
       int ret;
-      ret=SSL_read(ssl_conn,_buf+nread,_size-nread);
+      ret=SSL_read(ssl_conn,_buf+nread,_buf_size-nread);
+      OP_ASSERT(ret<=_buf_size-nread);
       if(ret>0){
         /*Read some data.
           Keep going to see if there's more.*/
@@ -882,20 +886,27 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
         nread_unblocked+=ret;
         continue;
       }
-      /*Connection closed.*/
-      else if(ret==0)break;
       /*If we already read some data, return it right now.*/
       if(nread>0)break;
       err=SSL_get_error(ssl_conn,ret);
+      if(ret==0){
+        /*Connection close.
+          Check for a clean shutdown to prevent truncation attacks.
+          This check always succeeds for SSLv2, as it has no "close notify"
+           message and thus can't verify an orderly shutdown.*/
+        return err==SSL_ERROR_ZERO_RETURN?0:OP_EREAD;
+      }
       if(err==SSL_ERROR_WANT_READ)fd.events=POLLIN;
       /*Yes, renegotiations can cause SSL_read() to block for writing.*/
       else if(err==SSL_ERROR_WANT_WRITE)fd.events=POLLOUT;
-      else return 0;
+      /*Some other error.*/
+      else return OP_EREAD;
     }
     else{
       ssize_t ret;
       errno=0;
-      ret=read(fd.fd,_buf+nread,_size-nread);
+      ret=read(fd.fd,_buf+nread,_buf_size-nread);
+      OP_ASSERT(ret<=_buf_size-nread);
       if(ret>0){
         /*Read some data.
           Keep going to see if there's more.*/
@@ -907,7 +918,7 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
          right now.*/
       if(ret==0||nread>0)break;
       err=errno;
-      if(err!=EAGAIN&&err!=EWOULDBLOCK)return 0;
+      if(err!=EAGAIN&&err!=EWOULDBLOCK)return OP_EREAD;
       fd.events=POLLIN;
     }
     _conn->read_bytes+=nread_unblocked;
@@ -915,18 +926,18 @@ static ptrdiff_t op_http_conn_read(OpusHTTPConn *_conn,
     nread_unblocked=0;
     if(!_blocking)break;
     /*Need to wait to get any data at all.*/
-    if(poll(&fd,1,OP_POLL_TIMEOUT_MS)<=0)return 0;
+    if(poll(&fd,1,OP_POLL_TIMEOUT_MS)<=0)return OP_EREAD;
   }
-  while(nread<_size);
+  while(nread<_buf_size);
   _conn->read_bytes+=nread_unblocked;
   return nread;
 }
 
 /*Tries to look at the pending data for a connection without consuming it.
   [out] _buf: Returns the data at which we're peeking.
-  _size:      The size of the buffer.*/
+  _buf_size:  The size of the buffer.*/
 static int op_http_conn_peek(OpusHTTPConn *_conn,
- char *_buf,int _size){
+ char *_buf,int _buf_size){
   struct pollfd   fd;
   SSL            *ssl_conn;
   int             ret;
@@ -935,7 +946,7 @@ static int op_http_conn_peek(OpusHTTPConn *_conn,
   for(;;){
     int err;
     if(ssl_conn!=NULL){
-      ret=SSL_peek(ssl_conn,_buf,_size);
+      ret=SSL_peek(ssl_conn,_buf,_buf_size);
       /*Either saw some data or the connection was closed.*/
       if(ret>=0)return ret;
       err=SSL_get_error(ssl_conn,ret);
@@ -946,7 +957,7 @@ static int op_http_conn_peek(OpusHTTPConn *_conn,
     }
     else{
       errno=0;
-      ret=(int)recv(fd.fd,_buf,_size,MSG_PEEK);
+      ret=(int)recv(fd.fd,_buf,_buf_size,MSG_PEEK);
       /*Either saw some data or the connection was closed.*/
       if(ret>=0)return ret;
       err=errno;
@@ -1020,7 +1031,7 @@ static int op_http_conn_read_response(OpusHTTPConn *_conn,
     OP_ASSERT(size<=read_limit);
     OP_ASSERT(read_limit<=size+ret);
     /*Actually consume that data.*/
-    ret=op_http_conn_read(_conn,buf+size,read_limit-size,1);
+    ret=op_http_conn_read(_conn,(unsigned char *)buf+size,read_limit-size,1);
     if(OP_UNLIKELY(ret<=0))return OP_FALSE;
     size+=ret;
     buf[size]='\0';
@@ -2267,23 +2278,25 @@ static int op_http_conn_open_pos(OpusHTTPStream *_stream,
   If we've reached the end of this response body, parse the next response and
    keep going.
   [out] _buf: Returns the data read.
-  _size:      The size of the buffer.
-  _blocking:  Whether or not to block until some data is retrieved.*/
-static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
- OpusHTTPConn *_conn,char *_buf,ptrdiff_t _size,int _blocking){
+  _buf_size:  The size of the buffer.
+  Return: A positive number of bytes read on success.
+          0:        The connection was closed.
+          OP_EREAD: There was a fatal read error.*/
+static int op_http_conn_read_body(OpusHTTPStream *_stream,
+ OpusHTTPConn *_conn,unsigned char *_buf,int _buf_size){
   opus_int64 pos;
   opus_int64 end_pos;
   opus_int64 next_pos;
   opus_int64 content_length;
-  ptrdiff_t  nread;
+  int        nread;
   int        pipeline;
   int        ret;
   /*Currently this function can only be called on the LRU head.
     Otherwise, we'd need a _pnext pointer if we needed to close the connection,
      and re-opening it would re-organize the lists.*/
   OP_ASSERT(_stream->lru_head==_conn);
-  /*If we try an empty read, we won't be able to tell if we hit an error.*/
-  OP_ASSERT(_size>0);
+  /*We should have filterd out empty reads by this point.*/
+  OP_ASSERT(_buf_size>0);
   pos=_conn->pos;
   end_pos=_conn->end_pos;
   next_pos=_conn->next_pos;
@@ -2297,7 +2310,7 @@ static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
         Also return early if a non-blocking read was requested (regardless of
          whether we might be able to parse the next response without
          blocking).*/
-      if(content_length<=end_pos||!_blocking)return 0;
+      if(content_length<=end_pos)return 0;
       /*Otherwise, start on the next response.*/
       if(next_pos<0){
         /*We haven't issued another request yet.*/
@@ -2315,12 +2328,12 @@ static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
           /*If we're not pipelining, we should be requesting the rest.*/
           OP_ASSERT(pipeline||_conn->chunk_size==-1);
           ret=op_http_conn_open_pos(_stream,_conn,end_pos,_conn->chunk_size);
-          if(OP_UNLIKELY(ret<0))return 0;
+          if(OP_UNLIKELY(ret<0))return OP_EREAD;
         }
         else{
           /*Issue the request now (better late than never).*/
           ret=op_http_conn_send_request(_stream,_conn,pos,_conn->chunk_size,0);
-          if(OP_UNLIKELY(ret<0))return 0;
+          if(OP_UNLIKELY(ret<0))return OP_EREAD;
           next_pos=_conn->next_pos;
           OP_ASSERT(next_pos>=0);
         }
@@ -2330,7 +2343,7 @@ static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
            seeking somewhere else.*/
         OP_ASSERT(next_pos==end_pos);
         ret=op_http_conn_handle_response(_stream,_conn);
-        if(OP_UNLIKELY(ret<0))return 0;
+        if(OP_UNLIKELY(ret<0))return OP_EREAD;
         if(OP_UNLIKELY(ret>0)&&pipeline){
           opus_int64 next_end;
           next_end=_conn->next_end;
@@ -2343,18 +2356,19 @@ static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
            ||next_end-next_pos>=0&&next_end-next_pos<=0x7FFFFFFF);
           ret=op_http_conn_open_pos(_stream,_conn,next_pos,
            next_end<0?-1:(opus_int32)(next_end-next_pos));
-          if(OP_UNLIKELY(ret<0))return 0;
+          if(OP_UNLIKELY(ret<0))return OP_EREAD;
         }
-        else if(OP_UNLIKELY(ret!=0))return OP_FALSE;
+        else if(OP_UNLIKELY(ret!=0))return OP_EREAD;
       }
       pos=_conn->pos;
       end_pos=_conn->end_pos;
       content_length=_stream->content_length;
     }
     OP_ASSERT(end_pos>pos);
-    _size=OP_MIN(_size,end_pos-pos);
+    _buf_size=OP_MIN(_buf_size,end_pos-pos);
   }
-  nread=op_http_conn_read(_conn,_buf,_size,_blocking);
+  nread=op_http_conn_read(_conn,_buf,_buf_size,1);
+  if(OP_UNLIKELY(nread<0))return nread;
   pos+=nread;
   _conn->pos=pos;
   OP_ASSERT(end_pos<0||content_length>=0);
@@ -2378,24 +2392,22 @@ static ptrdiff_t op_http_conn_read_body(OpusHTTPStream *_stream,
     if(chunk_size>=0)request_thresh=OP_MIN(chunk_size>>2,request_thresh);
     if(end_pos-pos<=request_thresh){
       ret=op_http_conn_send_request(_stream,_conn,end_pos,_conn->chunk_size,1);
-      if(OP_UNLIKELY(ret<0))return 0;
+      if(OP_UNLIKELY(ret<0))return OP_EREAD;
     }
   }
   return nread;
 }
 
-static size_t op_http_stream_read(void *_ptr,size_t _size,size_t _nmemb,
- void *_stream){
+static int op_http_stream_read(void *_stream,
+ unsigned char *_ptr,int _buf_size){
   OpusHTTPStream *stream;
   ptrdiff_t       nread;
-  ptrdiff_t       total;
   opus_int64      size;
   opus_int64      pos;
   int             ci;
   stream=(OpusHTTPStream *)_stream;
-  total=_size*_nmemb;
-  /*Check for overflow/empty read.*/
-  if(total==0||total/_size!=_nmemb||total>OP_INT64_MAX)return 0;
+  /*Check for an empty read.*/
+  if(_buf_size<=0)return 0;
   ci=stream->cur_conni;
   /*No current connection => EOF.*/
   if(ci<0)return 0;
@@ -2405,42 +2417,11 @@ static size_t op_http_stream_read(void *_ptr,size_t _size,size_t _nmemb,
   if(size>=0){
     if(pos>=size)return 0;
     /*Check for a short read.*/
-    if(total>size-pos){
-      _nmemb=(size-pos)/_size;
-      total=_size*_nmemb;
-    }
+    if(_buf_size>size-pos)_buf_size=(int)(size-pos);
   }
-  if(_size==1){
-    nread=op_http_conn_read_body(stream,stream->conns+ci,_ptr,total,1);
-  }
-  else{
-    ptrdiff_t n;
-    nread=0;
-    /*libopusfile doesn't read multi-byte items, but our abstract stream API
-       requires it for stdio compatibility.
-      Implement it for completeness' sake by reading individual items one at a
-       time.*/
-    do{
-      ptrdiff_t nread_item;
-      nread_item=0;
-      do{
-        /*Block on the first item, or if we've gotten a partial item.*/
-        n=op_http_conn_read_body(stream,stream->conns+ci,
-         _ptr,_size-nread_item,nread==0||nread_item>0);
-        nread_item+=n;
-      }
-      while(n>0&&nread_item<(ptrdiff_t)_size);
-      /*We can still fail to read a whole item if we encounter an error, or if
-         we hit EOF and didn't know the stream length.
-        TODO: The former is okay, the latter is not, but I don't know how to
-         fix it without buffering arbitrarily large amounts of data.*/
-      if(nread_item>=(ptrdiff_t)_size)nread++;
-      total-=_size;
-    }
-    while(n>0&&total>0);
-  }
+  nread=op_http_conn_read_body(stream,stream->conns+ci,_ptr,_buf_size);
   if(OP_UNLIKELY(nread<=0)){
-    /*We either hit an error or EOF.
+    /*We hit an error or EOF.
       Either way, we're done with this connection.*/
     op_http_conn_close(stream,stream->conns+ci,&stream->lru_head,1);
     stream->cur_conni=-1;
@@ -2458,7 +2439,7 @@ static size_t op_http_stream_read(void *_ptr,size_t _size,size_t _nmemb,
   _target:          The stream position to which to read ahead.*/
 static int op_http_conn_read_ahead(OpusHTTPStream *_stream,
  OpusHTTPConn *_conn,int _just_read_ahead,opus_int64 _target){
-  static char dummy_buf[OP_READAHEAD_CHUNK_SIZE];
+  static unsigned char dummy_buf[OP_READAHEAD_CHUNK_SIZE];
   opus_int64 pos;
   opus_int64 end_pos;
   opus_int64 next_pos;
@@ -2489,7 +2470,7 @@ static int op_http_conn_read_ahead(OpusHTTPStream *_stream,
       Finish off the current chunk.*/
     while(pos<end_pos){
       nread=op_http_conn_read(_conn,dummy_buf,
-       OP_MIN(end_pos-pos,OP_READAHEAD_CHUNK_SIZE),1);
+       (int)OP_MIN(end_pos-pos,OP_READAHEAD_CHUNK_SIZE),1);
       /*We failed to read ahead.*/
       if(nread<=0)return OP_FALSE;
       pos+=nread;
@@ -2514,7 +2495,7 @@ static int op_http_conn_read_ahead(OpusHTTPStream *_stream,
   }
   while(pos<end_pos){
     nread=op_http_conn_read(_conn,dummy_buf,
-     OP_MIN(end_pos-pos,OP_READAHEAD_CHUNK_SIZE),1);
+     (int)OP_MIN(end_pos-pos,OP_READAHEAD_CHUNK_SIZE),1);
     /*We failed to read ahead.*/
     if(nread<=0)return OP_FALSE;
     pos+=nread;

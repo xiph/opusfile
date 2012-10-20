@@ -105,6 +105,7 @@ int main(int _argc,const char **_argv){
   opus_int32   bitrate;
   int          ret;
   int          prev_li;
+  int          is_ssl;
 #if defined(_WIN32)
 # undef fileno
 # define fileno _fileno
@@ -120,6 +121,7 @@ int main(int _argc,const char **_argv){
     fprintf(stderr,"Usage: %s <file.opus>\n",_argv[0]);
     return EXIT_FAILURE;
   }
+  is_ssl=0;
   if(strcmp(_argv[1],"-")==0){
     OpusFileCallbacks cb={NULL,NULL,NULL,NULL};
     of=op_open_callbacks(op_fdopen(&cb,fileno(stdin),"rb"),&cb,NULL,0,&ret);
@@ -139,6 +141,9 @@ int main(int _argc,const char **_argv){
     }
 #else
     if(of==NULL)of=op_open_file(_argv[1],&ret);
+    /*This is not a very good check, but at least it won't give false
+       positives.*/
+    else is_ssl=strncmp(_argv[1],"https:",6)==0;
 #endif
   }
   if(of==NULL){
@@ -173,6 +178,7 @@ int main(int _argc,const char **_argv){
     ret=op_read_native_stereo(of,pcm,sizeof(pcm)/sizeof(*pcm));
     if(ret<0){
       fprintf(stderr,"\nError decoding '%s': %i\n",_argv[1],ret);
+      if(is_ssl)fprintf(stderr,"Possible truncation attack?\n");
       ret=EXIT_FAILURE;
       break;
     }

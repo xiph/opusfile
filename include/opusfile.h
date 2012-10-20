@@ -499,19 +499,15 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 
 typedef struct OpusFileCallbacks OpusFileCallbacks;
 
-/**Reads \a _nmemb elements of data, each \a _size bytes long, from
-    \a _stream.
-   \return The number of items successfully read (i.e., not the number of
-            characters).
-           Unlike normal <code>fread()</code>, this function is allowed to
-            return fewer items than requested (e.g., if reading more would
-            block), as long as <em>some</em> data is returned when no error
-            occurs and EOF has not been reached.
-           If an error occurs, or the end-of-file is reached, the return
-            value is zero.
-           <code>errno</code> need not be set.*/
-typedef size_t (*op_read_func)(void *_ptr,size_t _size,size_t _nmemb,
- void *_stream);
+/**Reads up to \a _nbytes bytes of data from \a _stream.
+   \param      _stream The stream to read from.
+   \param[out] _ptr    The buffer to store the data in.
+   \param      _nbytes The maximum number of bytes to read.
+                       This function may return fewer, though it will not
+                        return zero unless it reaches end-of-file.
+   \return The number of bytes successfully read, or a negative value on
+            error.*/
+typedef int (*op_read_func)(void *_stream,unsigned char *_ptr,int _nbytes);
 
 /**Sets the position indicator for \a _stream.
    The new position, measured in bytes, is obtained by adding \a _offset
@@ -731,8 +727,6 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
  size_t _size,int *_error);
 
 /**Open a stream from a URL.
-   See the security warning in op_open_url_with_proxy() for information about
-    possible truncation attacks with HTTPS.
    This function behaves identically to op_open_url(), except that it
     takes a va_list instead of a variable number of arguments.
    It does not call the <code>va_end</code> macro, and because it invokes the
@@ -757,16 +751,6 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_vopen_url(const char *_url,
  int *_error,va_list _ap) OP_ARG_NONNULL(1);
 
 /**Open a stream from a URL.
-   \warning HTTPS streams that are not served with a Content-Length header may
-    be vulnerable to truncation attacks.
-   The abstract stream interface is incapable of signaling whether a connection
-    was closed gracefully (with a TLS "close notify" message) or abruptly (and,
-    e.g., possibly by an attacker).
-   If you wish to guarantee that you are not vulnerable to such attacks, you
-    might consider only allowing seekable streams (which must have a valid
-    content length) and verifying the file position reported by op_raw_tell()
-    after decoding to the end is at least as large as that reported by
-    op_raw_total() (though possibly larger).
    However, this approach will not work for live streams or HTTP/1.0 servers
     (which do not support Range requets).
    \param      _url   The URL to open.
@@ -1272,29 +1256,13 @@ ogg_int64_t op_pcm_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
    \param _of          The \c OggOpusFile in which to seek.
    \param _byte_offset The byte position to seek to.
    \return 0 on success, or a negative error code on failure.
-   \retval #OP_EREAD    The seek failed.
+   \retval #OP_EREAD    The underlying seek operation failed.
    \retval #OP_EINVAL   The stream was only partially open, or the target was
                          outside the valid range for the stream.
    \retval #OP_ENOSEEK  This stream is not seekable.
    \retval #OP_EBADLINK Failed to initialize a decoder for a stream for an
                          unknown reason.*/
 int op_raw_seek(OggOpusFile *_of,opus_int64 _byte_offset) OP_ARG_NONNULL(1);
-
-/**Seek to a page preceding the specified PCM offset, such that decoding will
-    quickly arrive at the requested position.
-   This is faster than sample-granularity seeking because it doesn't do the
-    last bit of decode to find a specific sample.
-   \param _of         The \c OggOpusFile in which to seek.
-   \param _pcm_offset The PCM offset to seek to.
-                      This is in samples at 48 kHz relative to the start of the
-                       stream.
-   \return 0 on success, or a negative value on error.
-   \retval #OP_EREAD   The seek failed.
-   \retval #OP_EINVAL  The stream was only partially open, or the target was
-                        outside the valid range for the stream.
-   \retval #OP_ENOSEEK This stream is not seekable.*/
-int op_pcm_seek_page(OggOpusFile *_of,ogg_int64_t _pcm_offset)
- OP_ARG_NONNULL(1);
 
 /**Seek to the specified PCM offset, such that decoding will begin at exactly
     the requested position.
@@ -1303,10 +1271,13 @@ int op_pcm_seek_page(OggOpusFile *_of,ogg_int64_t _pcm_offset)
                       This is in samples at 48 kHz relative to the start of the
                        stream.
    \return 0 on success, or a negative value on error.
-   \retval #OP_EREAD   The seek failed.
-   \retval #OP_EINVAL  The stream was only partially open, or the target was
-                        outside the valid range for the stream.
-   \retval #OP_ENOSEEK This stream is not seekable.*/
+   \retval #OP_EREAD    An underlying read or seek operation failed.
+   \retval #OP_EINVAL   The stream was only partially open, or the target was
+                         outside the valid range for the stream.
+   \retval #OP_ENOSEEK  This stream is not seekable.
+   \retval #OP_EBADLINK We failed to find data we had seen before, or the
+                         bitstream structure was sufficiently malformed that
+                         seeking to the target destination was impossible.*/
 int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
 
 /*@}*/
@@ -1339,7 +1310,17 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
    If so, the floating-point API may also be disabled.
    In that configuration, nothing in <tt>libopusfile</tt> will use any
     floating-point operations, to simplify support on devices without an
-    adequate FPU.*/
+    adequate FPU.
+
+   \warning HTTPS streams may be be vulnerable to truncation attacks if you do
+    not check the error return code from op_read_float() or its associated
+    functions.
+   If the remote peer does not close the connection gracefully (with a TLS
+    "close notify" message), these functions will return OP_EREAD instead of 0
+    when they reach the end of the file.
+   If you are reading from an <https:> URL (particularly if seeking is not
+    supported), you should make sure to check for this error and warn the user
+    appropriately.*/
 /*@{*/
 
 /**Reads more samples from the stream.
@@ -1396,6 +1377,13 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
            The list of possible failure codes follows.
            Most of them can only be returned by unseekable, chained streams
             that encounter a new link.
+   \retval #OP_HOLE          There was a hole in the data, and some samples
+                              may have been skipped.
+                             Call this function again to continue decoding
+                              past the hole.
+   \retval #OP_EREAD         An underlying read operation failed.
+                             This may signal a truncation attack from an
+                              <https:> source.
    \retval #OP_EFAULT        An internal memory allocation failed.
    \retval #OP_EIMPL         An unseekable stream encountered a new link that
                               used a feature that is not implemented, such as
@@ -1411,6 +1399,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
                               an ID header that contained an unrecognized
                               version number.
    \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADLINK      We failed to find data we had seen before.
    \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
                               a starting timestamp that failed basic validity
                               checks.*/
@@ -1469,6 +1458,13 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
            The list of possible failure codes follows.
            Most of them can only be returned by unseekable, chained streams
             that encounter a new link.
+   \retval #OP_HOLE          There was a hole in the data, and some samples
+                              may have been skipped.
+                             Call this function again to continue decoding
+                              past the hole.
+   \retval #OP_EREAD         An underlying read operation failed.
+                             This may signal a truncation attack from an
+                              <https:> source.
    \retval #OP_EFAULT        An internal memory allocation failed.
    \retval #OP_EIMPL         An unseekable stream encountered a new link that
                               used a feature that is not implemented, such as
@@ -1484,6 +1480,7 @@ OP_WARN_UNUSED_RESULT int op_read(OggOpusFile *_of,
                               an ID header that contained an unrecognized
                               version number.
    \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADLINK      We failed to find data we had seen before.
    \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
                               a starting timestamp that failed basic validity
                               checks.*/
@@ -1522,6 +1519,13 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
            The list of possible failure codes follows.
            Most of them can only be returned by unseekable, chained streams
             that encounter a new link.
+   \retval #OP_HOLE          There was a hole in the data, and some samples
+                              may have been skipped.
+                             Call this function again to continue decoding
+                              past the hole.
+   \retval #OP_EREAD         An underlying read operation failed.
+                             This may signal a truncation attack from an
+                              <https:> source.
    \retval #OP_EFAULT        An internal memory allocation failed.
    \retval #OP_EIMPL         An unseekable stream encountered a new link that
                               used a feature that is not implemented, such as
@@ -1537,6 +1541,7 @@ OP_WARN_UNUSED_RESULT int op_read_float(OggOpusFile *_of,
                               an ID header that contained an unrecognized
                               version number.
    \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADLINK      We failed to find data we had seen before.
    \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
                               a starting timestamp that failed basic validity
                               checks.*/
@@ -1575,6 +1580,13 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
            The list of possible failure codes follows.
            Most of them can only be returned by unseekable, chained streams
             that encounter a new link.
+   \retval #OP_HOLE          There was a hole in the data, and some samples
+                              may have been skipped.
+                             Call this function again to continue decoding
+                              past the hole.
+   \retval #OP_EREAD         An underlying read operation failed.
+                             This may signal a truncation attack from an
+                              <https:> source.
    \retval #OP_EFAULT        An internal memory allocation failed.
    \retval #OP_EIMPL         An unseekable stream encountered a new link that
                               used a feature that is not implemented, such as
@@ -1590,6 +1602,7 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
                               an ID header that contained an unrecognized
                               version number.
    \retval #OP_EBADPACKET    Failed to properly decode the next packet.
+   \retval #OP_EBADLINK      We failed to find data we had seen before.
    \retval #OP_EBADTIMESTAMP An unseekable stream encountered a new link with
                               a starting timestamp that failed basic validity
                               checks.*/

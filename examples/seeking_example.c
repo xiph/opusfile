@@ -422,29 +422,6 @@ int main(int _argc,const char **_argv){
     fprintf(stderr,"\rTotal seek operations: %li (%.3f per raw seek, %li maximum).\n",
      nreal_seeks,nreal_seeks/(double)NSEEK_TESTS,max_seeks);
     nreal_seeks=0;
-    fprintf(stderr,"Testing PCM page seeking to random places in %li "
-     "samples (",(long)pcm_length);
-    print_duration(stderr,pcm_length);
-    fprintf(stderr,")...\n");
-    max_seeks=0;
-    for(i=0;i<NSEEK_TESTS;i++){
-      long nseeks_tmp;
-      nseeks_tmp=nreal_seeks;
-      pcm_offset=(ogg_int64_t)(rand()/(double)RAND_MAX*pcm_length);
-      fprintf(stderr,"\r\t%3i [PCM position %li]...                ",
-       i,(long)pcm_offset);
-      ret=op_pcm_seek_page(of,pcm_offset);
-      if(ret<0){
-        fprintf(stderr,"\nSeek failed: %i.\n",ret);
-        nfailures++;
-      }
-      verify_seek(of,-1,pcm_offset,pcm_length,bigassbuffer);
-      nseeks_tmp=nreal_seeks-nseeks_tmp;
-      max_seeks=nseeks_tmp>max_seeks?nseeks_tmp:max_seeks;
-    }
-    fprintf(stderr,"\rTotal seek operations: %li (%.3f per page seek, %li maximum).\n",
-     nreal_seeks,nreal_seeks/(double)NSEEK_TESTS,max_seeks);
-    nreal_seeks=0;
     fprintf(stderr,"Testing exact PCM seeking to random places in %li "
      "samples (",(long)pcm_length);
     print_duration(stderr,pcm_length);
