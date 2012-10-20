@@ -1270,7 +1270,7 @@ static int op_http_parse_connection(char *_cdr){
     if(d<=0)break;
     _cdr+=d;
   }
-  return OP_UNLIKELY(*_cdr!='\0')?OP_FALSE:0;
+  return OP_UNLIKELY(*_cdr!='\0')?OP_FALSE:ret;
 }
 
 typedef int (*op_ssl_step_func)(SSL *_ssl_conn);
