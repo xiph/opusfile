@@ -275,7 +275,8 @@ int main(int _argc,const char **_argv){
   if(strcmp(_argv[1],"-")==0)fp=op_fdopen(&cb,fileno(stdin),"rb");
   else{
     /*Try to treat the argument as a URL.*/
-    fp=op_url_stream_create(&cb,_argv[1],OP_SSL_SKIP_CERTIFICATE_CHECK);
+    fp=op_url_stream_create(&cb,_argv[1],
+     OP_SSL_SKIP_CERTIFICATE_CHECK(1),NULL);
     /*Fall back assuming it's a regular file name.*/
     if(fp==NULL)fp=op_fopen(&cb,_argv[1],"rb");
   }

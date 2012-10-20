@@ -1725,7 +1725,7 @@ static int op_http_allow_pipelining(const char *_server){
 }
 
 static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
- int _flags,const char *_proxy_host,unsigned _proxy_port,
+ int _skip_certificate_check,const char *_proxy_host,unsigned _proxy_port,
  const char *_proxy_user,const char *_proxy_pass){
   struct addrinfo *addrs;
   const char      *last_host;
@@ -1792,7 +1792,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
 # endif
       ssl_ctx=SSL_CTX_new(SSLv23_client_method());
       if(ssl_ctx==NULL)return OP_EFAULT;
-      if(!(_flags&OP_SSL_SKIP_CERTIFICATE_CHECK)){
+      if(!_skip_certificate_check){
         SSL_CTX_set_verify(ssl_ctx,SSL_VERIFY_PEER,NULL);
       }
       _stream->ssl_ctx=ssl_ctx;
@@ -2705,8 +2705,11 @@ static const OpusFileCallbacks OP_HTTP_CALLBACKS={
 };
 #endif
 
-void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
- int _flags,const char *_proxy_host,unsigned _proxy_port,
+/*The actual URL stream creation function.
+  This one isn't extensible like the application-level interface, but because
+   it isn't public, we're free to change it in the future.*/
+static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
+ int _skip_certificate_check,const char *_proxy_host,unsigned _proxy_port,
  const char *_proxy_user,const char *_proxy_pass){
   const char *path;
   /*Check to see if this is a valid file: URL.*/
@@ -2728,7 +2731,7 @@ void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
     stream=(OpusHTTPStream *)_ogg_malloc(sizeof(*stream));
     if(OP_UNLIKELY(stream==NULL))return NULL;
     op_http_stream_init(stream);
-    ret=op_http_stream_open(stream,_url,_flags,
+    ret=op_http_stream_open(stream,_url,_skip_certificate_check,
      _proxy_host,_proxy_port,_proxy_user,_proxy_pass);
     if(OP_UNLIKELY(ret<0)){
       op_http_stream_clear(stream);
@@ -2739,7 +2742,7 @@ void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
     return stream;
   }
 #else
-  (void)_flags;
+  (void)_skip_certificate_check;
   (void)_proxy_host;
   (void)_proxy_port;
   (void)_proxy_user;
@@ -2748,6 +2751,51 @@ void *op_url_stream_create_with_proxy(OpusFileCallbacks *_cb,const char *_url,
 #endif
 }
 
-void *op_url_stream_create(OpusFileCallbacks *_cb,const char *_url,int _flags){
-  return op_url_stream_create_with_proxy(_cb,_url,_flags,NULL,0,NULL,NULL);
+void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
+ const char *_url,va_list _ap){
+  int         skip_certificate_check;
+  const char *proxy_host;
+  opus_int32  proxy_port;
+  const char *proxy_user;
+  const char *proxy_pass;
+  skip_certificate_check=0;
+  proxy_host=NULL;
+  proxy_port=8080;
+  proxy_user=NULL;
+  proxy_pass=NULL;
+  for(;;){
+    ptrdiff_t request;
+    request=va_arg(_ap,char *)-(char *)NULL;
+    /*If we hit NULL, we're done processing options.*/
+    if(!request)break;
+    switch(request){
+      case OP_SSL_SKIP_CERTIFICATE_CHECK_REQUEST:{
+        skip_certificate_check=!!va_arg(_ap,opus_int32);
+      }break;
+      case OP_HTTP_PROXY_HOST_REQUEST:{
+        proxy_host=va_arg(_ap,const char *);
+      }break;
+      case OP_HTTP_PROXY_PORT_REQUEST:{
+        proxy_port=va_arg(_ap,opus_int32);
+        if(proxy_port<0||proxy_port>(opus_int32)65535)return NULL;
+      }break;
+      case OP_HTTP_PROXY_USER_REQUEST:{
+        proxy_user=va_arg(_ap,const char *);
+      }break;
+      case OP_HTTP_PROXY_PASS_REQUEST:{
+        proxy_pass=va_arg(_ap,const char *);
+      }break;
+      /*Some unknown option.*/
+      default:return NULL;
+    }
+  }
+  return op_url_stream_create_impl(_cb,_url,skip_certificate_check,
+   proxy_host,proxy_port,proxy_user,proxy_pass);
+}
+
+void *op_url_stream_create(OpusFileCallbacks *_cb,
+ const char *_url,...){
+  va_list ap;
+  va_start(ap,_url);
+  return op_url_stream_vcreate(_cb,_url,ap);
 }

@@ -16,6 +16,7 @@
  ********************************************************************/
 #if !defined(_opusfile_h)
 # define _opusfile_h (1)
+# include <stdarg.h>
 
 /**\mainpage
    \section Introduction
@@ -395,15 +396,91 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 
 /*@}*/
 
-/**\defgroup url_flags URL Reading Flags*/
+/**\defgroup url_options URL Reading Options*/
 /*@{*/
-/**\name URL reading flags
-   Flags for op_url_create_with_proxy() and associated functions.
-   These may be expanded in the future.*/
+/**\name URL reading options
+   Options for op_url_stream_create() and associated functions.
+   These allow you to provide proxy configuration parameters, skip SSL
+    certificate checks, etc.
+   Options are processed in order, and if the same option is passed multiple
+    times, only the value specified by the last occurrence has an effect
+    (unless otherwise specified).
+   They may be expanded in the future.*/
 /*@{*/
 
-/**Skip the certificate check when connecting via TLS/SSL (https).*/
-#define OP_SSL_SKIP_CERTIFICATE_CHECK (1)
+/*These are the raw numbers used to define the request codes.
+  They should not be used directly.*/
+#define OP_SSL_SKIP_CERTIFICATE_CHECK_REQUEST (6464)
+#define OP_HTTP_PROXY_HOST_REQUEST            (6528)
+#define OP_HTTP_PROXY_PORT_REQUEST            (6592)
+#define OP_HTTP_PROXY_USER_REQUEST            (6656)
+#define OP_HTTP_PROXY_PASS_REQUEST            (6720)
+
+#define OP_URL_OPT(_request) ((_request)+(char *)0)
+
+/*These macros trigger compilation errors or warnings if the wrong types are
+   provided to one of the URL options.*/
+#define OP_CHECK_INT(_x) ((void)((_x)==(opus_int32)0),(opus_int32)(_x))
+#define OP_CHECK_CONST_CHAR_PTR(_x) ((_x)+((_x)-(const char *)(_x)))
+
+/**Skip the certificate check when connecting via TLS/SSL (https).
+   \param _b <code>opus_int32</code>: Whether or not to skip the certificate
+              check.
+             The check will be skipped if \a _b is non-zero, and will not be
+              skipped if \a _b is zero.
+   \hideinitializer*/
+#define OP_SSL_SKIP_CERTIFICATE_CHECK(_b) \
+ OP_URL_OPT(OP_SSL_SKIP_CERTIFICATE_CHECK_REQUEST),OP_CHECK_INT(_b)
+
+/**Proxy connections through the given host.
+   If no port is specified via #OP_HTTP_PROXY_PORT, the port number defaults
+    to 8080 (http-alt).
+   All proxy parameters are ignored for non-http and non-https URLs.
+   \param _host <code>const char *</code>: The proxy server hostname.
+                This may be <code>NULL</code> to disable the use of a proxy
+                 server.
+   \hideinitializer*/
+#define OP_HTTP_PROXY_HOST(_host) \
+ OP_URL_OPT(OP_HTTP_PROXY_HOST_REQUEST),OP_CHECK_CONST_CHAR_PTR(_host)
+
+/**Use the given port when proxying connections.
+   This option only has an effect if #OP_HTTP_PROXY_HOST is specified with a
+    non-<code>NULL</code> \a _host.
+   If this option is not provided, the proxy port number defaults to 8080
+    (http-alt).
+   All proxy parameters are ignored for non-http and non-https URLs.
+   \param _port <code>opus_int32</code>: The proxy server port.
+                This must be in the range 0...65535 (inclusive), or the
+                 URL function this is passed to will fail.
+   \hideinitializer*/
+#define OP_HTTP_PROXY_PORT(_port) \
+ OP_URL_OPT(OP_HTTP_PROXY_PORT_REQUEST),OP_CHECK_INT(_port)
+
+/**Use the given user name for authentication when proxying connections.
+   All proxy parameters are ignored for non-http and non-https URLs.
+   \param _user const char *: The proxy server user name.
+                              This may be <code>NULL</code> to disable proxy
+                               authentication.
+                              A non-<code>NULL</code> value only has an effect
+                               if #OP_HTTP_PROXY_HOST and #OP_HTTP_PROXY_PASS
+                               are also specified with non-<code>NULL</code>
+                               arguments.
+   \hideinitializer*/
+#define OP_HTTP_PROXY_USER(_user) \
+ OP_URL_OPT(OP_HTTP_PROXY_USER_REQUEST),OP_CHECK_CONST_CHAR_PTR(_host)
+
+/**Use the given password for authentication when proxying connections.
+   All proxy parameters are ignored for non-http and non-https URLs.
+   \param _pass const char *: The proxy server password.
+                              This may be <code>NULL</code> to disable proxy
+                               authentication.
+                              A non-<code>NULL</code> value only has an effect
+                               if #OP_HTTP_PROXY_HOST and #OP_HTTP_PROXY_USER
+                               are also specified with non-<code>NULL</code>
+                               arguments.
+   \hideinitializer*/
+#define OP_HTTP_PROXY_PASS(_pass) \
+ OP_URL_OPT(OP_HTTP_PROXY_PASS_REQUEST),OP_CHECK_CONST_CHAR_PTR(_host)
 
 /*@}*/
 /*@}*/
@@ -547,57 +624,42 @@ OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
  const unsigned char *_data,size_t _size) OP_ARG_NONNULL(1);
 
 /**Creates a stream that reads from the given URL.
-   This is equivalent to calling op_url_stream_create_with_proxy() with
-    <code>NULL</code> for \a _proxy_host.
-   \param[out] _cb    The callbacks to use for this stream.
-                      If there is an error creating the stream, nothing will be
-                       filled in here.
-   \param      _url   The URL to read from.
-                      Currently only the <file:>, <http:>, and <https:> schemes
-                       are supported.
-                      Both <http:> and <https:> may be disabled at compile
-                       time, in which case opening such URLs will fail.
-   \param      _flags The \ref url_flags "optional flags" to use.
+   This function behaves identically to op_url_stream_create(), except that it
+    takes a va_list instead of a variable number of arguments.
+   It does not call the <code>va_end</code> macro, and because it invokes the
+    <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \param[out]    _cb  The callbacks to use for this stream.
+                       If there is an error creating the stream, nothing will
+                        be filled in here.
+   \param         _url The URL to read from.
+                       Currently only the <file:>, <http:>, and <https:>
+                        schemes are supported.
+                       Both <http:> and <https:> may be disabled at compile
+                        time, in which case opening such URLs will always fail.
+   \param[in,out] _ap  A list of the \ref url_options "optional flags" to use.
+                       This is a variable-length list of options terminated
+                        with <code>NULL</code>.
+   \return A stream handle to use with the callbacks, or <code>NULL</code> on
+            error.*/
+OP_WARN_UNUSED_RESULT void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
+ const char *_url,va_list _ap) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+
+/**Creates a stream that reads from the given URL using the specified proxy.
+   \param[out] _cb  The callbacks to use for this stream.
+                    If there is an error creating the stream, nothing will be
+                     filled in here.
+   \param      _url The URL to read from.
+                    Currently only the <file:>, <http:>, and <https:> schemes
+                     are supported.
+                    Both <http:> and <https:> may be disabled at compile time,
+                     in which case opening such URLs will always fail.
+   \param      ...  The \ref url_options "optional flags" to use.
+                    This is a variable-length list of options terminated with
+                     <code>NULL</code>.
    \return A stream handle to use with the callbacks, or <code>NULL</code> on
             error.*/
 OP_WARN_UNUSED_RESULT void *op_url_stream_create(OpusFileCallbacks *_cb,
- const char *_url,int _flags) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
-
-/**Creates a stream that reads from the given URL using the specified proxy.
-   \param[out] _cb         The callbacks to use for this stream.
-                           If there is an error creating the stream, nothing
-                            will be filled in here.
-   \param      _url        The URL to read from.
-                           Currently only the <file:>, <http:>, and <https:>
-                            schemes are supported.
-                           Both <http:> and <https:> may be disabled at compile
-                            time, in which case opening such URLs will fail.
-   \param      _flags      The \ref url_flags "optional flags" to use.
-   \param      _proxy_host The host of the proxy to connect to.
-                           This may be <code>NULL</code> if you do not wish to
-                            use a proxy.
-                           The proxy information is ignored if \a _url is a
-                            <file:> URL.
-   \param      _proxy_port The port of the proxy to connect to.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_user The username to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_pass The password to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if either \a _proxy_host or
-                            \a _proxy_user are <code>NULL</code>.
-   \return A stream handle to use with the callbacks, or <code>NULL</code> on
-            error.*/
-OP_WARN_UNUSED_RESULT void *op_url_stream_create_with_proxy(
- OpusFileCallbacks *_cb,const char *_url,int _flags,
-  const char *_proxy_host,unsigned _proxy_port,
-  const char *_proxy_user,const char *_proxy_pass) OP_ARG_NONNULL(1)
-  OP_ARG_NONNULL(2);
+ const char *_url,...) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
 /*@}*/
 /*@}*/
@@ -671,21 +733,30 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
 /**Open a stream from a URL.
    See the security warning in op_open_url_with_proxy() for information about
     possible truncation attacks with HTTPS.
-   \param      _url   The URL to open.
-                      Currently only the <file:>, <http:>, and <https:> schemes
-                       are supported.
-                      Both <http:> and <https:> may be disabled at compile
-                       time, in which case opening such URLs will fail.
-   \param      _flags The \ref url_flags "optional flags" to use.
-   \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in <code>NULL</code> if you don't want the
-                       failure code.
-                      See op_open_callbacks() for a full list of failure codes.
+   This function behaves identically to op_open_url(), except that it
+    takes a va_list instead of a variable number of arguments.
+   It does not call the <code>va_end</code> macro, and because it invokes the
+    <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \param         _url   The URL to open.
+                         Currently only the <file:>, <http:>, and <https:>
+                          schemes are supported.
+                         Both <http:> and <https:> may be disabled at compile
+                          time, in which case opening such URLs will always
+                          fail.
+   \param[out]    _error Returns 0 on success, or a failure code on error.
+                         You may pass in <code>NULL</code> if you don't want
+                          the failure code.
+                         See op_open_callbacks() for a full list of failure
+                          codes.
+   \param[in,out] _ap    A list of the \ref url_options "optional flags" to
+                          use.
+                         This is a variable-length list of options terminated
+                          with <code>NULL</code>.
    \return A freshly opened \c OggOpusFile, or <code>NULL</code> on error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
- int _flags,int *_error) OP_ARG_NONNULL(1);
+OP_WARN_UNUSED_RESULT OggOpusFile *op_vopen_url(const char *_url,
+ int *_error,va_list _ap) OP_ARG_NONNULL(1);
 
-/**Open a stream from a URL using the specified proxy.
+/**Open a stream from a URL.
    \warning HTTPS streams that are not served with a Content-Length header may
     be vulnerable to truncation attacks.
    The abstract stream interface is incapable of signaling whether a connection
@@ -698,40 +769,21 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
     op_raw_total() (though possibly larger).
    However, this approach will not work for live streams or HTTP/1.0 servers
     (which do not support Range requets).
-   \param      _url        The URL to open.
-                           Currently only the <file:>, <http:>, and <https:>
-                            schemes are supported.
-                           Both <http:> and <https:> may be disabled at compile
-                            time, in which case opening such URLs will fail.
-   \param      _flags      The \ref url_flags "optional flags" to use.
-   \param      _proxy_host The host of the proxy to connect to.
-                           This may be <code>NULL</code> if you do not wish to
-                            use a proxy.
-                           The proxy information is ignored if \a _url is a
-                            <file:> URL.
-   \param      _proxy_port The port of the proxy to connect to.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_user The username to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_pass The password to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if either \a _proxy_host or
-                            \a _proxy_user are <code>NULL</code>.
-   \param[out] _error      Returns 0 on success, or a failure code on error.
-                           You may pass in <code>NULL</code> if you don't want
-                            the failure code.
-                           See op_open_callbacks() for a full list of failure
-                            codes.
+   \param      _url   The URL to open.
+                      Currently only the <file:>, <http:>, and <https:> schemes
+                       are supported.
+                      Both <http:> and <https:> may be disabled at compile
+                       time, in which case opening such URLs will always fail.
+   \param[out] _error Returns 0 on success, or a failure code on error.
+                      You may pass in <code>NULL</code> if you don't want the
+                       failure code.
+                      See op_open_callbacks() for a full list of failure codes.
+   \param      ...    The \ref url_options "optional flags" to use.
+                      This is a variable-length list of options terminated with
+                       <code>NULL</code>.
    \return A freshly opened \c OggOpusFile, or <code>NULL</code> on error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url_with_proxy(const char *_url,
- int _flags,const char *_proxy_host,unsigned _proxy_port,
- const char *_proxy_user,const char *_proxy_pass,int *_error)
- OP_ARG_NONNULL(1);
+OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
+ int *_error,...) OP_ARG_NONNULL(1);
 
 /**Open a stream using the given set of callbacks to access it.
    \param _source        The stream to read from (e.g., a <code>FILE *</code>).
@@ -836,57 +888,49 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_memory(const unsigned char *_data,
  size_t _size,int *_error);
 
 /**Partially open a stream from a URL.
+   This function behaves identically to op_test_url(), except that it
+    takes a va_list instead of a variable number of arguments.
+   It does not call the <code>va_end</code> macro, and because it invokes the
+    <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \see op_test_url
    \see op_test_callbacks
-   \param      _url   The URL to open.
-                      Currently only the <file:>, <http:>, and <https:> schemes
-                       are supported.
-                      Both <http:> and <https:> may be disabled at compile
-                       time, in which case opening such URLs will fail.
-   \param      _flags The <a href="#url_flags">optional flags</a> to use.
-   \param[out] _error Returns 0 on success, or a failure code on error.
-                      You may pass in <code>NULL</code> if you don't want the
-                       failure code.
-                      See op_open_callbacks() for a full list of failure codes.
+   \param         _url    The URL to open.
+                          Currently only the <file:>, <http:>, and <https:>
+                           schemes are supported.
+                          Both <http:> and <https:> may be disabled at compile
+                           time, in which case opening such URLs will always
+                           fail.
+   \param[out]    _error  Returns 0 on success, or a failure code on error.
+                          You may pass in <code>NULL</code> if you don't want
+                           the failure code.
+                          See op_open_callbacks() for a full list of failure
+                           codes.
+   \param[in,out] _ap     A list of the \ref url_options "optional flags" to
+                           use.
+                          This is a variable-length list of options terminated
+                           with <code>NULL</code>.
    \return A partially opened \c OggOpusFile, or <code>NULL</code> on error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,int _flags,
- int *_error) OP_ARG_NONNULL(1);
+OP_WARN_UNUSED_RESULT OggOpusFile *op_vtest_url(const char *_url,
+ int *_error,va_list _ap) OP_ARG_NONNULL(1);
 
-/**Partially open a stream from a URL using the specified proxy.
+/**Partially open a stream from a URL.
    \see op_test_callbacks
-   \param      _url        The URL to open.
-                           Currently only the <file:>, <http:>, and <https:>
-                            schemes are supported.
-                           Both <http:> and <https:> may be disabled at compile
-                            time, in which case opening such URLs will fail.
-   \param      _flags      The <a href="#url_flags">optional flags</a> to use.
-   \param      _proxy_host The host of the proxy to connect to.
-                           This may be <code>NULL</code> if you do not wish to
-                            use a proxy.
-                           The proxy information is ignored if \a _url is a
-                            <file:> URL.
-   \param      _proxy_port The port of the proxy to connect to.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_user The username to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if \a _proxy_host is
-                            <code>NULL</code>.
-   \param      _proxy_pass The password to use with the specified proxy.
-                           This may be <code>NULL</code> if no authorization is
-                            required.
-                           This is ignored if either \a _proxy_host or
-                            \a _proxy_user are <code>NULL</code>.
-   \param[out] _error      Returns 0 on success, or a failure code on error.
-                           You may pass in <code>NULL</code> if you don't want
-                            the failure code.
-                           See op_open_callbacks() for a full list of failure
-                            codes.
+   \param      _url    The URL to open.
+                       Currently only the <file:>, <http:>, and <https:>
+                        schemes are supported.
+                       Both <http:> and <https:> may be disabled at compile
+                        time, in which case opening such URLs will always fail.
+   \param[out] _error  Returns 0 on success, or a failure code on error.
+                       You may pass in <code>NULL</code> if you don't want the
+                        failure code.
+                       See op_open_callbacks() for a full list of failure
+                        codes.
+   \param      ...     The \ref url_options "optional flags" to use.
+                       This is a variable-length list of options terminated
+                        with <code>NULL</code>.
    \return A partially opened \c OggOpusFile, or <code>NULL</code> on error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url_with_proxy(const char *_url,
- int _flags,const char *_proxy_host,unsigned _proxy_port,
- const char *_proxy_user,const char *_proxy_pass,int *_error)
- OP_ARG_NONNULL(1);
+OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,
+ int *_error,...) OP_ARG_NONNULL(1);
 
 /**Partially open a stream using the given set of callbacks to access it.
    This tests for Opusness and loads the headers for the first link.
