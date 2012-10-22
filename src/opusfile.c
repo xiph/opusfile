@@ -54,16 +54,8 @@
    area if we only want coarse navigation through the stream.
   We implement and expose both strategies.*/
 
-/*Many, many internal helpers.
-  The intention is not to be confusing.
-  Rampant duplication and monolithic function implementation (though we do have
-   some large, omnibus functions still) would be harder to understand anyway.
-  The high level functions are last.
-  Begin grokking near the end of the file if you prefer to read things
-   top-down.*/
-
 /*The maximum number of bytes in a page (including the page headers).*/
-#define OP_PAGE_SIZE      (65307)
+#define OP_PAGE_SIZE_MAX  (65307)
 /*The default amount to seek backwards per step when trying to find the
    previous page.
   This must be at least as large as the maximum size of a page.*/
@@ -131,6 +123,14 @@ int op_test(OpusHead *_head,
   ogg_sync_clear(&oy);
   return err;
 }
+
+/*Many, many internal helpers.
+  The intention is not to be confusing.
+  Rampant duplication and monolithic function implementation (though we do have
+   some large, omnibus functions still) would be harder to understand anyway.
+  The high level functions are last.
+  Begin grokking near the end of the file if you prefer to read things
+   top-down.*/
 
 /*The read/seek functions track absolute position within the stream.*/
 
@@ -301,7 +301,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,
   do{
     opus_int64 search_start;
     int        ret;
-    OP_ASSERT(chunk_size>=OP_PAGE_SIZE);
+    OP_ASSERT(chunk_size>=OP_PAGE_SIZE_MAX);
     begin=OP_MAX(begin-chunk_size,0);
     ret=op_seek_helper(_of,begin);
     if(OP_UNLIKELY(ret<0))return ret;
@@ -320,7 +320,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,
       _sr->offset=_offset=llret;
       _sr->serialno=serialno;
       OP_ASSERT(_of->offset-_offset>=0);
-      OP_ASSERT(_of->offset-_offset<=OP_PAGE_SIZE);
+      OP_ASSERT(_of->offset-_offset<=OP_PAGE_SIZE_MAX);
       _sr->size=(opus_int32)(_of->offset-_offset);
       _sr->gp=ogg_page_granulepos(&og);
       /*If this page is from the stream we're looking for, remember it.*/
@@ -344,7 +344,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,
       This is mildly helpful when seeks are very expensive (http).*/
     chunk_size=OP_MIN(2*chunk_size,OP_CHUNK_SIZE_MAX);
     /*Avoid quadratic complexity if we hit an invalid patch of the file.*/
-    end=OP_MIN(begin+OP_PAGE_SIZE-1,original_end);
+    end=OP_MIN(begin+OP_PAGE_SIZE_MAX-1,original_end);
   }
   while(_offset<0);
   if(_chunk_size!=NULL)*_chunk_size=chunk_size;
@@ -951,11 +951,11 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
     offset1=_sr[sri].offset;
     serialno1=_sr[sri].serialno;
     for(srj=sri;srj-->0;){
-      ogg_int64_t  gp2;
-      opus_int64   offset2;
-      opus_int64   num;
-      ogg_int64_t  den;
-      ogg_int64_t  ipart;
+      ogg_int64_t gp2;
+      opus_int64  offset2;
+      opus_int64  num;
+      ogg_int64_t den;
+      ogg_int64_t ipart;
       gp2=_sr[srj].gp;
       if(gp2<gp2_min)continue;
       /*Oh, and also make sure these came from the same stream.*/
@@ -1088,7 +1088,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
           _sr[nsr].search_start=bisect;
           _sr[nsr].offset=last;
           OP_ASSERT(_of->offset-last>=0);
-          OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE);
+          OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE_MAX);
           _sr[nsr].size=(opus_int32)(_of->offset-last);
           nsr++;
         }
@@ -1197,10 +1197,13 @@ static int op_make_decode_ready(OggOpusFile *_of){
     _of->od_channel_count=channel_count;
     memcpy(_of->od_mapping,head->mapping,sizeof(*head->mapping)*channel_count);
   }
-  /*TODO: Implement this when not available, or require sufficiently new
-     libopus?*/
 #if defined(OPUS_SET_GAIN)
   opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(head->output_gain));
+#else
+/*A fallback that works with both float and fixed-point is a bunch of work,
+   so just force people to use a sufficiently new version.
+  This is deployed well enough at this point that this shouldn't be a burden.*/
+# error "libopus 1.0.1 or later required"
 #endif
   _of->ready_state=OP_INITSET;
   _of->bytes_tracked=0;

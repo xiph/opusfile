@@ -70,8 +70,8 @@ static char *op_string_tolower(char *_s){
 /*URI character classes (from RFC 3986).*/
 #define OP_URL_ALPHA \
  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-#define OP_URL_DIGIT       "01234567890"
-#define OP_URL_HEXDIGIT    "01234567890ABCDEFabcdef"
+#define OP_URL_DIGIT       "0123456789"
+#define OP_URL_HEXDIGIT    "0123456789ABCDEFabcdef"
 /*Not a character class, but the characters allowed in <scheme>.*/
 #define OP_URL_SCHEME      OP_URL_ALPHA OP_URL_DIGIT "+-."
 #define OP_URL_GEN_DELIMS  "#/:?@[]"
@@ -573,6 +573,7 @@ static struct addrinfo *op_resolve(const char *_host,unsigned _port){
   char             service[6];
   memset(&hints,0,sizeof(hints));
   hints.ai_socktype=SOCK_STREAM;
+  hints.ai_flags=AI_NUMERICSERV;
   OP_ASSERT(_port<=65535U);
   sprintf(service,"%u",_port);
   if(OP_LIKELY(!getaddrinfo(_host,service,&hints,&addrs)))return addrs;
@@ -1042,7 +1043,7 @@ static int op_http_conn_read_response(OpusHTTPConn *_conn,
   return OP_EIMPL;
 }
 
-# define OP_HTTP_DIGIT "01234567890"
+# define OP_HTTP_DIGIT "0123456789"
 
 /*The Reason-Phrase is not allowed to contain control characters, except
    horizontal tab (HT: \011).*/
