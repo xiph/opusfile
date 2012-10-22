@@ -918,7 +918,7 @@ opus_int64 op_rescale64(opus_int64 _x,opus_int64 _from,opus_int64 _to){
    records, assuming the initial granule position of any streams we've found is
    0.*/
 static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
- opus_int64 _searched,opus_int64 _end_searched){
+ opus_int64 _searched,opus_int64 _end_searched,opus_int32 _bias){
   opus_int64 bisect;
   int        sri;
   int        srj;
@@ -969,7 +969,7 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
       if(ipart>0&&(offset2-_searched)/ipart<num)continue;
       offset2-=ipart*num;
       gp2-=ipart*den;
-      offset2-=op_rescale64(gp2,den,num);
+      offset2-=op_rescale64(gp2,den,num)-_bias;
       if(offset2<_searched)continue;
       bisect=OP_MIN(bisect,offset2);
       break;
@@ -1065,6 +1065,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     /*We guard against garbage separating the last and first pages of two
        links below.*/
     while(_searched<end_searched){
+      opus_int32 next_bias;
       /*If we don't have a better estimate, use simple bisection.*/
       if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
       /*If we're within OP_CHUNK_SIZE of the start, scan forward.*/
@@ -1083,6 +1084,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       if(!op_lookup_serialno(_sr[nsr].serialno,serialnos,nserialnos)){
         end_searched=bisect;
         next=last;
+        next_bias=0;
         /*In reality we should always have enough room, but be paranoid.*/
         if(OP_LIKELY(nsr+1<_csr)){
           _sr[nsr].search_start=bisect;
@@ -1095,6 +1097,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       }
       else{
         _searched=_of->offset;
+        next_bias=OP_CHUNK_SIZE;
         if(_sr[nsr].serialno==links[nlinks-1].serialno){
           /*This page was from the stream we want, remember it.
             If it's the last such page in the link, we won't have to go back
@@ -1103,7 +1106,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
           end_offset=last;
         }
       }
-      bisect=op_predict_link_start(_sr,nsr,_searched,end_searched);
+      bisect=op_predict_link_start(_sr,nsr,_searched,end_searched,next_bias);
     }
     /*Bisection point found.
       Get the final granule position of the previous link, assuming
