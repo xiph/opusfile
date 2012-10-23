@@ -687,6 +687,10 @@ static opus_int32 op_collect_audio_packets(OggOpusFile *_of,
       total_duration+=_durations[op_count++];
     }
     /*Ignore packets with an invalid TOC sequence.*/
+    else if(op_count>0){
+      /*But save the granule position, if there was one.*/
+      _of->op[op_count-1].granulepos=_of->op[op_count].granulepos;
+    }
   }
   _of->op_pos=0;
   _of->op_count=op_count;
@@ -2088,19 +2092,23 @@ static int op_pcm_seek_page(OggOpusFile *_of,
     end=boundary=link->end_offset;
     /*If we were decoding from this link, we can narrow the range a bit.*/
     if(_li==_of->cur_link&&_of->ready_state>=OP_INITSET){
-      int op_count;
+      opus_int64 offset;
+      int        op_count;
       op_count=_of->op_count;
-      if(op_count>0){
+      /*The only way the offset can be invalid _and_ we can fail the granule
+         position checks below is if someone changed the contents of the last
+         page since we read it.
+        We'd be within our rights to just return OP_EBADLINK in that case, but
+         we'll simply ignore the current position instead.*/
+      offset=_of->offset;
+      if(op_count>0&&OP_LIKELY(offset<=end)){
         ogg_int64_t gp;
         gp=_of->op[op_count-1].granulepos;
         /*Make sure the timestamp is valid.
           The granule position might be -1 if we collected the packets from a
-           page without a granule position after reporting a hole.
-          The comparison with pcm_end must be strictly greater than, otherwise
-           we might include the last page (where _of->offset>end).*/
-        if(OP_LIKELY(gp!=-1)&&OP_LIKELY(op_granpos_cmp(pcm_start,gp)<=0)
+           page without a granule position after reporting a hole.*/
+        if(OP_LIKELY(gp!=-1)&&OP_LIKELY(op_granpos_cmp(pcm_start,gp)<0)
          &&OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0)){
-          OP_ASSERT(_of->offset<=end);
           ret=op_granpos_diff(&diff,gp,_target_gp);
           OP_ASSERT(!ret);
           /*We only actually use the current time if either
@@ -2110,15 +2118,15 @@ static int op_pcm_seek_page(OggOpusFile *_of,
             Otherwise it appears using the whole link range to estimate the
              first seek location gives better results, on average.*/
           if(diff<0){
-            OP_ASSERT(_of->offset>=begin);
-            if(_of->offset-begin>=end-begin>>1||diff>-OP_CUR_TIME_THRESH){
-              best=begin=_of->offset;
+            OP_ASSERT(offset>=begin);
+            if(offset-begin>=end-begin>>1||diff>-OP_CUR_TIME_THRESH){
+              best=begin=offset;
               best_gp=pcm_start=gp;
             }
           }
-          else if(_of->offset-begin<=end-begin>>1||diff<OP_CUR_TIME_THRESH){
+          else if(offset-begin<=end-begin>>1||diff<OP_CUR_TIME_THRESH){
             /*We really want the page start here, but this will do.*/
-            end=boundary=_of->offset;
+            end=boundary=offset;
             pcm_end=gp;
           }
         }
