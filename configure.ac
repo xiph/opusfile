@@ -84,16 +84,12 @@ AC_ARG_ENABLE([doc],
   AS_HELP_STRING([--disable-doc], [Do not build API documentation]),,
   [enable_doc=yes]
 )
-
-if test "x$enable_doc" != "xno"; then
-  AC_CHECK_PROG(HAVE_DOXYGEN, doxygen, true, false)
-  if test "x$HAVE_DOXYGEN" = "xfalse" -a "x$enable_doc" = "xyes" ; then
-    AC_MSG_ERROR([*** Doxygen not found. Cannot build API documentation. ***])
-  fi
-else
-  HAVE_DOXYGEN=false
+AC_CHECK_PROG(HAVE_DOXYGEN, doxygen, yes, no)
+if test "$HAVE_DOXYGEN" != "yes" -o "$enable_doc" != "yes" ; then
+  HAVE_DOXYGEN="no"
+  enable_doc="no"
 fi
-AM_CONDITIONAL(HAVE_DOXYGEN,$HAVE_DOXYGEN)
+AM_CONDITIONAL(HAVE_DOXYGEN, [test $HAVE_DOXYGEN = yes])
 
 AC_OUTPUT([
   Makefile
