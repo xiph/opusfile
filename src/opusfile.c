@@ -2173,6 +2173,9 @@ static int op_pcm_seek_page(OggOpusFile *_of,
           if(OP_UNLIKELY(ret<0))return ret;
           /*Bump up the chunk size.*/
           chunk_size=OP_MIN(2*chunk_size,OP_CHUNK_SIZE_MAX);
+          /*If we did find a page from another stream or without a timestamp,
+             don't read past it.*/
+          boundary=next_boundary;
         }
       }
       else{
