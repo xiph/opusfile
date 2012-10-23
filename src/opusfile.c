@@ -135,16 +135,18 @@ int op_test(OpusHead *_head,
 /*The read/seek functions track absolute position within the stream.*/
 
 /*Read a little more data from the file/pipe into the ogg_sync framer.
+  _nbytes: The maximum number of bytes to read.
   Return: A positive number of bytes read on success, 0 on end-of-file, or a
            negative value on failure.*/
-static int op_get_data(OggOpusFile *_of){
+static int op_get_data(OggOpusFile *_of,int _nbytes){
   unsigned char *buffer;
-  int            bytes;
-  buffer=(unsigned char *)ogg_sync_buffer(&_of->oy,OP_READ_SIZE);
-  bytes=(int)(*_of->callbacks.read)(_of->source,buffer,OP_READ_SIZE);
-  OP_ASSERT(bytes<=OP_READ_SIZE);
-  if(OP_LIKELY(bytes>0))ogg_sync_wrote(&_of->oy,bytes);
-  return bytes;
+  int            nbytes;
+  OP_ASSERT(_nbytes>0);
+  buffer=(unsigned char *)ogg_sync_buffer(&_of->oy,_nbytes);
+  nbytes=(int)(*_of->callbacks.read)(_of->source,buffer,_nbytes);
+  OP_ASSERT(nbytes<=_nbytes);
+  if(OP_LIKELY(nbytes>0))ogg_sync_wrote(&_of->oy,nbytes);
+  return nbytes;
 }
 
 /*Save a tiny smidge of verbosity to make the code more readable.*/
@@ -187,17 +189,24 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
     /*Skipped (-more) bytes.*/
     if(OP_UNLIKELY(more<0))_of->offset-=more;
     else if(more==0){
+      int read_nbytes;
       int ret;
       /*Send more paramedics.*/
       if(!_boundary)return OP_FALSE;
-      ret=op_get_data(_of);
+      if(_boundary<0)read_nbytes=OP_READ_SIZE;
+      else{
+        opus_int64 position;
+        position=op_position(_of);
+        if(position>=_boundary)return OP_FALSE;
+        read_nbytes=(int)OP_MIN(_boundary-position,OP_READ_SIZE);
+      }
+      ret=op_get_data(_of,read_nbytes);
       if(OP_UNLIKELY(ret<0))return OP_EREAD;
       if(OP_UNLIKELY(ret==0)){
-        /*If we encounter an EOF, return an error if we didn't at least read up
-           to the boundary (if known).
-          This test always succeeds if _boundary is -1, but that only happens
-           in unseekable streams.*/
-        return op_position(_of)>=_boundary?OP_FALSE:OP_EBADLINK;
+        /*Only fail cleanly on EOF if we didn't have a known boundary.
+          Otherwise, we should have been able to reach that boundary, and this
+           is a fatal error.*/
+        return OP_UNLIKELY(_boundary<0)?OP_FALSE:OP_EBADLINK;
       }
     }
     else{
@@ -363,7 +372,6 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
   /*Extract the serialnos of all BOS pages plus the first set of Opus headers
      we see in the link.*/
   while(ogg_page_bos(_og)){
-    opus_int64 llret;
     if(_serialnos!=NULL){
       if(OP_UNLIKELY(op_lookup_page_serialno(_og,*_serialnos,*_nserialnos))){
         /*A dupe serialnumber in an initial header packet set==invalid stream.*/
@@ -390,9 +398,12 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
       }
     }
     /*Get the next page.
-      No need to clamp _boundary as all errors become OP_ENOTFORMAT.*/
-    llret=op_get_next_page(_of,_og,_of->offset+OP_CHUNK_SIZE);
-    if(OP_UNLIKELY(llret<0))return OP_ENOTFORMAT;
+      No need to clamp the boundary offset against _of->end, as all errors
+       become OP_ENOTFORMAT.*/
+    if(OP_UNLIKELY(op_get_next_page(_of,_og,
+     OP_ADV_OFFSET(_of->offset,OP_CHUNK_SIZE))<0)){
+      return OP_ENOTFORMAT;
+    }
     /*If this page also belongs to our Opus stream, submit it and break.*/
     if(_of->ready_state==OP_STREAMSET
      &&_of->os.serialno==ogg_page_serialno(_og)){
@@ -407,9 +418,10 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
       case 0:{
         /*Loop getting pages.*/
         for(;;){
-          /*No need to clamp _boundary as all errors become OP_EBADHEADER.*/
+          /*No need to clamp the boundary offset against _of->end, as all
+             errors become OP_EBADHEADER.*/
           if(OP_UNLIKELY(op_get_next_page(_of,_og,
-           _of->offset+OP_CHUNK_SIZE)<0)){
+           OP_ADV_OFFSET(_of->offset,OP_CHUNK_SIZE))<0)){
             return OP_EBADHEADER;
           }
           /*If this page belongs to the correct stream, go parse it.*/
@@ -453,10 +465,12 @@ static int op_fetch_headers(OggOpusFile *_of,OpusHead *_head,
   ogg_page og;
   int      ret;
   if(!_og){
-    ogg_int64_t llret;
-    /*No need to clamp _boundary as all errors become OP_ENOTFORMAT.*/
-    llret=op_get_next_page(_of,&og,_of->offset+OP_CHUNK_SIZE);
-    if(OP_UNLIKELY(llret<0))return OP_ENOTFORMAT;
+    /*No need to clamp the boundary offset against _of->end, as all errors
+       become OP_ENOTFORMAT.*/
+    if(OP_UNLIKELY(op_get_next_page(_of,&og,
+     OP_ADV_OFFSET(_of->offset,OP_CHUNK_SIZE))<0)){
+      return OP_ENOTFORMAT;
+    }
     _og=&og;
   }
   _of->ready_state=OP_OPENED;
@@ -1034,7 +1048,8 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     /*Last page wasn't found.
       We have at least one more link.*/
     last=-1;
-    end_searched=next=_sr[sri-1].search_start;
+    end_searched=_sr[sri-1].search_start;
+    next=_sr[sri-1].offset;
     end_gp=-1;
     if(sri<nsr){
       _searched=_sr[sri].offset+_sr[sri].size;
@@ -1075,35 +1090,40 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       else end_gp=-1;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
-      last=op_get_next_page(_of,&og,_of->end);
-      /*At the worst we should have hit the page at _sr[sri-1].offset.*/
-      if(OP_UNLIKELY(last<0))return last<OP_FALSE?(int)last:OP_EBADLINK;
-      OP_ASSERT(nsr<_csr);
-      _sr[nsr].serialno=ogg_page_serialno(&og);
-      _sr[nsr].gp=ogg_page_granulepos(&og);
-      if(!op_lookup_serialno(_sr[nsr].serialno,serialnos,nserialnos)){
-        end_searched=bisect;
-        next=last;
-        next_bias=0;
-        /*In reality we should always have enough room, but be paranoid.*/
-        if(OP_LIKELY(nsr+1<_csr)){
-          _sr[nsr].search_start=bisect;
-          _sr[nsr].offset=last;
-          OP_ASSERT(_of->offset-last>=0);
-          OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE_MAX);
-          _sr[nsr].size=(opus_int32)(_of->offset-last);
-          nsr++;
-        }
-      }
+      last=op_get_next_page(_of,&og,_sr[nsr-1].offset);
+      if(OP_UNLIKELY(last<OP_FALSE))return (int)last;
+      next_bias=0;
+      if(last==OP_FALSE)end_searched=bisect;
       else{
-        _searched=_of->offset;
-        next_bias=OP_CHUNK_SIZE;
-        if(_sr[nsr].serialno==links[nlinks-1].serialno){
-          /*This page was from the stream we want, remember it.
-            If it's the last such page in the link, we won't have to go back
-             looking for it later.*/
-          end_gp=_sr[nsr].gp;
-          end_offset=last;
+        ogg_uint32_t serialno;
+        ogg_int64_t  gp;
+        serialno=ogg_page_serialno(&og);
+        gp=ogg_page_granulepos(&og);
+        if(!op_lookup_serialno(serialno,serialnos,nserialnos)){
+          end_searched=bisect;
+          next=last;
+          /*In reality we should always have enough room, but be paranoid.*/
+          if(OP_LIKELY(nsr<_csr)){
+            _sr[nsr].search_start=bisect;
+            _sr[nsr].offset=last;
+            OP_ASSERT(_of->offset-last>=0);
+            OP_ASSERT(_of->offset-last<=OP_PAGE_SIZE_MAX);
+            _sr[nsr].size=(opus_int32)(_of->offset-last);
+            _sr[nsr].serialno=serialno;
+            _sr[nsr].gp=gp;
+            nsr++;
+          }
+        }
+        else{
+          _searched=_of->offset;
+          next_bias=OP_CHUNK_SIZE;
+          if(serialno==links[nlinks-1].serialno){
+            /*This page was from the stream we want, remember it.
+              If it's the last such page in the link, we won't have to go back
+               looking for it later.*/
+            end_gp=gp;
+            end_offset=last;
+          }
         }
       }
       bisect=op_predict_link_start(_sr,nsr,_searched,end_searched,next_bias);
@@ -2018,7 +2038,7 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
    preceding (or equal to) _target_gp.
   There is a danger here: missing pages or incorrect frame number information
    in the bitstream could make our task impossible.
-  Account for that (it would be an error condition).*/
+  Account for that (and report it as an error condition).*/
 static int op_pcm_seek_page(OggOpusFile *_of,
  ogg_int64_t _target_gp,int _li){
   OggOpusLink  *link;
@@ -2033,6 +2053,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   opus_int32    cur_discard_count;
   opus_int64    begin;
   opus_int64    end;
+  opus_int64    boundary;
   opus_int64    best;
   opus_int64    page_offset;
   opus_int64    d[3];
@@ -2057,13 +2078,15 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   pre_skip=link->head.pre_skip;
   ret=op_granpos_add(&pcm_pre_skip,pcm_start,pre_skip);
   OP_ASSERT(!ret);
-  end=op_granpos_cmp(_target_gp,pcm_pre_skip)<0?begin:link->end_offset;
+  end=boundary=op_granpos_cmp(_target_gp,pcm_pre_skip)<0?
+   begin:link->end_offset;
   page_offset=-1;
   /*Initialize the interval size history.*/
   d[2]=d[1]=d[0]=end-begin;
   force_bisect=0;
   while(begin<end){
     opus_int64 bisect;
+    opus_int64 next_boundary;
     opus_int32 chunk_size;
     if(end-begin<OP_CHUNK_SIZE)bisect=begin;
     else{
@@ -2090,8 +2113,9 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       if(OP_UNLIKELY(ret<0))return ret;
     }
     chunk_size=OP_CHUNK_SIZE;
+    next_boundary=boundary;
     while(begin<end){
-      page_offset=op_get_next_page(_of,&og,end);
+      page_offset=op_get_next_page(_of,&og,boundary);
       if(page_offset<0){
         if(page_offset<OP_FALSE)return (int)page_offset;
         /*There are no more pages in our interval from our stream with a valid
@@ -2109,6 +2133,9 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       }
       else{
         ogg_int64_t gp;
+        /*Save the offset of the first page we found after the seek, regardless
+           of the stream it came from or whether or not it has a timestamp.*/
+        next_boundary=OP_MIN(page_offset,next_boundary);
         if(serialno!=(ogg_uint32_t)ogg_page_serialno(&og))continue;
         gp=ogg_page_granulepos(&og);
         if(gp==-1)continue;
@@ -2140,6 +2167,8 @@ static int op_pcm_seek_page(OggOpusFile *_of,
           if(bisect<=begin+1)end=begin;
           else{
             end=bisect;
+            /*In later iterations, don't read past the first page we found.*/
+            boundary=next_boundary;
             /*If we're not making much progress shrinking the interval size,
                start forcing straight bisection to limit the worst case.*/
             force_bisect=end-begin>d[0]*2;

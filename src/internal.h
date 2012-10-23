@@ -59,12 +59,6 @@ typedef float      op_sample;
 #  define OP_UNLIKELY(_x) (!!(_x))
 # endif
 
-# define OP_INT64_MAX ((ogg_int64_t)0x7FFFFFFFFFFFFFFFLL)
-# define OP_INT64_MIN (-OP_INT64_MAX-1)
-
-/*The maximum channel count for any mapping we'll actually decode.*/
-# define OP_NCHANNELS_MAX (8)
-
 # if defined(OP_ENABLE_ASSERTIONS)
 #  if OP_GNUC_PREREQ(2,5)||__SUNPRO_C>=0x590
 __attribute__((noreturn))
@@ -84,9 +78,22 @@ void op_fatal_impl(const char *_str,const char *_file,int _line);
 #  define OP_ASSERT(_cond)
 # endif
 
+# define OP_INT64_MAX ((ogg_int64_t)0x7FFFFFFFFFFFFFFFLL)
+# define OP_INT64_MIN (-OP_INT64_MAX-1)
+
 # define OP_MIN(_a,_b)        ((_a)<(_b)?(_a):(_b))
 # define OP_MAX(_a,_b)        ((_a)>(_b)?(_a):(_b))
 # define OP_CLAMP(_lo,_x,_hi) (OP_MAX(_lo,OP_MIN(_x,_hi)))
+
+/*Advance a file offset by the given amount, clamping against OP_INT64_MAX.
+  This is used to advance a known offset by things like OP_CHUNK_SIZE or
+   OP_PAGE_SIZE_MAX, while making sure to avoid signed overflow.
+  It assumes that both _offset and _amount are positive.*/
+#define OP_ADV_OFFSET(_offset,_amount) \
+ (OP_MIN(_offset,OP_INT64_MAX-(_amount))+(_amount))
+
+/*The maximum channel count for any mapping we'll actually decode.*/
+# define OP_NCHANNELS_MAX (8)
 
 /*Initial state.*/
 # define  OP_NOTOPEN   (0)

@@ -2391,7 +2391,7 @@ static int op_http_conn_read_body(OpusHTTPStream *_stream,
     /*But don't commit ourselves too quickly.*/
     chunk_size=_conn->chunk_size;
     if(chunk_size>=0)request_thresh=OP_MIN(chunk_size>>2,request_thresh);
-    if(end_pos-pos<=request_thresh){
+    if(end_pos-pos<request_thresh){
       ret=op_http_conn_send_request(_stream,_conn,end_pos,_conn->chunk_size,1);
       if(OP_UNLIKELY(ret<0))return OP_EREAD;
     }
