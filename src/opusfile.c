@@ -2093,11 +2093,12 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       if(op_count>0){
         ogg_int64_t gp;
         gp=_of->op[op_count-1].granulepos;
-        OP_ASSERT(gp!=-1);
         /*Make sure the timestamp is valid.
+          The granule position might be -1 if we collected the packets from a
+           page without a granule position after reporting a hole.
           The comparison with pcm_end must be strictly greater than, otherwise
            we might include the last page (where _of->offset>end).*/
-        if(OP_LIKELY(op_granpos_cmp(pcm_start,gp)<=0)
+        if(OP_LIKELY(gp!=-1)&&OP_LIKELY(op_granpos_cmp(pcm_start,gp)<=0)
          &&OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0)){
           OP_ASSERT(_of->offset<=end);
           ret=op_granpos_diff(&diff,gp,_target_gp);
