@@ -2034,6 +2034,11 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
   return -1;
 }
 
+/*This controls how close the target has to be to use the current stream
+   position to subdivide the initial range.
+  Two minutes seems to be a good default.*/
+#define OP_CUR_TIME_THRESH (120*48*(opus_int32)1000)
+
 /*Search within link _li for the page with the highest granule position
    preceding (or equal to) _target_gp.
   There is a danger here: missing pages or incorrect frame number information
@@ -2061,13 +2066,13 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   int           ret;
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
-  op_decode_clear(_of);
   /*New search algorithm by HB (Nicholas Vinen).*/
   link=_of->links+_li;
   best_gp=pcm_start=link->pcm_start;
   pcm_end=link->pcm_end;
   serialno=link->serialno;
   best=begin=link->data_offset;
+  page_offset=-1;
   /*We discard the first 80 ms of data after a seek, so seek back that much
      farther.
     If we can't, simply seek to the beginning of the link.*/
@@ -2078,9 +2083,48 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   pre_skip=link->head.pre_skip;
   ret=op_granpos_add(&pcm_pre_skip,pcm_start,pre_skip);
   OP_ASSERT(!ret);
-  end=boundary=op_granpos_cmp(_target_gp,pcm_pre_skip)<0?
-   begin:link->end_offset;
-  page_offset=-1;
+  if(op_granpos_cmp(_target_gp,pcm_pre_skip)<0)end=boundary=begin;
+  else{
+    end=boundary=link->end_offset;
+    /*If we were decoding from this link, we can narrow the range a bit.*/
+    if(_li==_of->cur_link&&_of->ready_state>=OP_INITSET){
+      int op_count;
+      op_count=_of->op_count;
+      if(op_count>0){
+        ogg_int64_t gp;
+        gp=_of->op[op_count-1].granulepos;
+        OP_ASSERT(gp!=-1);
+        /*Make sure the timestamp is valid.
+          The comparison with pcm_end must be strictly greater than, otherwise
+           we might include the last page (where _of->offset>end).*/
+        if(OP_LIKELY(op_granpos_cmp(pcm_start,gp)<=0)
+         &&OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0)){
+          OP_ASSERT(_of->offset<=end);
+          ret=op_granpos_diff(&diff,gp,_target_gp);
+          OP_ASSERT(!ret);
+          /*We only actually use the current time if either
+            a) We can cut off more than half the range, or
+            b) We're seeking sufficiently close to the current position that
+                it's likely to be informative.
+            Otherwise it appears using the whole link range to estimate the
+             first seek location gives better results, on average.*/
+          if(diff<0){
+            OP_ASSERT(_of->offset>=begin);
+            if(_of->offset-begin>=end-begin>>1||diff>-OP_CUR_TIME_THRESH){
+              best=begin=_of->offset;
+              best_gp=pcm_start=gp;
+            }
+          }
+          else if(_of->offset-begin<=end-begin>>1||diff<OP_CUR_TIME_THRESH){
+            /*We really want the page start here, but this will do.*/
+            end=boundary=_of->offset;
+            pcm_end=gp;
+          }
+        }
+      }
+    }
+  }
+  op_decode_clear(_of);
   /*Initialize the interval size history.*/
   d[2]=d[1]=d[0]=end-begin;
   force_bisect=0;
@@ -2094,7 +2138,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       d[0]=d[1]>>1;
       d[1]=d[2]>>1;
       d[2]=end-begin>>1;
-      if(force_bisect)bisect=begin+(end-begin>>1)-OP_CHUNK_SIZE;
+      if(force_bisect)bisect=begin+(end-begin>>1);
       else{
         ogg_int64_t diff2;
         ret=op_granpos_diff(&diff,_target_gp,pcm_start);
