@@ -173,7 +173,7 @@ static void verify_seek(OggOpusFile *_of,opus_int64 _byte_offset,
   duration=op_pcm_total(_of,li);
   if(pcm_offset+nsamples>duration){
     fprintf(stderr,"\nPCM data after seek exceeded link duration: "
-     "limit %li, got %li.\n",duration,pcm_offset+nsamples);
+     "limit %li, got %li.\n",(long)duration,(long)(pcm_offset+nsamples));
     nfailures++;
   }
   nchannels=op_channel_count(_of,li);
