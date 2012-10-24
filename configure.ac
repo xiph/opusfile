@@ -40,13 +40,15 @@ AC_ARG_ENABLE([http],
   AS_HELP_STRING([--disable-http], [Disable HTTP support]),,
   enable_http=yes)
 
-AS_IF([test "x$enable_http" != "xno"],
-  [openssl="openssl"
+AC_CHECK_HEADER([sys/socket.h],,[enable_http=no])
+
+AS_IF([test "x$enable_http" != "xno"], [
+   openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
 ])
 AC_SUBST(openssl)
 
-PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1 ]${openssl})
+PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1 ${openssl}])
 
 AC_ARG_ENABLE([fixed-point],
   AS_HELP_STRING([--enable-fixed-point], [Enable fixed-point calculation]),,
