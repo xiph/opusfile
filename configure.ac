@@ -86,6 +86,14 @@ CC_ATTRIBUTE_VISIBILITY([default], [
 
 CC_CHECK_CFLAGS_APPEND([-std=c89 -pedantic -Wall -Wextra -Wno-parentheses -Wno-long-long])
 
+# Platform-specific tweaks
+case $host in
+  *-mingw*)
+    # -std=c89 causes some warnings under mingw.
+    CC_CHECK_CFLAGS_APPEND([-U__STRICT_ANSI__])
+    ;;
+esac
+
 dnl Check for doxygen
 AC_ARG_ENABLE([doc],
   AS_HELP_STRING([--disable-doc], [Do not build API documentation]),,
