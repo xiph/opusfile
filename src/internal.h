@@ -72,10 +72,12 @@ void op_fatal_impl(const char *_str,const char *_file,int _line);
     if(OP_UNLIKELY(!(_cond)))OP_FATAL("assertion failed: " #_cond); \
   } \
   while(0)
+#  define OP_ALWAYS_TRUE(_cond) OP_ASSERT(_cond)
 
 # else
 #  define OP_FATAL(_str) abort()
 #  define OP_ASSERT(_cond)
+#  define OP_ALWAYS_TRUE(_cond) ((void)(_cond))
 # endif
 
 # define OP_INT64_MAX ((ogg_int64_t)0x7FFFFFFFFFFFFFFFLL)

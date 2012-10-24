@@ -597,11 +597,10 @@ static void op_sock_set_tcp_nodelay(int _fd,int _nodelay){
 #  else
 #   define OP_SO_LEVEL SOL_TCP
 #  endif
-  int ret;
-  ret=setsockopt(_fd,OP_SO_LEVEL,TCP_NODELAY,&_nodelay,sizeof(_nodelay));
   /*It doesn't really matter if this call fails, but it would be interesting
      to hit a case where it does.*/
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!setsockopt(_fd,OP_SO_LEVEL,TCP_NODELAY,
+   &_nodelay,sizeof(_nodelay)));
 # endif
 }
 
@@ -841,11 +840,9 @@ static void op_http_conn_read_rate_update(OpusHTTPConn *_conn){
   opus_int32   read_delta_ms;
   opus_int64   read_delta_bytes;
   opus_int64   read_rate;
-  int          ret;
   read_delta_bytes=_conn->read_bytes;
   if(read_delta_bytes<=0)return;
-  ret=ftime(&read_time);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!ftime(&read_time));
   read_delta_ms=op_time_diff_ms(&read_time,&_conn->read_time);
   read_rate=_conn->read_rate;
   read_delta_ms=OP_MAX(read_delta_ms,1);
@@ -1395,9 +1392,8 @@ int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
   if(OP_UNLIKELY(retry_bio==NULL))return OP_EFAULT;
   SSL_set_bio(_ssl_conn,retry_bio,_ssl_bio);
   SSL_set_connect_state(_ssl_conn);
-  ret=SSL_connect(_ssl_conn);
   /*This shouldn't succeed, since we can't read yet.*/
-  OP_ASSERT(ret<0);
+  OP_ALWAYS_TRUE(SSL_connect(_ssl_conn)<0);
   SSL_set_bio(_ssl_conn,_ssl_bio,_ssl_bio);
   /*Only now do we disable write coalescing, to allow the CONNECT
      request and the start of the TLS handshake to be combined.*/
@@ -1521,8 +1517,7 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
   _stream->free_head=_conn->next;
   _conn->next=_stream->lru_head;
   _stream->lru_head=_conn;
-  ret=ftime(_start_time);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!ftime(_start_time));
   *&_conn->read_time=*_start_time;
   _conn->read_bytes=0;
   _conn->read_rate=0;
@@ -1691,12 +1686,9 @@ static int op_sb_append_basic_auth_header(OpusStringBuf *_sb,
   ret|=op_sb_ensure_capacity(_sb,nbuf_total);
   if(OP_UNLIKELY(ret<0))return ret;
   _sb->nbuf=nbuf_total-user_pass_len;
-  ret=op_sb_append(_sb,_user,user_len);
-  OP_ASSERT(!ret);
-  ret=op_sb_append(_sb,":",1);
-  OP_ASSERT(!ret);
-  ret=op_sb_append(_sb,_pass,pass_len);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_sb_append(_sb,_user,user_len));
+  OP_ALWAYS_TRUE(!op_sb_append(_sb,":",1));
+  OP_ALWAYS_TRUE(!op_sb_append(_sb,_pass,pass_len));
   op_base64_encode(_sb->buf+nbuf_total-base64_len,
    _sb->buf+nbuf_total-user_pass_len,user_pass_len);
   return op_sb_append(_sb,"\r\n",2);
@@ -1901,8 +1893,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     if(OP_UNLIKELY(ret<0))return ret;
     ret=op_http_conn_read_response(_stream->conns+0,&_stream->response);
     if(OP_UNLIKELY(ret<0))return ret;
-    ret=ftime(&end_time);
-    OP_ASSERT(!ret);
+    OP_ALWAYS_TRUE(!ftime(&end_time));
     next=op_http_parse_status_line(&v1_1_compat,&status_code,
      _stream->response.buf);
     if(OP_UNLIKELY(next==NULL))return OP_FALSE;
@@ -2258,8 +2249,7 @@ static int op_http_conn_open_pos(OpusHTTPStream *_stream,
   if(OP_UNLIKELY(ret<0))return ret;
   ret=op_http_conn_handle_response(_stream,_conn);
   if(OP_UNLIKELY(ret!=0))return OP_FALSE;
-  ret=ftime(&end_time);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!ftime(&end_time));
   _stream->cur_conni=_conn-_stream->conns;
   OP_ASSERT(_stream->cur_conni>=0&&_stream->cur_conni<OP_NCONNS_MAX);
   /*The connection has been successfully opened.
@@ -2552,10 +2542,7 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
     op_http_conn_read_rate_update(stream->conns+ci);
     *&seek_time=*&stream->conns[ci].read_time;
   }
-  else{
-    ret=ftime(&seek_time);
-    OP_ASSERT(!ret);
-  }
+  else OP_ALWAYS_TRUE(!ftime(&seek_time));
   /*If we seeked past the end of the stream, just disable the active
      connection.*/
   if(pos>=content_length){

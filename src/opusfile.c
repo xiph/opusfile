@@ -817,11 +817,9 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
   /*Timestamp the individual packets.*/
   prev_packet_gp=pcm_start;
   for(pi=0;pi<op_count;pi++){
-    int ret;
     if(cur_page_eos){
       ogg_int64_t diff;
-      ret=op_granpos_diff(&diff,cur_page_gp,prev_packet_gp);
-      OP_ASSERT(!ret);
+      OP_ALWAYS_TRUE(!op_granpos_diff(&diff,cur_page_gp,prev_packet_gp));
       diff=durations[pi]-diff;
       /*If we have samples to trim...*/
       if(diff>0){
@@ -836,9 +834,8 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
       }
     }
     /*Update the granule position as normal.*/
-    ret=op_granpos_add(&_of->op[pi].granulepos,
-     prev_packet_gp,durations[pi]);
-    OP_ASSERT(!ret);
+    OP_ALWAYS_TRUE(!op_granpos_add(&_of->op[pi].granulepos,
+     prev_packet_gp,durations[pi]));
     prev_packet_gp=_of->op[pi].granulepos;
   }
   /*Update the packet count after end-trimming.*/
@@ -1604,7 +1601,6 @@ opus_int64 op_raw_total(OggOpusFile *_of,int _li){
 ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li){
   OggOpusLink *links;
   ogg_int64_t  diff;
-  int          ret;
   int          nlinks;
   nlinks=_of->nlinks;
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED)
@@ -1621,14 +1617,14 @@ ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li){
     int         li;
     pcm_total=0;
     for(li=0;li<nlinks;li++){
-      ret=op_granpos_diff(&diff,links[li].pcm_end,links[li].pcm_start);
-      OP_ASSERT(!ret);
+      OP_ALWAYS_TRUE(!op_granpos_diff(&diff,
+       links[li].pcm_end,links[li].pcm_start));
       pcm_total+=diff-links[li].head.pre_skip;
     }
     return pcm_total;
   }
-  ret=op_granpos_diff(&diff,links[_li].pcm_end,links[_li].pcm_start);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_diff(&diff,
+   links[_li].pcm_end,links[_li].pcm_start));
   return diff-links[_li].head.pre_skip;
 }
 
@@ -1921,12 +1917,11 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
             }
             else{
               /*Update the granule position as normal.*/
-              ret=op_granpos_add(&cur_packet_gp,cur_packet_gp,durations[pi]);
-              OP_ASSERT(!ret);
+              OP_ALWAYS_TRUE(!op_granpos_add(&cur_packet_gp,
+               cur_packet_gp,durations[pi]));
             }
             _of->op[pi].granulepos=cur_packet_gp;
-            ret=op_granpos_diff(&diff,cur_page_gp,cur_packet_gp);
-            OP_ASSERT(!ret);
+            OP_ALWAYS_TRUE(!op_granpos_diff(&diff,cur_page_gp,cur_packet_gp));
           }
         }
         else{
@@ -1956,8 +1951,8 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
             }
             total_duration-=durations[pi];
             OP_ASSERT(total_duration>=0);
-            ret=op_granpos_add(&cur_packet_gp,cur_packet_gp,durations[pi]);
-            OP_ASSERT(!ret);
+            OP_ALWAYS_TRUE(!op_granpos_add(&cur_packet_gp,
+             cur_packet_gp,durations[pi]));
             _of->op[pi].granulepos=cur_packet_gp;
           }
           OP_ASSERT(total_duration==0);
@@ -2007,7 +2002,6 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
   ogg_int64_t  duration;
   int          nlinks;
   int          li;
-  int          ret;
   OP_ASSERT(_pcm_offset>=0);
   nlinks=_of->nlinks;
   links=_of->links;
@@ -2016,8 +2010,7 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
     opus_int32  pre_skip;
     pcm_start=links[li].pcm_start;
     pre_skip=links[li].head.pre_skip;
-    ret=op_granpos_diff(&duration,links[li].pcm_end,pcm_start);
-    OP_ASSERT(!ret);
+    OP_ALWAYS_TRUE(!op_granpos_diff(&duration,links[li].pcm_end,pcm_start));
     duration-=pre_skip;
     if(_pcm_offset<duration){
       _pcm_offset+=pre_skip;
@@ -2085,8 +2078,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   }
   /*Special case seeking to the start of the link.*/
   pre_skip=link->head.pre_skip;
-  ret=op_granpos_add(&pcm_pre_skip,pcm_start,pre_skip);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_add(&pcm_pre_skip,pcm_start,pre_skip));
   if(op_granpos_cmp(_target_gp,pcm_pre_skip)<0)end=boundary=begin;
   else{
     end=boundary=link->end_offset;
@@ -2109,8 +2101,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
            page without a granule position after reporting a hole.*/
         if(OP_LIKELY(gp!=-1)&&OP_LIKELY(op_granpos_cmp(pcm_start,gp)<0)
          &&OP_LIKELY(op_granpos_cmp(pcm_end,gp)>0)){
-          ret=op_granpos_diff(&diff,gp,_target_gp);
-          OP_ASSERT(!ret);
+          OP_ALWAYS_TRUE(!op_granpos_diff(&diff,gp,_target_gp));
           /*We only actually use the current time if either
             a) We can cut off more than half the range, or
             b) We're seeking sufficiently close to the current position that
@@ -2150,10 +2141,8 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       if(force_bisect)bisect=begin+(end-begin>>1);
       else{
         ogg_int64_t diff2;
-        ret=op_granpos_diff(&diff,_target_gp,pcm_start);
-        OP_ASSERT(!ret);
-        ret=op_granpos_diff(&diff2,pcm_end,pcm_start);
-        OP_ASSERT(!ret);
+        OP_ALWAYS_TRUE(!op_granpos_diff(&diff,_target_gp,pcm_start));
+        OP_ALWAYS_TRUE(!op_granpos_diff(&diff2,pcm_end,pcm_start));
         /*Take a (pretty decent) guess.*/
         bisect=begin+op_rescale64(diff,diff2,end-begin)-OP_CHUNK_SIZE;
       }
@@ -2209,8 +2198,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
              position.*/
           best=begin;
           best_gp=pcm_start=gp;
-          ret=op_granpos_diff(&diff,_target_gp,pcm_start);
-          OP_ASSERT(!ret);
+          OP_ALWAYS_TRUE(!op_granpos_diff(&diff,_target_gp,pcm_start));
           /*If we're more than a second away from our target, break out and
              do another bisection.*/
           if(diff>48000)break;
@@ -2253,8 +2241,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   /*By default, discard 80 ms of data after a seek, unless we seek
      into the pre-skip region.*/
   cur_discard_count=80*48;
-  ret=op_granpos_diff(&diff,best_gp,pcm_start);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_diff(&diff,best_gp,pcm_start));
   OP_ASSERT(diff>=0);
   /*If we start at the beginning of the pre-skip region, or we're at least
      80 ms from the end of the pre-skip region, we discard to the end of the
@@ -2296,8 +2283,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
   /*Now skip samples until we actually get to our target.*/
   link=_of->links+li;
   pcm_start=link->pcm_start;
-  ret=op_granpos_diff(&_pcm_offset,target_gp,pcm_start);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_diff(&_pcm_offset,target_gp,pcm_start));
   /*Figure out where we should skip to.*/
   if(_pcm_offset<=link->head.pre_skip)skip=0;
   else skip=OP_MAX(_pcm_offset-80*48,0);
@@ -2324,8 +2310,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
     ret=op_fetch_and_process_page(_of,NULL,-1,1,0,1);
     if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
   }
-  ret=op_granpos_diff(&diff,prev_packet_gp,pcm_start);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_diff(&diff,prev_packet_gp,pcm_start));
   /*We skipped too far.
     Either the timestamps were illegal or there was a hole in the data.*/
   if(diff>skip)return OP_EBADLINK;
@@ -2351,14 +2336,13 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
   OggOpusLink *links;
   ogg_int64_t  pcm_offset;
   ogg_int64_t  delta;
-  int          ret;
   int          li;
   links=_of->links;
   pcm_offset=0;
   OP_ASSERT(_li<_of->nlinks);
   for(li=0;li<_li;li++){
-    ret=op_granpos_diff(&delta,links[li].pcm_end,links[li].pcm_start);
-    OP_ASSERT(!ret);
+    OP_ALWAYS_TRUE(!op_granpos_diff(&delta,
+     links[li].pcm_end,links[li].pcm_start));
     delta-=links[li].head.pre_skip;
     pcm_offset+=delta;
   }
@@ -2367,8 +2351,7 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
     _gp=links[_li].pcm_end;
   }
   if(OP_LIKELY(op_granpos_cmp(_gp,links[_li].pcm_start)>0)){
-    ret=op_granpos_diff(&delta,_gp,links[_li].pcm_start);
-    OP_ASSERT(!ret);
+    OP_ALWAYS_TRUE(!op_granpos_diff(&delta,_gp,links[_li].pcm_start));
     if(delta<links[_li].head.pre_skip)delta=0;
     else delta-=links[_li].head.pre_skip;
     pcm_offset+=delta;
@@ -2379,14 +2362,12 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
 ogg_int64_t op_pcm_tell(OggOpusFile *_of){
   ogg_int64_t gp;
   int         nbuffered;
-  int         ret;
   int         li;
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   gp=_of->prev_packet_gp;
   if(gp==-1)return 0;
   nbuffered=OP_MAX(_of->od_buffer_size-_of->od_buffer_pos,0);
-  ret=op_granpos_add(&gp,gp,-nbuffered);
-  OP_ASSERT(!ret);
+  OP_ALWAYS_TRUE(!op_granpos_add(&gp,gp,-nbuffered));
   li=_of->seekable?_of->cur_link:0;
   if(op_granpos_add(&gp,gp,_of->cur_discard_count)<0){
     gp=_of->links[li].pcm_end;
