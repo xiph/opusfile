@@ -1428,9 +1428,11 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
  ASN1_STRING *_pattern){
   const char *pattern;
   size_t      host_label_len;
+  size_t      host_suffix_len;
   size_t      pattern_len;
   size_t      pattern_label_len;
   size_t      pattern_prefix_len;
+  size_t      pattern_suffix_len;
   pattern=(const char *)ASN1_STRING_data(_pattern);
   pattern_len=strlen(pattern);
   /*Check the pattern for embedded NULs.*/
@@ -1450,9 +1452,9 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
        the ASCII range.*/
     return _host_len==pattern_len&&op_strncasecmp(_host,pattern,_host_len)==0;
   }
-  /*"However, the client SHOULD NOT attempt to match a presented identifier where
-     the wildcard character is embedded within an A-label or U-label of an
-     internationalized domain name.*/
+  /*"However, the client SHOULD NOT attempt to match a presented identifier
+     where the wildcard character is embedded within an A-label or U-label of
+     an internationalized domain name.*/
   if(op_strncasecmp(pattern,"xn--",4)==0)return 0;
   host_label_len=strcspn(_host,".");
   /*Make sure the host has at least two dots, to prevent the wildcard match
@@ -1472,21 +1474,20 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
     We also use the fact that the wildcard must match at least one character,
      so the left-most label of the hostname must be at least as large as the
      left-most label of the pattern.*/
-  if(host_label_len<pattern_label_len
-   ||pattern_len-pattern_label_len!=_host_len-host_label_len
-   ||op_strncasecmp(_host+host_label_len,pattern+pattern_label_len,
-   _host_len-host_label_len)!=0){
-    return 0;
-  }
+  if(host_label_len<pattern_label_len)return 0;
   OP_ASSERT(pattern[pattern_prefix_len]=='*');
   /*"The client MAY match a presented identifier in which the wildcard
      character is not the only character of the label (e.g., baz*.example.net
      and *baz.example.net and b*z.example.net would be taken to match
      baz1.example.net and foobaz.example.net and buzz.example.net,
      respectively)."*/
-  return op_strncasecmp(_host,pattern,pattern_prefix_len)==0&&
-   op_strncasecmp(_host+host_label_len-(pattern_label_len-pattern_prefix_len-1),
-   pattern+pattern_prefix_len+1,pattern_label_len-pattern_prefix_len-1)==0;
+  pattern_suffix_len=pattern_len-pattern_prefix_len-1;
+  host_suffix_len=_host_len-host_label_len
+   +pattern_label_len-pattern_prefix_len-1;
+  return pattern_suffix_len==host_suffix_len
+   &&op_strncasecmp(_host,pattern,pattern_prefix_len)==0
+   &&op_strncasecmp(_host+_host_len-host_suffix_len,
+   pattern+pattern_prefix_len+1,host_suffix_len)==0;
 }
 
 /*Convert a host to a numeric address, if possible.
@@ -1498,7 +1499,7 @@ static struct addrinfo *op_inet_pton(const char *_host){
   memset(&hints,0,sizeof(hints));
   hints.ai_socktype=SOCK_STREAM;
   hints.ai_flags=AI_NUMERICHOST;
-  if(OP_LIKELY(!getaddrinfo(_host,NULL,&hints,&addrs)))return addrs;
+  if(!getaddrinfo(_host,NULL,&hints,&addrs))return addrs;
   return NULL;
 }
 
@@ -1514,26 +1515,6 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
   int                     ret;
   host=_stream->url.host;
   host_len=strlen(host);
-  /*We can only verify fully-qualified domain names.
-    To quote RFC 6125: "The extracted data MUST include only information that
-     can be securely parsed out of the inputs (e.g., parsing the fully
-     qualified DNS domain name out of the "host" component (or its equivalent)
-     of a URI or deriving the application service type from the scheme of a
-     URI) ..."
-    We don't have a way to check (without relying on DNS records, which might
-     be subverted), if this address is fully-qualified.
-    This is particularly problematic when using a CONNECT tunnel, as it is the
-     server that does DNS lookup, not us.
-    However, we are certain that if the hostname has no '.', it is definitely
-     not a fully-qualified domain name (with the exception of crazy TLDs that
-     actually resolve, like "uz", but I am willing to ignore those).
-    RFC 1535 says "...in any event where a '.' exists in a specified name it
-     should be assumed to be a fully qualified domain name (FQDN) and SHOULD be
-     tried as a rooted name first."
-    That doesn't give us any security guarantees, of course (a subverted DNS
-     could fail the original query and our resolver might still retry with a
-     local domain appended).*/
-  if(strchr(host,'.')==NULL)return 0;
   peer_cert=SSL_get_peer_certificate(_ssl_conn);
   /*We set VERIFY_PEER, so we shouldn't get here without a certificate.*/
   if(OP_UNLIKELY(peer_cert==NULL))return 0;
@@ -1587,6 +1568,26 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
         }break;
       }
     }
+    /*We can only verify fully-qualified domain names.
+      To quote RFC 6125: "The extracted data MUST include only information that
+       can be securely parsed out of the inputs (e.g., parsing the fully
+       qualified DNS domain name out of the "host" component (or its
+       equivalent) of a URI or deriving the application service type from the
+       scheme of a URI) ..."
+      We don't have a way to check (without relying on DNS records, which might
+       be subverted), if this address is fully-qualified.
+      This is particularly problematic when using a CONNECT tunnel, as it is
+       the server that does DNS lookup, not us.
+      However, we are certain that if the hostname has no '.', it is definitely
+       not a fully-qualified domain name (with the exception of crazy TLDs that
+       actually resolve, like "uz", but I am willing to ignore those).
+      RFC 1535 says "...in any event where a '.' exists in a specified name it
+       should be assumed to be a fully qualified domain name (FQDN) and SHOULD
+       be tried as a rooted name first."
+      That doesn't give us any security guarantees, of course (a subverted DNS
+       could fail the original query and our resolver might still retry with a
+       local domain appended).*/
+    if(ip==NULL&&strchr(host,'.')==NULL)return 0;
     /*RFC 2459 says there MUST be at least one, but we don't depend on it.*/
     nsan_names=sk_GENERAL_NAME_num(san_names);
     for(sni=0;sni<nsan_names;sni++){
@@ -1627,6 +1628,10 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
   else{
     int last_cn_loc;
     int cn_loc;
+    /*Do the same FQDN check we did above.
+      We don't do this once in advance for both cases, because in the
+       subjectAltName case we might have an IPv6 address without a dot.*/
+    if(strchr(host,'.')==NULL)return 0;
     /*If there is no subjectAltName, match against commonName.
       RFC 6125 says that at least one significant CA is known to issue certs
        with multiple CNs, although it SHOULD NOT.
