@@ -17,11 +17,15 @@
 
 /*RFCs referenced in this file:
   RFC  761: DOD Standard Transmission Control Protocol
+  RFC 1535: A Security Problem and Proposed Correction With Widely Deployed DNS
+   Software
   RFC 1738: Uniform Resource Locators (URL)
   RFC 1945: Hypertext Transfer Protocol -- HTTP/1.0
   RFC 2068: Hypertext Transfer Protocol -- HTTP/1.1
   RFC 2145: Use and Interpretation of HTTP Version Numbers
   RFC 2246: The TLS Protocol Version 1.0
+  RFC 2459: Internet X.509 Public Key Infrastructure Certificate and
+   Certificate Revocation List (CRL) Profile
   RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1
   RFC 2617: HTTP Authentication: Basic and Digest Access Authentication
   RFC 2817: Upgrading to TLS Within HTTP/1.1
@@ -30,9 +34,13 @@
    Domain Names in Applications (IDNA)
   RFC 3986: Uniform Resource Identifier (URI): Generic Syntax
   RFC 3987: Internationalized Resource Identifiers (IRIs)
+  RFC 4343: Domain Name System (DNS) Case Insensitivity Clarification
   RFC 5894: Internationalized Domain Names for Applications (IDNA):
    Background, Explanation, and Rationale
-  RFC 6066: Transport Layer Security (TLS) Extensions: Extension Definitions*/
+  RFC 6066: Transport Layer Security (TLS) Extensions: Extension Definitions
+  RFC 6125: Representation and Verification of Domain-Based Application Service
+   Identity within Internet Public Key Infrastructure Using X.509 (PKIX)
+   Certificates in the Context of Transport Layer Security (TLS)*/
 
 typedef struct OpusParsedURL   OpusParsedURL;
 typedef struct OpusStringBuf   OpusStringBuf;
@@ -44,6 +52,8 @@ static char *op_string_range_dup(const char *_start,const char *_end){
   char   *ret;
   OP_ASSERT(_start<=_end);
   len=_end-_start;
+  /*This is to help avoid overflow elsewhere, later.*/
+  if(OP_UNLIKELY(len>=INT_MAX))return NULL;
   ret=(char *)_ogg_malloc(sizeof(*ret)*(len+1));
   if(OP_LIKELY(ret!=NULL)){
     memcpy(ret,_start,sizeof(*ret)*(len));
@@ -207,6 +217,7 @@ static const char *op_parse_file_url(const char *_src){
 # include <poll.h>
 # include <unistd.h>
 # include <openssl/ssl.h>
+# include <openssl/x509v3.h>
 
 /*The maximum number of simultaneous connections.
   RFC 2616 says this SHOULD NOT be more than 2, but everyone on the modern web
@@ -690,6 +701,8 @@ struct OpusHTTPStream{
   int              seekable;
   /*Whether or not the server supports HTTP/1.1 with persistent connections.*/
   int              pipeline;
+  /*Whether or not we should skip certificate checks.*/
+  int              skip_certificate_check;
   /*The offset of the tail of the request.
     Only the offset in the Range: header appears after this, allowing us to
      quickly edit the request to ask for a new range.*/
@@ -1408,11 +1421,243 @@ int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
   return 0;
 }
 
+/*Match a host name against a host with a possible wildcard pattern according
+   to the rules of RFC 6125 Section 6.4.3.
+  Return: 0 if the pattern doesn't match, and a non-zero value if it does.*/
+static int op_http_hostname_match(const char *_host,size_t _host_len,
+ ASN1_STRING *_pattern){
+  const char *pattern;
+  size_t      host_label_len;
+  size_t      pattern_len;
+  size_t      pattern_label_len;
+  size_t      pattern_prefix_len;
+  pattern=(const char *)ASN1_STRING_data(_pattern);
+  pattern_len=strlen(pattern);
+  /*Check the pattern for embedded NULs.*/
+  if(OP_UNLIKELY(pattern_len!=(size_t)ASN1_STRING_length(_pattern)))return 0;
+  pattern_label_len=strcspn(pattern,".");
+  OP_ASSERT(pattern_label_len<=pattern_len);
+  pattern_prefix_len=strcspn(pattern,"*");
+  if(pattern_prefix_len>=pattern_label_len){
+    /*"The client SHOULD NOT attempt to match a presented identifier in which
+       the wildcard character comprises a label other than the left-most label
+       (e.g., do not match bar.*.example.net)."*/
+    if(pattern_prefix_len<pattern_len)return 0;
+    /*If the pattern does not contain a wildcard in the first element, do an
+       exact match.
+      Don't use the system strcasecmp here, as that uses the locale and
+       RFC 4343 makes clear that DNS's case-insensitivity only applies to
+       the ASCII range.*/
+    return _host_len==pattern_len&&op_strncasecmp(_host,pattern,_host_len)==0;
+  }
+  /*"However, the client SHOULD NOT attempt to match a presented identifier where
+     the wildcard character is embedded within an A-label or U-label of an
+     internationalized domain name.*/
+  if(op_strncasecmp(pattern,"xn--",4)==0)return 0;
+  host_label_len=strcspn(_host,".");
+  /*Make sure the host has at least two dots, to prevent the wildcard match
+     from being ridiculously wide.
+    We should have already checked to ensure it had at least one.*/
+  if(OP_UNLIKELY(_host[host_label_len]!='.')
+   ||strchr(_host+host_label_len+1,'.')==NULL){
+    return 0;
+  }
+  OP_ASSERT(host_label_len<_host_len);
+  /*"If the wildcard character is the only character of the left-most label in
+     the presented identifier, the client SHOULD NOT compare against anything
+     but the left-most label of the reference identifier (e.g., *.example.com
+     would match foo.example.com but not bar.foo.example.com)."
+    This is really confusingly worded, as we check this by actually comparing
+     the rest of the pattern for an exact match.
+    We also use the fact that the wildcard must match at least one character,
+     so the left-most label of the hostname must be at least as large as the
+     left-most label of the pattern.*/
+  if(host_label_len<pattern_label_len
+   ||pattern_len-pattern_label_len!=_host_len-host_label_len
+   ||op_strncasecmp(_host+host_label_len,pattern+pattern_label_len,
+   _host_len-host_label_len)!=0){
+    return 0;
+  }
+  OP_ASSERT(pattern[pattern_prefix_len]=='*');
+  /*"The client MAY match a presented identifier in which the wildcard
+     character is not the only character of the label (e.g., baz*.example.net
+     and *baz.example.net and b*z.example.net would be taken to match
+     baz1.example.net and foobaz.example.net and buzz.example.net,
+     respectively)."*/
+  return op_strncasecmp(_host,pattern,pattern_prefix_len)==0&&
+   op_strncasecmp(_host+host_label_len-(pattern_label_len-pattern_prefix_len-1),
+   pattern+pattern_prefix_len+1,pattern_label_len-pattern_prefix_len-1)==0;
+}
+
+/*Convert a host to a numeric address, if possible.
+  Return: A struct addrinfo containing the address, if it was numeric, and NULL
+           otherise.*/
+static struct addrinfo *op_inet_pton(const char *_host){
+  struct addrinfo *addrs;
+  struct addrinfo  hints;
+  memset(&hints,0,sizeof(hints));
+  hints.ai_socktype=SOCK_STREAM;
+  hints.ai_flags=AI_NUMERICHOST;
+  if(OP_LIKELY(!getaddrinfo(_host,NULL,&hints,&addrs)))return addrs;
+  return NULL;
+}
+
+/*Verify the server's hostname matches the certificate they presented using
+   the procedure from Section 6 of RFC 6125.
+  Return: 0 if the certificate doesn't match, and a non-zero value if it does.*/
+static int op_http_verify_hostname(OpusHTTPStream *_stream,
+ SSL *_ssl_conn){
+  X509                   *peer_cert;
+  STACK_OF(GENERAL_NAME) *san_names;
+  char                   *host;
+  size_t                  host_len;
+  int                     ret;
+  host=_stream->url.host;
+  host_len=strlen(host);
+  /*We can only verify fully-qualified domain names.
+    To quote RFC 6125: "The extracted data MUST include only information that
+     can be securely parsed out of the inputs (e.g., parsing the fully
+     qualified DNS domain name out of the "host" component (or its equivalent)
+     of a URI or deriving the application service type from the scheme of a
+     URI) ..."
+    We don't have a way to check (without relying on DNS records, which might
+     be subverted), if this address is fully-qualified.
+    This is particularly problematic when using a CONNECT tunnel, as it is the
+     server that does DNS lookup, not us.
+    However, we are certain that if the hostname has no '.', it is definitely
+     not a fully-qualified domain name (with the exception of crazy TLDs that
+     actually resolve, like "uz", but I am willing to ignore those).
+    RFC 1535 says "...in any event where a '.' exists in a specified name it
+     should be assumed to be a fully qualified domain name (FQDN) and SHOULD be
+     tried as a rooted name first."
+    That doesn't give us any security guarantees, of course (a subverted DNS
+     could fail the original query and our resolver might still retry with a
+     local domain appended).*/
+  if(strchr(host,'.')==NULL)return 0;
+  peer_cert=SSL_get_peer_certificate(_ssl_conn);
+  /*We set VERIFY_PEER, so we shouldn't get here without a certificate.*/
+  if(OP_UNLIKELY(peer_cert==NULL))return 0;
+  ret=0;
+  OP_ASSERT(host_len<INT_MAX);
+  /*RFC 2818 says (after correcting for Eratta 1077): "If a subjectAltName
+     extension of type dNSName is present, that MUST be used as the identity.
+    Otherwise, the (most specific) Common Name field in the Subject field of
+     the certificate MUST be used.
+    Although the use of the Common Name is existing practice, it is deprecated
+     and Certification Authorities are encouraged to use the dNSName
+     instead."
+    "Matching is performed using the matching rules specified by RFC 2459.
+    If more than one identity of a given type is present in the certificate
+     (e.g., more than one dNSName name), a match in any one of the set is
+     considered acceptable.
+    Names may contain the wildcard character * which is condered to match any
+     single domain name component or component fragment.
+    E.g., *.a.com matches foo.a.com but not bar.foo.a.com.
+    f*.com matches foo.com but not bar.com."
+    "In some cases, the URI is specified as an IP address rather than a
+     hostname.
+    In this case, the iPAddress subjectAltName must be present in the
+     certificate and must exactly match the IP in the URI."*/
+  san_names=X509_get_ext_d2i(peer_cert,NID_subject_alt_name,NULL,NULL);
+  if(san_names!=NULL){
+    struct addrinfo *addr;
+    unsigned char   *ip;
+    int              ip_len;
+    int              nsan_names;
+    int              sni;
+    /*Check to see if the host was specified as a simple IP address.*/
+    addr=op_inet_pton(host);
+    ip=NULL;
+    ip_len=0;
+    if(addr!=NULL){
+      switch(addr->ai_family){
+        case AF_INET:{
+          struct sockaddr_in *s;
+          s=(struct sockaddr_in *)addr->ai_addr;
+          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+          ip=(unsigned char *)&s->sin_addr;
+          ip_len=sizeof(s->sin_addr);
+        }break;
+        case AF_INET6:{
+          struct sockaddr_in6 *s;
+          s=(struct sockaddr_in6 *)addr->ai_addr;
+          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+          ip=(unsigned char *)&s->sin6_addr;
+          ip_len=sizeof(s->sin6_addr);
+        }break;
+      }
+    }
+    /*RFC 2459 says there MUST be at least one, but we don't depend on it.*/
+    nsan_names=sk_GENERAL_NAME_num(san_names);
+    for(sni=0;sni<nsan_names;sni++){
+      const GENERAL_NAME *name;
+      name=sk_GENERAL_NAME_value(san_names,sni);
+      if(ip==NULL){
+        if(name->type==GEN_DNS
+         &&op_http_hostname_match(host,host_len,name->d.dNSName)){
+          ret=1;
+          break;
+        }
+      }
+      else if(name->type==GEN_IPADD){
+        unsigned char *cert_ip;
+        /*If we do have an IP address, compare it directly.
+          RFC 6125: "When the reference identity is an IP address, the identity
+           MUST be converted to the 'network byte order' octet string
+           representation.
+          For IP Version 4, as specified in RFC 791, the octet string will
+           contain exactly four octets.
+          For IP Version 6, as specified in RFC 2460, the octet string will
+           contain exactly sixteen octets.
+          This octet string is then compared against subjectAltName values of
+           type iPAddress.
+          A match occurs if the reference identity octet string and the value
+           octet strings are identical."*/
+        cert_ip=ASN1_STRING_data(name->d.iPAddress);
+        if(ip_len==ASN1_STRING_length(name->d.iPAddress)
+         &&memcmp(ip,cert_ip,ip_len)==0){
+          ret=1;
+          break;
+        }
+      }
+    }
+    sk_GENERAL_NAME_pop_free(san_names,GENERAL_NAME_free);
+    if(addr!=NULL)freeaddrinfo(addr);
+  }
+  else{
+    int last_cn_loc;
+    int cn_loc;
+    /*If there is no subjectAltName, match against commonName.
+      RFC 6125 says that at least one significant CA is known to issue certs
+       with multiple CNs, although it SHOULD NOT.
+      It also says: "The server's identity may also be verified by comparing
+       the reference identity to the Common Name (CN) value in the last
+       Relative Distinguished Name (RDN) of the subject field of the server's
+       certificate (where "last" refers to the DER-encoded order...)."
+      So find the last one and check it.*/
+    cn_loc=-1;
+    do{
+      last_cn_loc=cn_loc;
+      cn_loc=X509_NAME_get_index_by_NID(X509_get_subject_name(peer_cert),
+       NID_commonName,last_cn_loc);
+    }
+    while(cn_loc>=0);
+    ret=last_cn_loc>=0
+     &&op_http_hostname_match(host,host_len,
+     X509_NAME_ENTRY_get_data(
+     X509_NAME_get_entry(X509_get_subject_name(peer_cert),last_cn_loc)));
+  }
+  X509_free(peer_cert);
+  return ret;
+}
+
 /*Perform the TLS handshake on a new connection.*/
 int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
  int _fd,SSL *_ssl_conn){
-  BIO *ssl_bio;
-  int  ret;
+  SSL_SESSION *ssl_session;
+  BIO         *ssl_bio;
+  int          skip_certificate_check;
+  int          ret;
   ssl_bio=BIO_new_socket(_fd,BIO_NOCLOSE);
   if(OP_LIKELY(ssl_bio==NULL))return OP_FALSE;
 # if !defined(OPENSSL_NO_TLSEXT)
@@ -1437,11 +1682,22 @@ int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
   }
   ret=op_do_ssl_step(_ssl_conn,_fd,SSL_connect);
   if(OP_UNLIKELY(ret<=0))return OP_FALSE;
-  if(_stream->ssl_session==NULL){
-    /*Save a session for later resumption.*/
+  ssl_session=_stream->ssl_session;
+  skip_certificate_check=_stream->skip_certificate_check;
+  if(ssl_session==NULL||!skip_certificate_check){
     ret=op_do_ssl_step(_ssl_conn,_fd,SSL_do_handshake);
     if(OP_UNLIKELY(ret<=0))return OP_FALSE;
-    _stream->ssl_session=SSL_get1_session(_ssl_conn);
+    /*OpenSSL does not do hostname verification, despite the fact that we just
+       passed it the hostname above in the call to SSL_set_tlsext_host_name(),
+       because they are morons.
+      Do it for them.*/
+    if(!skip_certificate_check&&!op_http_verify_hostname(_stream,_ssl_conn)){
+      return OP_FALSE;
+    }
+    if(ssl_session==NULL){
+      /*Save the session for later resumption.*/
+      _stream->ssl_session=SSL_get1_session(_ssl_conn);
+    }
   }
   _conn->ssl_conn=_ssl_conn;
   _conn->fd=_fd;
@@ -1794,9 +2050,15 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
       ssl_ctx=SSL_CTX_new(SSLv23_client_method());
       if(ssl_ctx==NULL)return OP_EFAULT;
       if(!_skip_certificate_check){
+        /*We don't do anything if this fails, since it just means we won't load
+           any certificates (and thus all checks will fail).
+          However, as that is probably the result of a system
+           mis-configuration, assert here to make it easier to identify.*/
+        OP_ALWAYS_TRUE(SSL_CTX_set_default_verify_paths(ssl_ctx));
         SSL_CTX_set_verify(ssl_ctx,SSL_VERIFY_PEER,NULL);
       }
       _stream->ssl_ctx=ssl_ctx;
+      _stream->skip_certificate_check=_skip_certificate_check;
       if(_proxy_host!=NULL){
         /*We need to establish a CONNECT tunnel to handle https proxying.
           Build the request we'll send to do so.*/
