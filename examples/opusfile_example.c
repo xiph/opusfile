@@ -128,7 +128,7 @@ int main(int _argc,const char **_argv){
   }
   else{
     /*Try to treat the argument as a URL.*/
-    of=op_open_url(_argv[1],&ret,OP_SSL_SKIP_CERTIFICATE_CHECK(0),NULL);
+    of=op_open_url(_argv[1],&ret,NULL);
 #if 0
     if(of==NULL){
       OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
