@@ -1586,10 +1586,12 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
        be tried as a rooted name first."
       That doesn't give us any security guarantees, of course (a subverted DNS
        could fail the original query and our resolver might still retry with a
-       local domain appended).*/
-    if(ip==NULL&&strchr(host,'.')==NULL)return 0;
+       local domain appended).
+      If we don't have a FQDN, just set the number of names to 0, so we'll fail
+       and clean up any resources we allocated.*/
+    if(ip==NULL&&strchr(host,'.')==NULL)nsan_names=0;
     /*RFC 2459 says there MUST be at least one, but we don't depend on it.*/
-    nsan_names=sk_GENERAL_NAME_num(san_names);
+    else nsan_names=sk_GENERAL_NAME_num(san_names);
     for(sni=0;sni<nsan_names;sni++){
       const GENERAL_NAME *name;
       name=sk_GENERAL_NAME_value(san_names,sni);
@@ -1625,13 +1627,12 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
     sk_GENERAL_NAME_pop_free(san_names,GENERAL_NAME_free);
     if(addr!=NULL)freeaddrinfo(addr);
   }
-  else{
+  /*Do the same FQDN check we did above.
+    We don't do this once in advance for both cases, because in the
+     subjectAltName case we might have an IPv6 address without a dot.*/
+  else if(strchr(host,'.')!=NULL){
     int last_cn_loc;
     int cn_loc;
-    /*Do the same FQDN check we did above.
-      We don't do this once in advance for both cases, because in the
-       subjectAltName case we might have an IPv6 address without a dot.*/
-    if(strchr(host,'.')==NULL)return 0;
     /*If there is no subjectAltName, match against commonName.
       RFC 6125 says that at least one significant CA is known to issue certs
        with multiple CNs, although it SHOULD NOT.
