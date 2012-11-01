@@ -11,6 +11,11 @@ Source release:
 - Push tag to public repo.
 - Upload source packge 'opusfile-${version}.tar.gz'
   to website and verify file permissions.
+- Update checksum files on website.
+
+Releases are commited to https://svn.xiph.org/releases/opus/
+which propagates to downloads.xiph.org, and copied manually
+to https://ftp.mozilla.org/pub/mozilla.org/opus/
 
 Win32 binaries:
 
@@ -51,3 +56,6 @@ Win32 binaries:
 - Upload the archive zipfile to websites.
 - Verify file permissions and that it's available at the expected
   URL.
+
+Binary releases are copied manually to
+ftp.mozilla.org:/pub/mozilla.org/opus/win32/
