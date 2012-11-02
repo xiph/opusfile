@@ -17,7 +17,7 @@ ln -s /srv/jenkins/jobs/libogg/workspace ../ogg
 # a libopus.la. As a work around, hack our own pkg-config
 # file for the uninstalled opus library we want to build
 # against.
-cat <<EOF > opus-ininstalled.pc
+cat <<EOF > opus-uninstalled.pc
 # Opus codec uninstalled pkg-config file
 # hacked up for the opusfile autotools build.
 
