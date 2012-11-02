@@ -4,6 +4,8 @@
 
 # This is intended to be run from the top-level source directory.
 
+set -x
+
 # WARNING: clobbers outside the current tree!
 rm  -f ../opus
 ln -s /srv/jenkins/jobs/opus/workspace ../opus
