@@ -2700,7 +2700,7 @@ static opus_uint32 op_rand(opus_uint32 _seed){
 /*This implements 16-bit quantization with full triangular dither and IIR noise
    shaping.
   The noise shaping filters were designed by Sebastian Gesemann, and are based
-   on the LAME ATH curves with flattening to limite their peak gain to 20 dB.
+   on the LAME ATH curves with flattening to limit their peak gain to 20 dB.
   Everyone else's noise shaping filters are mildly crazy.
   The 48 kHz version of this filter is just a warped version of the 44.1 kHz
    filter and probably could be improved by shifting the HF shelf up in
