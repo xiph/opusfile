@@ -34,22 +34,36 @@ EXTRA_DIST = \
  doc/git-version.sh \
  doc/opus_logo.svg
 
-#API Documentation
+# Targets to build and install just the library without the docs
+opusfile install-opusfile: export NO_DOXYGEN = 1
+
+opusfile: all
+install-opusfile: install
+
+# Or just the docs
+docs: doc/doxygen-build.stamp
+
+install-docs:
+	@if [ -z "$(NO_DOXYGEN)" ]; then \
+	  ( cd doc && \
+	    echo "Installing documentation in $(DESTDIR)$(docdir)"; \
+	    for f in `find html -type f \! -name "installdox"` ; do \
+	      $(INSTALL) -d $(DESTDIR)$(docdir)/html/search;   \
+	      $(INSTALL_DATA) $$f $(DESTDIR)$(docdir)/$$f;     \
+	    done ) \
+	fi
+
+doc/doxygen-build.stamp: doc/Doxyfile $(top_srcdir)/doc/opus_logo.svg \
+                         $(top_srcdir)/include/*.h
+	@[ -n "$(NO_DOXYGEN)" ] || ( cd doc && doxygen && touch $(@F) )
+
 
 if HAVE_DOXYGEN
 
-all-local: doc/doxygen-build.stamp
+# Or everything (by default)
+all-local: docs
 
-doc/doxygen-build.stamp: doc/Doxyfile $(top_srcdir)/doc/opus_logo.svg \
- $(top_srcdir)/include/*.h
-	cd doc && doxygen
-	touch "$@"
-
-install-data-local:
-	cd doc && for f in `find html -type f \! -name "installdox"` ; do \
-         $(INSTALL) -d $(DESTDIR)$(docdir)/html/search;   \
-         $(INSTALL_DATA) $$f $(DESTDIR)$(docdir)/$$f;     \
-	done
+install-data-local: install-docs
 
 clean-local:
 	$(RM) -r doc/html
@@ -60,3 +74,5 @@ uninstall-local:
 	$(RM) -r $(DESTDIR)$(docdir)/html
 
 endif
+
+.PHONY: opusfile install-opusfile docs install-docs
