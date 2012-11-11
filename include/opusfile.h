@@ -32,7 +32,7 @@
     <tt><a href="https://mf4.xiph.org/jenkins/view/opus/job/opus/ws/doc/html/index.html">libopus</a></tt>
     libraries.
 
-   <tt>libopusfile</tt> provides serveral sets of built-in routines for
+   <tt>libopusfile</tt> provides several sets of built-in routines for
     file/stream access, and may also use custom stream I/O routines provided by
     the embedded environment.
    There are built-in I/O routines provided for ANSI-compliant
