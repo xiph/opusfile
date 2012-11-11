@@ -29,16 +29,14 @@ pkgconfig_DATA = opusfile.pc
 
 EXTRA_DIST = \
  opusfile.pc.in \
- opusfile-uninstalled.pc.in
+ opusfile-uninstalled.pc.in \
+ doc/Doxyfile.in \
+ doc/git-version.sh \
+ doc/opus_logo.svg
 
 #API Documentation
 
 if HAVE_DOXYGEN
-
-EXTRA_DIST += \
- doc/Doxyfile.in \
- doc/git-version.sh \
- doc/opus_logo.svg
 
 all-local: doc/doxygen-build.stamp
 
