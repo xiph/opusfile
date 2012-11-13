@@ -35,7 +35,7 @@ EXTRA_DIST = \
  doc/opus_logo.svg
 
 # Targets to build and install just the library without the docs
-opusfile install-opusfile: export NO_DOXYGEN = 1
+opusfile install-opusfile: NO_DOXYGEN = 1
 
 opusfile: all
 install-opusfile: install
