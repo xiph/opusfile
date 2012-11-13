@@ -967,6 +967,8 @@ static int op_find_final_pcm_offset(OggOpusFile *_of,
      cur_serialno,_serialnos,_nserialnos);
     if(OP_UNLIKELY(_offset<0))return (int)_offset;
   }
+  /*At worst we should have found the first page with completed packets.*/
+  if(OP_UNLIKELY(_offset<_link->data_offset))return OP_EBADLINK;
   /*This implementation requires that the difference between the first and last
      granule positions in each link be representable in a signed, 64-bit
      number, and that each link also have at least as many samples as the
