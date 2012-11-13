@@ -1443,7 +1443,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   if(pattern_prefix_len>=pattern_label_len){
     /*"The client SHOULD NOT attempt to match a presented identifier in which
        the wildcard character comprises a label other than the left-most label
-       (e.g., do not match bar.*.example.net)."*/
+       (e.g., do not match bar.*.example.net)." [RFC 6125 Section 6.4.3]*/
     if(pattern_prefix_len<pattern_len)return 0;
     /*If the pattern does not contain a wildcard in the first element, do an
        exact match.
@@ -1454,7 +1454,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   }
   /*"However, the client SHOULD NOT attempt to match a presented identifier
      where the wildcard character is embedded within an A-label or U-label of
-     an internationalized domain name.*/
+     an internationalized domain name." [RFC 6125 Section 6.4.3]*/
   if(op_strncasecmp(pattern,"xn--",4)==0)return 0;
   host_label_len=strcspn(_host,".");
   /*Make sure the host has at least two dots, to prevent the wildcard match
@@ -1468,7 +1468,8 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   /*"If the wildcard character is the only character of the left-most label in
      the presented identifier, the client SHOULD NOT compare against anything
      but the left-most label of the reference identifier (e.g., *.example.com
-     would match foo.example.com but not bar.foo.example.com)."
+     would match foo.example.com but not bar.foo.example.com)." [RFC 6125
+     Section 6.4.3]
     This is really confusingly worded, as we check this by actually comparing
      the rest of the pattern for an exact match.
     We also use the fact that the wildcard must match at least one character,
@@ -1480,7 +1481,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
      character is not the only character of the label (e.g., baz*.example.net
      and *baz.example.net and b*z.example.net would be taken to match
      baz1.example.net and foobaz.example.net and buzz.example.net,
-     respectively)."*/
+     respectively)." [RFC 6125 Section 6.4.3]*/
   pattern_suffix_len=pattern_len-pattern_prefix_len-1;
   host_suffix_len=_host_len-host_label_len
    +pattern_label_len-pattern_prefix_len-1;
