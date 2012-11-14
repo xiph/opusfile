@@ -32,7 +32,9 @@ EXTRA_DIST = \
  opusfile-uninstalled.pc.in \
  doc/Doxyfile.in \
  doc/git-version.sh \
- doc/opus_logo.svg
+ doc/opus_logo.svg \
+ doc/Makefile \
+ unix/Makefile
 
 # Targets to build and install just the library without the docs
 opusfile install-opusfile: NO_DOXYGEN = 1
