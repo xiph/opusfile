@@ -182,9 +182,8 @@ static opus_int64 op_position(OggOpusFile *_of){
           OP_BADLINK: We hit end-of-file before reaching _boundary.*/
 static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
  opus_int64 _boundary){
-  for(;;){
+  while(_boundary<=0||_of->offset<_boundary){
     int more;
-    if(_boundary>0&&_of->offset>=_boundary)return OP_FALSE;
     more=ogg_sync_pageseek(&_of->oy,_og);
     /*Skipped (-more) bytes.*/
     if(OP_UNLIKELY(more<0))_of->offset-=more;
@@ -211,14 +210,16 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
     }
     else{
       /*Got a page.
-        Return the offset at the page beginning, advance the internal offset
-         past the page end.*/
+        Return the page start offset and advance the internal offset past the
+         page end.*/
       opus_int64 page_offset;
       page_offset=_of->offset;
       _of->offset+=more;
+      OP_ASSERT(page_offset>=0);
       return page_offset;
     }
   }
+  return OP_FALSE;
 }
 
 static int op_add_serialno(ogg_page *_og,
