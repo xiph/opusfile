@@ -41,12 +41,12 @@ AC_ARG_ENABLE([http],
   AS_HELP_STRING([--disable-http], [Disable HTTP support]),,
   enable_http=yes)
 
-AS_IF([test "x$enable_http" != "xno"],
-  AC_CHECK_HEADER([sys/socket.h],,
-    AC_MSG_WARN([HTTP support requires a posix socket library.])
-    enable_http=no
-  )
-)
+# AS_IF([test "x$enable_http" != "xno"],
+#   AC_CHECK_HEADER([sys/socket.h],,
+#     AC_MSG_WARN([HTTP support requires a posix socket library.])
+#     enable_http=no
+#   )
+# )
 
 AS_IF([test "x$enable_http" != "xno"], [
    openssl="openssl"
@@ -92,8 +92,10 @@ case $host in
   *-mingw*)
     # -std=c89 causes some warnings under mingw.
     CC_CHECK_CFLAGS_APPEND([-U__STRICT_ANSI__])
+    host_mingw=true
     ;;
 esac
+AM_CONDITIONAL(OS_WIN32, test "x$host_mingw" = xtrue)
 
 dnl Check for doxygen
 AC_ARG_ENABLE([doc],
