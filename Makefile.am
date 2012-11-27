@@ -13,7 +13,7 @@ libopusfile_la_SOURCES = \
 	src/internal.c src/internal.h \
 	src/opusfile.c src/stream.c
 if OS_WIN32
-libopusfile_la_SOURCES += src/win32/wsockwrapper.c
+libopusfile_la_SOURCES += src/wsockwrapper.c
 endif
 libopusfile_la_LIBADD = $(DEPS_LIBS)
 if OS_WIN32
