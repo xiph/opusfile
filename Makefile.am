@@ -12,7 +12,13 @@ libopusfile_la_SOURCES = \
 	src/http.c src/info.c \
 	src/internal.c src/internal.h \
 	src/opusfile.c src/stream.c
+if OS_WIN32
+libopusfile_la_SOURCES += src/win32/wsockwrapper.c
+endif
 libopusfile_la_LIBADD = $(DEPS_LIBS)
+if OS_WIN32
+libopusfile_la_LIBADD += -lws2_32
+endif
 libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 
