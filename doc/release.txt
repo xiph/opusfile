@@ -12,6 +12,7 @@ Source release:
 - Upload source packge 'opusfile-${version}.tar.gz'
   to website and verify file permissions.
 - Update checksum files on website.
+- Update links on <http://www.opus-codec.org/downloads/>.
 
 Releases are commited to https://svn.xiph.org/releases/opus/
 which propagates to downloads.xiph.org, and copied manually
@@ -56,6 +57,7 @@ Win32 binaries:
 - Upload the archive zipfile to websites.
 - Verify file permissions and that it's available at the expected
   URL.
+- Update links on <http://www.opus-codec.org/downloads/>.
 
 Binary releases are copied manually to
 ftp.mozilla.org:/pub/mozilla.org/opus/win32/
