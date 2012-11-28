@@ -95,7 +95,7 @@ case $host in
     host_mingw=true
     ;;
 esac
-AM_CONDITIONAL(OS_WIN32, test "x$host_mingw" = xtrue)
+AM_CONDITIONAL(OP_WIN32, test "x$host_mingw" = xtrue)
 
 dnl Check for doxygen
 AC_ARG_ENABLE([doc],
