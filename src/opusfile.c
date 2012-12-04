@@ -2802,7 +2802,7 @@ static opus_uint32 op_rand(opus_uint32 _seed){
    suppression.
   This process can increase the peak level of the signal (in theory by the peak
    error of 1.5 +20 dB, though that is unobservably rare).
-  To avoid clipping, the signal is attenuated by a couple thousands of a dB.
+  To avoid clipping, the signal is attenuated by a couple thousandths of a dB.
   Initially, the approach taken here was to only attenuate by the 99.9th
    percentile, making clipping rare but not impossible (like SoX), but the
    limited gain of the filter means that the worst case was only two
