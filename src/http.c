@@ -2200,7 +2200,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
           ret=op_http_parse_content_range(&range_first,&range_last,
            &range_length,cdr);
           if(OP_UNLIKELY(ret<0))return ret;
-          /*"A response with satus code 206 (Partial Content) MUST NOTE
+          /*"A response with satus code 206 (Partial Content) MUST NOT
              include a Content-Range field with a byte-range-resp-spec of
              '*'."*/
           if(status_code[2]=='6'
@@ -2306,7 +2306,9 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
       /*302 Found*/
       case '2':
       /*307 Temporary Redirect*/
-      case '7':break;
+      case '7':
+      /*308 Permanent Redirect (defined by draft-reschke-http-status-308-07).*/
+      case '8':break;
       /*305 Use Proxy: "The Location field gives the URI of the proxy."
         TODO: This shouldn't actually be that hard to do.*/
       case '5':return OP_EIMPL;
@@ -2314,7 +2316,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
          originally requested resource."
         304 Not Modified: "The 304 response MUST NOT contain a message-body."
         306 (Unused)
-        308...309 are not yet defined, so we don't know how to handle them.*/
+        309 is not yet defined, so we don't know how to handle it.*/
       default:return OP_FALSE;
     }
     _url=NULL;
