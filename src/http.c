@@ -226,8 +226,8 @@ static const char *op_parse_file_url(const char *_src){
 #else /* _WIN32 */
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "win32/winerrno.h"
-#include "win32/wsockwrapper.h"
+#include "winerrno.h"
+#include "wsockwrapper.h"
 #define ERRNO() (WSAGetLastError() - WSABASEERR)
 #define CLOSE(x) closesocket(x)
 #define IOCTL(fd,req,arg) ioctlsocket(fd,req,(u_long*)(arg))

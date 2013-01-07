@@ -15,9 +15,11 @@ libopusfile_la_SOURCES = \
 libopusfile_la_LIBADD = $(DEPS_LIBS)
 libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
+if OP_ENABLE_HTTP
 if OP_WIN32
 libopusfile_la_SOURCES += src/wsockwrapper.c
 libopusfile_la_LIBADD += -lws2_32
+endif
 endif
 
 noinst_PROGRAMS = examples/opusfile_example examples/seeking_example

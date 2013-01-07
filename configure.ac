@@ -29,6 +29,19 @@ AC_SUBST(OP_LT_CURRENT)
 AC_SUBST(OP_LT_REVISION)
 AC_SUBST(OP_LT_AGE)
 
+CC_CHECK_CFLAGS_APPEND(
+  [-std=c89 -pedantic -Wall -Wextra -Wno-parentheses -Wno-long-long])
+
+# Platform-specific tweaks
+case $host in
+  *-mingw*)
+    # -std=c89 causes some warnings under mingw.
+    CC_CHECK_CFLAGS_APPEND([-U__STRICT_ANSI__])
+    host_mingw=true
+    ;;
+esac
+AM_CONDITIONAL(OP_WIN32, test "x$host_mingw" = xtrue)
+
 AC_ARG_ENABLE([assertions],
   AS_HELP_STRING([--enable-assertions], [Enable assertions in code]),,
   enable_assertions=no)
@@ -41,17 +54,26 @@ AC_ARG_ENABLE([http],
   AS_HELP_STRING([--disable-http], [Disable HTTP support]),,
   enable_http=yes)
 
-# AS_IF([test "x$enable_http" != "xno"],
-#   AC_CHECK_HEADER([sys/socket.h],,
-#     AC_MSG_WARN([HTTP support requires a posix socket library.])
-#     enable_http=no
-#   )
-# )
+AM_COND_IF(OP_WIN32,
+  AS_IF([test "x$enable_http" != "xno"],
+    AC_CHECK_HEADER([winsock2.h],,
+      AC_MSG_WARN([HTTP support requires a Winsock socket library.])
+      enable_http=no
+    )
+  ),
+  AS_IF([test "x$enable_http" != "xno"],
+    AC_CHECK_HEADER([sys/socket.h],,
+      AC_MSG_WARN([HTTP support requires a POSIX socket library.])
+      enable_http=no
+    )
+  )
+)
 
 AS_IF([test "x$enable_http" != "xno"], [
    openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
 ])
+AM_CONDITIONAL(OP_ENABLE_HTTP, [test "x$enable_http" != "xno"])
 AC_SUBST(openssl)
 
 PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1 ${openssl}])
@@ -84,18 +106,6 @@ AC_SUBST(ac_cv_search_lrintf)
 CC_ATTRIBUTE_VISIBILITY([default], [
   CC_FLAG_VISIBILITY([CFLAGS="${CFLAGS} -fvisibility=hidden"])
 ])
-
-CC_CHECK_CFLAGS_APPEND([-std=c89 -pedantic -Wall -Wextra -Wno-parentheses -Wno-long-long])
-
-# Platform-specific tweaks
-case $host in
-  *-mingw*)
-    # -std=c89 causes some warnings under mingw.
-    CC_CHECK_CFLAGS_APPEND([-U__STRICT_ANSI__])
-    host_mingw=true
-    ;;
-esac
-AM_CONDITIONAL(OP_WIN32, test "x$host_mingw" = xtrue)
 
 dnl Check for doxygen
 AC_ARG_ENABLE([doc],
