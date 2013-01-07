@@ -37,6 +37,12 @@ case $host in
   *-mingw*)
     # -std=c89 causes some warnings under mingw.
     CC_CHECK_CFLAGS_APPEND([-U__STRICT_ANSI__])
+    # We need WINNT>=0x501 (WindowsXP) for getaddrinfo/freeaddrinfo.
+    # It's okay to define this even when HTTP support is disabled, as it only
+    #  affects header declarations, not linking (unless we actually use some
+    #  XP-only functions).
+    AC_DEFINE_UNQUOTED(_WIN32_WINNT,0x501,
+     [We need at least WindowsXP for getaddrinfo/freaddrinfo])
     host_mingw=true
     ;;
 esac
