@@ -1,52 +1,61 @@
-#ifndef WINERRNO_H
-#define WINERRNO_H
+/********************************************************************
+ *                                                                  *
+ * THIS FILE IS PART OF THE libopusfile SOFTWARE CODEC SOURCE CODE. *
+ * USE, DISTRIBUTION AND REPRODUCTION OF THIS LIBRARY SOURCE IS     *
+ * GOVERNED BY A BSD-STYLE SOURCE LICENSE INCLUDED WITH THIS SOURCE *
+ * IN 'COPYING'. PLEASE READ THESE TERMS BEFORE DISTRIBUTING.       *
+ *                                                                  *
+ * THE libopusfile SOURCE CODE IS (C) COPYRIGHT 2012                *
+ * by the Xiph.Org Foundation and contributors http://www.xiph.org/ *
+ *                                                                  *
+ ********************************************************************/
+#if !defined(_opusfile_winerrno_h)
+# define _opusfile_winerrno_h (1)
 
-#include <errno.h>
+# include <errno.h>
+# include <winerror.h>
 
-/* XXX: conflicts with MSVC errno definition */
-#ifdef ENAMETOOLONG
-#undef ENAMETOOLONG
-#endif
-#ifdef ENOTEMPTY
-#undef ENOTEMPTY
-#endif
+/*These conflict with the MSVC errno definitions, but we don't need to use the
+   original ones in any file that deals with sockets.*/
+# undef ENAMETOOLONG
+# undef ENOTEMPTY
 
-#define EWOULDBLOCK          35
-#define EINPROGRESS          36
-#define EALREADY             37
-#define ENOTSOCK             38
-#define EDESTADDRREQ         39
-#define EMSGSIZE             40
-#define EPROTOTYPE           41
-#define ENOPROTOOPT          42
-#define EPROTONOSUPPORT      43
-#define ESOCKTNOSUPPORT      44
-#define EOPNOTSUPP           45
-#define EPFNOSUPPORT         46
-#define EAFNOSUPPORT         47
-#define EADDRINUSE           48
-#define EADDRNOTAVAIL        49
-#define ENETDOWN             50
-#define ENETUNREACH          51
-#define ENETRESET            52
-#define ECONNABORTED         53
-#define ECONNRESET           54
-#define ENOBUFS              55
-#define EISCONN              56
-#define ENOTCONN             57
-#define ESHUTDOWN            58
-#define ETOOMANYREFS         59
-#define ETIMEDOUT            60
-#define ECONNREFUSED         61
-#define ELOOP                62
-#define ENAMETOOLONG         63
-#define EHOSTDOWN            64
-#define EHOSTUNREACH         65
-#define ENOTEMPTY            66
-#define EPROCLIM             67
-#define EUSERS               68
-#define EDQUOT               69
-#define ESTALE               70
-#define EREMOTE              71
+# define EWOULDBLOCK     (WSAEWOULDBLOCK-WSABASEERR)
+# define EINPROGRESS     (WSAEINPROGRESS-WSABASEERR)
+# define EALREADY        (WSAEALREADY-WSABASEERR)
+# define ENOTSOCK        (WSAENOTSOCK-WSABASEERR)
+# define EDESTADDRREQ    (WSAEDESTADDRREQ-WSABASEERR)
+# define EMSGSIZE        (WSAEMSGSIZE-WSABASEERR)
+# define EPROTOTYPE      (WSAEPROTOTYPE-WSABASEERR)
+# define ENOPROTOOPT     (WSAENOPROTOOPT-WSABASEERR)
+# define EPROTONOSUPPORT (WSAEPROTONOSUPPORT-WSABASEERR)
+# define ESOCKTNOSUPPORT (WSAESOCKTNOSUPPORT-WSABASEERR)
+# define EOPNOTSUPP      (WSAEOPNOTSUPP-WSABASEERR)
+# define EPFNOSUPPORT    (WSAEPFNOSUPPORT-WSABASEERR)
+# define EAFNOSUPPORT    (WSAEAFNOSUPPORT-WSABASEERR)
+# define EADDRINUSE      (WSAEADDRINUSE-WSABASEERR)
+# define EADDRNOTAVAIL   (WSAEADDRNOTAVAIL-WSABASEERR)
+# define ENETDOWN        (WSAENETDOWN-WSABASEERR)
+# define ENETUNREACH     (WSAENETUNREACH-WSABASEERR)
+# define ENETRESET       (WSAENETRESET-WSABASEERR)
+# define ECONNABORTED    (WSAECONNABORTED-WSABASEERR)
+# define ECONNRESET      (WSAECONNRESET-WSABASEERR)
+# define ENOBUFS         (WSAENOBUFS-WSABASEERR)
+# define EISCONN         (WSAEISCONN-WSABASEERR)
+# define ENOTCONN        (WSAENOTCONN-WSABASEERR)
+# define ESHUTDOWN       (WSAESHUTDOWN-WSABASEERR)
+# define ETOOMANYREFS    (WSAETOOMANYREFS-WSABASEERR)
+# define ETIMEDOUT       (WSAETIMEDOUT-WSABASEERR)
+# define ECONNREFUSED    (WSAECONNREFUSED-WSABASEERR)
+# define ELOOP           (WSAELOOP-WSABASEERR)
+# define ENAMETOOLONG    (WSAENAMETOOLONG-WSABASEERR)
+# define EHOSTDOWN       (WSAEHOSTDOWN-WSABASEERR)
+# define EHOSTUNREACH    (WSAEHOSTUNREACH-WSABASEERR)
+# define ENOTEMPTY       (WSAENOTEMPTY-WSABASEERR)
+# define EPROCLIM        (WSAEPROCLIM-WSABASEERR)
+# define EUSERS          (WSAEUSERS-WSABASEERR)
+# define EDQUOT          (WSAEDQUOT-WSABASEERR)
+# define ESTALE          (WSAESTALE-WSABASEERR)
+# define EREMOTE         (WSAEREMOTE-WSABASEERR)
 
 #endif
