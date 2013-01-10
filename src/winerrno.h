@@ -15,9 +15,38 @@
 # include <errno.h>
 # include <winerror.h>
 
-/*These conflict with the MSVC errno definitions, but we don't need to use the
-   original ones in any file that deals with sockets.*/
+/*These conflict with the MSVC errno.h definitions, but we don't need to use
+   the original ones in any file that deals with sockets.
+  We could map the WSA errors to the errno.h ones (most of which are only
+   available on sufficiently new versions of MSVC), but they aren't ordered the
+   same, and given how rarely we actually look at the values, I don't think
+   it's worth a lookup table.*/
+# undef EWOULDBLOCK
+# undef EINPROGRESS
+# undef EALREADY
+# undef ENOTSOCK
+# undef EDESTADDRREQ
+# undef EMSGSIZE
+# undef EPROTOTYPE
+# undef ENOPROTOOPT
+# undef EPROTONOSUPPORT
+# undef EOPTNOTSUPP
+# undef EAFNOSUPPORT
+# undef EADDRINUSE
+# undef EADDRNOTAVAIL
+# undef ENETDOWN
+# undef ENETUNREACH
+# undef ENETRESET
+# undef ECONNABORTED
+# undef ECONNRESET
+# undef ENOBUFS
+# undef EISCONN
+# undef ENOTCONN
+# undef ETIMEDOUT
+# undef ECONNREFUSED
+# undef ELOOP
 # undef ENAMETOOLONG
+# undef EHOSTUNREACH
 # undef ENOTEMPTY
 
 # define EWOULDBLOCK     (WSAEWOULDBLOCK-WSABASEERR)
