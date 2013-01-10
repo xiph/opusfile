@@ -1576,7 +1576,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,
        equivalent) of a URI or deriving the application service type from the
        scheme of a URI) ..."
       We don't have a way to check (without relying on DNS records, which might
-       be subverted), if this address is fully-qualified.
+       be subverted) if this address is fully-qualified.
       This is particularly problematic when using a CONNECT tunnel, as it is
        the server that does DNS lookup, not us.
       However, we are certain that if the hostname has no '.', it is definitely
