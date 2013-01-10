@@ -214,18 +214,31 @@ typedef SOCKET op_sock;
 
 #  define OP_INVALID_SOCKET (INVALID_SOCKET)
 
+/*Vista and later support WSAPoll(), but we don't want to rely on that.
+  Instead we re-implement it badly using select().
+  Unfortunately, they define a conflicting struct pollfd, so we only define our
+   own if it looks like that one has not already been defined.*/
+#  if !defined(POLLIN)
+/*Equivalent to POLLIN.*/
+#   define POLLRDNORM (0x0100)
+/*Priority band data can be read.*/
+#   define POLLRDBAND (0x0200)
 /*There is data to read.*/
-#  define POLLIN   (0x0001)
+#   define POLLIN     (POLLRDNORM|POLLRDBAND)
 /* There is urgent data to read.*/
-#  define POLLPRI  (0x0002)
+#   define POLLPRI    (0x0400)
+/*Equivalent to POLLOUT.*/
+#   define POLLWRNORM (0x0010)
 /*Writing now will not block.*/
-#  define POLLOUT  (0x0004)
+#   define POLLOUT    (POLLWRNORM)
+/*Priority data may be written.*/
+#   define POLLWRBAND (0x0020)
 /*Error condition (output only).*/
-#  define POLLERR  (0x0008)
+#   define POLLERR    (0x0001)
 /*Hang up (output only).*/
-#  define POLLHUP  (0x0010)
+#   define POLLHUP    (0x0002)
 /*Invalid request: fd not open (output only).*/
-#  define POLLNVAL (0x0020)
+#   define POLLNVAL   (0x0004)
 
 struct pollfd{
   /*File descriptor.*/
@@ -235,11 +248,12 @@ struct pollfd{
   /*Returned events.*/
   short   revents;
 };
+#  endif
 
+/*But Winsock never defines nfds_t (it's simply hard-coded to ULONG).*/
 typedef unsigned long nfds_t;
 
-/*Winsock has no poll(), so we reimplement it (badly) using select().
-  The usage of FD_SET() below is O(N^2).
+/*The usage of FD_SET() below is O(N^2).
   This is okay because select() is limited to 64 sockets in Winsock, anyway.
   In practice, we only ever call it with one or two sockets.*/
 static int op_poll_win32(struct pollfd *_fds,nfds_t _nfds,int _timeout){
@@ -295,6 +309,10 @@ static int op_poll_win32(struct pollfd *_fds,nfds_t _nfds,int _timeout){
 #  define setsockopt(_fd,_level,_name,_val,_len) \
  setsockopt(_fd,_level,_name,(const char *)(_val),_len)
 #  define poll(_fds,_nfds,_timeout) op_poll_win32(_fds,_nfds,_timeout)
+
+#  if defined(_MSC_VER)
+typedef ptrdiff_t ssize_t;
+#  endif
 
 # else
 /*Normal Berkeley sockets.*/
