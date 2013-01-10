@@ -301,7 +301,7 @@ int main(int _argc,const char **_argv){
         out[2*si+0]=(unsigned char)(pcm[si]&0xFF);
         out[2*si+1]=(unsigned char)(pcm[si]>>8&0xFF);
       }
-      if(!fwrite(out,sizeof(*out)*4,ret,stdout)){
+      if(!fwrite(out,sizeof(*out)*4*ret,1,stdout)){
         fprintf(stderr,"\nError writing decoded audio data: %s\n",
          strerror(errno));
         ret=EXIT_FAILURE;
