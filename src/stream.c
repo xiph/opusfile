@@ -110,7 +110,7 @@ static int op_mem_read(void *_stream,unsigned char *_ptr,int _buf_size){
   /*Check for EOF.*/
   if(pos>=size)return 0;
   /*Check for a short read.*/
-  _buf_size=(int)OP_MAX(size-pos,_buf_size);
+  _buf_size=(int)OP_MIN(size-pos,_buf_size);
   memcpy(_ptr,stream->data+pos,_buf_size);
   pos+=_buf_size;
   stream->pos=pos;
