@@ -17,7 +17,8 @@ libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 if OP_ENABLE_HTTP
 if OP_WIN32
-libopusfile_la_LIBADD += -lws2_32
+libopusfile_la_SOURCES += src/wincerts.c
+libopusfile_la_LIBADD += -lws2_32 -lcrypt32
 endif
 endif
 
