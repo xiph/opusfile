@@ -208,6 +208,7 @@ static const char *op_parse_file_url(const char *_src){
 # if defined(_WIN32)
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
+#  include <openssl/ssl.h>
 #  include "winerrno.h"
 
 typedef SOCKET op_sock;
@@ -314,6 +315,11 @@ static int op_poll_win32(struct pollfd *_fds,nfds_t _nfds,int _timeout){
 typedef ptrdiff_t ssize_t;
 #  endif
 
+/*Load certificates from the built-in certificate store.*/
+int SSL_CTX_set_default_verify_paths_win32(SSL_CTX *_ssl_ctx);
+#  define SSL_CTX_set_default_verify_paths \
+ SSL_CTX_set_default_verify_paths_win32
+
 # else
 /*Normal Berkeley sockets.*/
 #  include <sys/ioctl.h>
@@ -326,6 +332,7 @@ typedef ptrdiff_t ssize_t;
 #  include <netdb.h>
 #  include <poll.h>
 #  include <unistd.h>
+#  include <openssl/ssl.h>
 
 typedef int op_sock;
 
@@ -336,7 +343,6 @@ typedef int op_sock;
 
 # endif
 # include <sys/timeb.h>
-# include <openssl/ssl.h>
 # include <openssl/x509v3.h>
 
 /*The maximum number of simultaneous connections.
