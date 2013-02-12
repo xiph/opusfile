@@ -3071,7 +3071,10 @@ void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
 
 void *op_url_stream_create(OpusFileCallbacks *_cb,
  const char *_url,...){
-  va_list ap;
+  va_list  ap;
+  void    *ret;
   va_start(ap,_url);
-  return op_url_stream_vcreate(_cb,_url,ap);
+  ret=op_url_stream_vcreate(_cb,_url,ap);
+  va_end(ap);
+  return ret;
 }

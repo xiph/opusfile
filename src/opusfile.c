@@ -1617,9 +1617,12 @@ OggOpusFile *op_vopen_url(const char *_url,int *_error,va_list _ap){
 }
 
 OggOpusFile *op_open_url(const char *_url,int *_error,...){
-  va_list ap;
+  OggOpusFile *ret;
+  va_list      ap;
   va_start(ap,_error);
-  return op_vopen_url(_url,_error,ap);
+  ret=op_vopen_url(_url,_error,ap);
+  va_end(ap);
+  return ret;
 }
 
 /*Convenience routine to clean up from failure for the open functions that
@@ -1655,9 +1658,12 @@ OggOpusFile *op_vtest_url(const char *_url,int *_error,va_list _ap){
 }
 
 OggOpusFile *op_test_url(const char *_url,int *_error,...){
-  va_list ap;
+  OggOpusFile *ret;
+  va_list      ap;
   va_start(ap,_error);
-  return op_vtest_url(_url,_error,ap);
+  ret=op_vtest_url(_url,_error,ap);
+  va_end(ap);
+  return ret;
 }
 
 int op_test_open(OggOpusFile *_of){
