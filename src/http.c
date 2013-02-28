@@ -707,7 +707,7 @@ static struct addrinfo *op_resolve(const char *_host,unsigned _port){
   char             service[6];
   memset(&hints,0,sizeof(hints));
   hints.ai_socktype=SOCK_STREAM;
-#ifndef _WIN32
+#if !defined(_WIN32)
   hints.ai_flags=AI_NUMERICSERV;
 #endif
   OP_ASSERT(_port<=65535U);
@@ -747,13 +747,11 @@ static void op_sock_set_tcp_nodelay(op_sock _fd,int _nodelay){
 # endif
 }
 
-#ifdef _WIN32
+#if defined(_WIN32)
 static void op_init_winsock(){
-  static LONG count = 0;
+  static LONG    count;
   static WSADATA wsadata;
-  if (InterlockedIncrement(&count) == 1) {
-    WSAStartup(0x0202, &wsadata);
-  }
+  if(InterlockedIncrement(&count)==1)WSAStartup(0x0202,&wsadata);
 }
 #endif
 
@@ -2143,7 +2141,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
      out that last_host!=NULL implies we've already taken one trip through the
      loop.*/
   last_port=0;
-#ifdef _WIN32
+#if defined(_WIN32)
   op_init_winsock();
 #endif
   ret=op_parse_url(&_stream->url,_url);
