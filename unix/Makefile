@@ -44,6 +44,8 @@ ifeq ($(findstring -DOP_HAVE_LRINTF,${CFLAGS}),-DOP_HAVE_LRINTF)
 LIBS := -lm $(LIBS)
 endif
 
+RANLIB ?= ranlib
+
 #TODO: tests
 FOO_LIBS =
 
@@ -127,6 +129,7 @@ all: ${ALL_TARGETS}
 ${LIBOPUSFILE_TARGET}: ${LIBOPUSFILE_OBJS}
 	mkdir -p ${TARGETLIBDIR}
 	$(AR) cqs $@ ${LIBOPUSFILE_OBJS}
+	-$(RANLIB) $@
 
 # opusfile_example
 ${OPUSFILE_EXAMPLE_TARGET}: ${OPUSFILE_EXAMPLE_OBJS} ${LIBOPUSFILE_TARGET}
