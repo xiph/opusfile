@@ -143,11 +143,15 @@ ${SEEKING_EXAMPLE_TARGET}: ${SEEKING_EXAMPLE_OBJS} ${LIBOPUSFILE_TARGET}
 	${CC} ${CFLAGS} ${SEEKING_EXAMPLE_OBJS} ${LIBOPUSFILE_TARGET} ${LIBS} \
          -o $@
 
-#TODO: tests
-# foo
+#TODO:
+#tests: foo
+#
 #${FOO_TARGET}: ${FOO_OBJS}
 #	mkdir -p ${TESTBINDIR}
 #	${CC} ${CFLAGS} ${FOO_OBJS} ${FOO_LIBS} -o $@
+#
+#tests-clean:
+#	-rmdir ${TESTBINDIR}
 
 # Assembly listing
 ALL_ASM := ${ALL_OBJS:%.o=%.s}
@@ -155,14 +159,12 @@ asm: ${ALL_ASM}
 
 # Check that build is complete.
 check: all
-#TODO: tests
-#	${FOO_TARGET}
 
 # Remove all targets.
 clean:
 	${RM} ${ALL_ASM} ${ALL_OBJS} ${ALL_DEPS}
 	${RM} ${ALL_TARGETS}
-	-rmdir ${TESTBINDIR} ${WORKDIR}/tests ${WORKDIR}/x86 ${WORKDIR}
+	-rmdir ${WORKDIR}
 
 # Make everything depend on changes in the Makefile
 ${ALL_ASM} ${ALL_OBJS} ${ALL_DEPS} ${ALL_TARGETS} : Makefile
