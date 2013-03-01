@@ -44,6 +44,11 @@ ifeq ($(findstring -DOP_HAVE_LRINTF,${CFLAGS}),-DOP_HAVE_LRINTF)
 LIBS := -lm $(LIBS)
 endif
 
+# Extras for the MS target
+ifneq ($(findstring mingw,${CC}),)
+LIBS += -lwsock32 -lws2_32 -lgdi32 -lcrypt32
+endif
+
 RANLIB ?= ranlib
 
 #TODO: tests
@@ -63,6 +68,10 @@ info.c \
 internal.c \
 opusfile.c \
 stream.c \
+
+ifneq ($(findstring mingw,${CC}),)
+LIBOPUSFILE_CSOURCES += wincerts.c
+endif
 
 LIBOPUSFILE_CHEADERS = \
 internal.h \
