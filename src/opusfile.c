@@ -2766,7 +2766,7 @@ static const opus_int16 OP_STEREO_DOWNMIX_Q14
 
 static int op_stereo_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_sample *_src,int _nsamples,int _nchannels){
-  _of=_of;
+  (void)_of;
   _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
   if(_nchannels==2)memcpy(_dst,_src,_nsamples*2*sizeof(*_src));
   else{
@@ -2806,7 +2806,7 @@ static int op_short2float_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_sample *_src,int _nsamples,int _nchannels){
   float *dst;
   int    i;
-  _of=_of;
+  (void)_of;
   dst=(float *)_dst;
   if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
   _dst_sz=_nsamples*_nchannels;
@@ -3009,7 +3009,7 @@ static const float OP_STEREO_DOWNMIX[OP_NCHANNELS_MAX-2][OP_NCHANNELS_MAX][2]={
 
 static int op_stereo_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_sample *_src,int _nsamples,int _nchannels){
-  _of=_of;
+  (void)_of;
   _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
   if(_nchannels==2)memcpy(_dst,_src,_nsamples*2*sizeof(*_src));
   else{
