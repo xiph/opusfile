@@ -236,7 +236,8 @@ static int op_add_serialno(ogg_page *_og,
     if(OP_UNLIKELY(cserialnos>INT_MAX-1>>1))return OP_EFAULT;
     cserialnos=2*cserialnos+1;
     OP_ASSERT(nserialnos<cserialnos);
-    serialnos=_ogg_realloc(serialnos,sizeof(*serialnos)*cserialnos);
+    serialnos=(ogg_uint32_t *)_ogg_realloc(serialnos,
+     sizeof(*serialnos)*cserialnos);
     if(OP_UNLIKELY(serialnos==NULL))return OP_EFAULT;
   }
   serialnos[nserialnos++]=s;
@@ -1132,7 +1133,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       if(OP_UNLIKELY(clinks>INT_MAX-1>>1))return OP_EFAULT;
       clinks=2*clinks+1;
       OP_ASSERT(nlinks<clinks);
-      links=_ogg_realloc(links,sizeof(*links)*clinks);
+      links=(OggOpusLink *)_ogg_realloc(links,sizeof(*links)*clinks);
       if(OP_UNLIKELY(links==NULL))return OP_EFAULT;
       _of->links=links;
     }
@@ -1281,7 +1282,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     if(OP_UNLIKELY(ret<0))return ret;
   }
   /*Trim back the links array if necessary.*/
-  links=_ogg_realloc(links,sizeof(*links)*nlinks);
+  links=(OggOpusLink *)_ogg_realloc(links,sizeof(*links)*nlinks);
   if(OP_LIKELY(links!=NULL))_of->links=links;
   /*We also don't need these anymore.*/
   _ogg_free(*_serialnos);

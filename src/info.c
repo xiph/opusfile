@@ -190,11 +190,11 @@ static int op_tags_add_prepare(OpusTags *_tags){
   int   *comment_lengths;
   int    ncomments;
   ncomments=_tags->comments;
-  user_comments=_ogg_realloc(_tags->user_comments,
+  user_comments=(char **)_ogg_realloc(_tags->user_comments,
    sizeof(*_tags->user_comments)*(ncomments+2));
   if(OP_UNLIKELY(user_comments==NULL))return OP_EFAULT;
   _tags->user_comments=user_comments;
-  comment_lengths=_ogg_realloc(_tags->comment_lengths,
+  comment_lengths=(int *)_ogg_realloc(_tags->comment_lengths,
    sizeof(*_tags->comment_lengths)*(ncomments+2));
   if(OP_UNLIKELY(comment_lengths==NULL))return OP_EFAULT;
   _tags->comment_lengths=comment_lengths;
