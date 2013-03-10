@@ -1,3 +1,4 @@
+*.exe
 *.la
 *.lo
 *.o
@@ -15,6 +16,7 @@ config.status
 config.sub
 configure
 depcomp
+doc/Doxyfile
 examples/opusfile_example
 examples/seeking_example
 install-sh
@@ -27,3 +29,5 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 missing
+opusfile.pc
+opusfile-uninstalled.pc
