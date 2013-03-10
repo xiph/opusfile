@@ -107,7 +107,11 @@ AS_IF([test "x$enable_fixed_point" = "xyes"],
    ])
   ]
 )
-AC_SUBST(ac_cv_search_lrintf)
+lrintf_lib="$ac_cv_search_lrintf"
+AS_IF([test "x$ac_cv_search_lrintf" = "xnone required"],
+  [lrintf_lib=""]
+)
+AC_SUBST(lrintf_lib)
 
 CC_ATTRIBUTE_VISIBILITY([default], [
   CC_FLAG_VISIBILITY([CFLAGS="${CFLAGS} -fvisibility=hidden"])
