@@ -90,7 +90,7 @@ void op_fatal_impl(const char *_str,const char *_file,int _line);
 /*Advance a file offset by the given amount, clamping against OP_INT64_MAX.
   This is used to advance a known offset by things like OP_CHUNK_SIZE or
    OP_PAGE_SIZE_MAX, while making sure to avoid signed overflow.
-  It assumes that both _offset and _amount are positive.*/
+  It assumes that both _offset and _amount are non-negative.*/
 #define OP_ADV_OFFSET(_offset,_amount) \
  (OP_MIN(_offset,OP_INT64_MAX-(_amount))+(_amount))
 
