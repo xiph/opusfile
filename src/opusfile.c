@@ -3052,7 +3052,7 @@ static int op_float2short_stereo_filter(OggOpusFile *_of,
       _nsamples=op_stereo_filter(_of,_src,_nsamples*2,
        _src,_nsamples,_nchannels);
     }
-    op_shaped_dither16(_of,dst,_src,_nsamples,_nchannels);
+    op_shaped_dither16(_of,dst,_src,_nsamples,2);
   }
   return _nsamples;
 }
