@@ -2898,19 +2898,27 @@ static const float OP_FCOEF_A[4]={
 };
 
 static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
- const float *_src,int _nsamples,int _nchannels){
+ float *_src,int _nsamples,int _nchannels){
   opus_uint32 seed;
   int         mute;
+  int         ci;
   int         i;
   mute=_of->dither_mute;
   seed=_of->dither_seed;
-  if(_of->state_channel_count!=_nchannels)mute=65;
+  if(_of->state_channel_count!=_nchannels){
+    mute=65;
+# if defined(OP_SOFT_CLIP)
+    for(ci=0;ci<_nchannels;ci++)_of->clip_state[ci]=0;
+# endif
+  }
+# if defined(OP_SOFT_CLIP)
+  opus_pcm_soft_clip(_src,_nsamples,_nchannels,_of->clip_state);
+# endif
   /*In order to avoid replacing digital silence with quiet dither noise, we
      mute if the output has been silent for a while.*/
   if(mute>64)memset(_of->dither_a,0,sizeof(*_of->dither_a)*4*_nchannels);
   for(i=0;i<_nsamples;i++){
     int silent;
-    int ci;
     silent=1;
     for(ci=0;ci<_nchannels;ci++){
       float r;

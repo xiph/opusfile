@@ -38,6 +38,13 @@ typedef opus_int16 op_sample;
 typedef float      op_sample;
 # endif
 
+/*We're using this define to test for libopus 1.1 or later until libopus
+   provides a better mechanism.*/
+# if defined(OPUS_GET_EXPERT_FRAME_DURATION_REQUEST)
+/*Enable soft clipping prevention in 16-bit decodes.*/
+#  define OP_SOFT_CLIP (1)
+# endif
+
 # if OP_GNUC_PREREQ(4,2)
 /*Disable excessive warnings about the order of operations.*/
 #  pragma GCC diagnostic ignored "-Wparentheses"
@@ -203,8 +210,11 @@ struct OggOpusFile{
   int                od_buffer_pos;
   /*The number of valid samples in the decoded buffer.*/
   int                od_buffer_size;
-  /*Internal state for dithering float->short output.*/
+  /*Internal state for soft clipping and dithering float->short output.*/
 #if !defined(OP_FIXED_POINT)
+# if defined(OP_SOFT_CLIP)
+  float              clip_state[OP_NCHANNELS_MAX];
+# endif
   float              dither_a[OP_NCHANNELS_MAX*4];
   float              dither_b[OP_NCHANNELS_MAX*4];
   int                dither_mute;
