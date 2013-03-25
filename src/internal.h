@@ -209,6 +209,11 @@ struct OggOpusFile{
   float              dither_b[OP_NCHANNELS_MAX*4];
   int                dither_mute;
   opus_uint32        dither_seed;
+  /*The number of channels represented by the internal state.
+    This gets set to 0 whenever anything that would prevent state propagation
+     occurs (switching between the float/short APIs, or between the
+     stereo/multistream APIs).*/
+  int                state_channel_count;
 #endif
 };
 

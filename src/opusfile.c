@@ -2883,9 +2883,9 @@ static opus_uint32 op_rand(opus_uint32 _seed){
   The attenuation is probably also helpful to prevent clipping in the DAC
    reconstruction filters or downstream resampling, in any case.*/
 
-#define OP_GAIN (32753.0F)
+# define OP_GAIN (32753.0F)
 
-#define OP_PRNG_GAIN (1.0F/0xFFFFFFFF)
+# define OP_PRNG_GAIN (1.0F/0xFFFFFFFF)
 
 /*48 kHz noise shaping filter, sd=2.34.*/
 
@@ -2904,6 +2904,7 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
   int         i;
   mute=_of->dither_mute;
   seed=_of->dither_seed;
+  if(_of->state_channel_count!=_nchannels)mute=65;
   /*In order to avoid replacing digital silence with quiet dither noise, we
      mute if the output has been silent for a while.*/
   if(mute>64)memset(_of->dither_a,0,sizeof(*_of->dither_a)*4*_nchannels);
@@ -2953,6 +2954,7 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
   }
   _of->dither_mute=OP_MIN(mute,65);
   _of->dither_seed=seed;
+  _of->state_channel_count=_nchannels;
 }
 
 static int op_float2short_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
@@ -2969,6 +2971,7 @@ int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li){
 }
 
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
+  _of->state_channel_count=0;
   return op_read_native(_of,_pcm,_buf_size,_li);
 }
 
@@ -3063,6 +3066,7 @@ int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
 }
 
 int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
+  _of->state_channel_count=0;
   return op_read_native_filter(_of,_pcm,_buf_size,op_stereo_filter,NULL);
 }
 
