@@ -32,17 +32,22 @@
 # include <opusfile.h>
 
 typedef struct OggOpusLink OggOpusLink;
+
 # if defined(OP_FIXED_POINT)
+
 typedef opus_int16 op_sample;
+
 # else
+
 typedef float      op_sample;
-# endif
 
 /*We're using this define to test for libopus 1.1 or later until libopus
    provides a better mechanism.*/
-# if defined(OPUS_GET_EXPERT_FRAME_DURATION_REQUEST)
+#  if defined(OPUS_GET_EXPERT_FRAME_DURATION_REQUEST)
 /*Enable soft clipping prevention in 16-bit decodes.*/
-#  define OP_SOFT_CLIP (1)
+#   define OP_SOFT_CLIP (1)
+#  endif
+
 # endif
 
 # if OP_GNUC_PREREQ(4,2)
@@ -217,8 +222,8 @@ struct OggOpusFile{
 # endif
   float              dither_a[OP_NCHANNELS_MAX*4];
   float              dither_b[OP_NCHANNELS_MAX*4];
-  int                dither_mute;
   opus_uint32        dither_seed;
+  int                dither_mute;
   /*The number of channels represented by the internal state.
     This gets set to 0 whenever anything that would prevent state propagation
      occurs (switching between the float/short APIs, or between the

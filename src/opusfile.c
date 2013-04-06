@@ -1333,7 +1333,7 @@ static int op_make_decode_ready(OggOpusFile *_of){
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
 #if !defined(OP_FIXED_POINT)
-  _of->dither_mute=65;
+  _of->state_channel_count=0;
   /*Use the serial number for the PRNG seed to get repeatable output for
      straight play-throughs.*/
   _of->dither_seed=_of->links[li].serialno;
