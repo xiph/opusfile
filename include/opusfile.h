@@ -16,7 +16,6 @@
  ********************************************************************/
 #if !defined(_opusfile_h)
 # define _opusfile_h (1)
-# include <stdarg.h>
 
 /**\mainpage
    \section Introduction
@@ -57,6 +56,7 @@
 extern "C" {
 # endif
 
+# include <stdarg.h>
 # include <stdio.h>
 # include <ogg/ogg.h>
 # include <opus_multistream.h>
