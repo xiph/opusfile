@@ -2036,15 +2036,15 @@ static char *op_base64_encode(char *_dst,const char *_src,int _len){
     s1=_src[3*i+1];
     s2=_src[3*i+2];
     _dst[4*i+0]=BASE64_TABLE[s0>>2];
-    _dst[4*i+1]=BASE64_TABLE[s0&3<<4|s1>>4];
-    _dst[4*i+2]=BASE64_TABLE[s1&15<<2|s2>>6];
+    _dst[4*i+1]=BASE64_TABLE[(s0&3)<<4|s1>>4];
+    _dst[4*i+2]=BASE64_TABLE[(s1&15)<<2|s2>>6];
     _dst[4*i+3]=BASE64_TABLE[s2&63];
   }
   _len-=3*i;
   if(_len==1){
     s0=_src[3*i+0];
     _dst[4*i+0]=BASE64_TABLE[s0>>2];
-    _dst[4*i+1]=BASE64_TABLE[s0&3<<4];
+    _dst[4*i+1]=BASE64_TABLE[(s0&3)<<4];
     _dst[4*i+2]='=';
     _dst[4*i+3]='=';
     i++;
@@ -2053,8 +2053,8 @@ static char *op_base64_encode(char *_dst,const char *_src,int _len){
     s0=_src[3*i+0];
     s1=_src[3*i+1];
     _dst[4*i+0]=BASE64_TABLE[s0>>2];
-    _dst[4*i+1]=BASE64_TABLE[s0&3<<4|s1>>4];
-    _dst[4*i+2]=BASE64_TABLE[s1&15<<2];
+    _dst[4*i+1]=BASE64_TABLE[(s0&3)<<4|s1>>4];
+    _dst[4*i+2]=BASE64_TABLE[(s1&15)<<2];
     _dst[4*i+3]='=';
     i++;
   }
