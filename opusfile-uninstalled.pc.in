@@ -6,7 +6,7 @@ libdir=${pcfiledir}/.libs
 includedir=${pcfiledir}/@top_srcdir@/include
 
 Name: opusfile uninstalled
-Description: Opus playback library (not installed)
+Description: High-level Opus decoding library (not installed)
 Version: @VERSION@
 Requires: ogg >= 1.3 opus >= 1.0.1 @openssl@
 Conflicts:
