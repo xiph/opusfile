@@ -13,6 +13,8 @@ Source release:
   to website and verify file permissions.
 - Update checksum files on website.
 - Update links on <http://www.opus-codec.org/downloads/>.
+- Add a copy of the documentation to <http://www.opus-codec.org/docs/>
+  and update the links.
 
 Releases are commited to https://svn.xiph.org/releases/opus/
 which propagates to downloads.xiph.org, and copied manually
