@@ -15,6 +15,7 @@
 
  ********************************************************************/
 #include "internal.h"
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
