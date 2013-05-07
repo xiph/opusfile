@@ -2194,7 +2194,8 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   /*We discard the first 80 ms of data after a seek, so seek back that much
      farther.
     If we can't, simply seek to the beginning of the link.*/
-  if(OP_UNLIKELY(op_granpos_add(&_target_gp,_target_gp,-80*48)<0)){
+  if(OP_UNLIKELY(op_granpos_add(&_target_gp,_target_gp,-80*48)<0)
+   ||OP_UNLIKELY(op_granpos_cmp(_target_gp,pcm_start)<0)){
     _target_gp=pcm_start;
   }
   /*Special case seeking to the start of the link.*/
