@@ -768,9 +768,6 @@ static opus_int32 op_collect_audio_packets(OggOpusFile *_of,
   total_duration=0;
   for(;;){
     int ret;
-    /*Unless libogg is broken, we can't get more than 255 packets from a
-       single page.*/
-    OP_ASSERT(op_count<255);
     /*This takes advantage of undocumented libogg behavior that returned
        ogg_packet buffers are valid at least until the next page is
        submitted.
@@ -788,6 +785,9 @@ static opus_int32 op_collect_audio_packets(OggOpusFile *_of,
       total_duration=OP_HOLE;
       break;
     }
+    /*Unless libogg is broken, we can't get more than 255 packets from a
+       single page.*/
+    OP_ASSERT(op_count<255);
     _durations[op_count]=op_get_packet_duration(_of->op[op_count].packet,
      _of->op[op_count].bytes);
     if(OP_LIKELY(_durations[op_count]>0)){
