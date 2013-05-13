@@ -58,13 +58,13 @@ case $host in
     host_mingw=true
     ;;
 esac
-AM_CONDITIONAL(OP_WIN32, test "x$host_mingw" = xtrue)
+AM_CONDITIONAL(OP_WIN32, test "$host_mingw" = "true")
 
 AC_ARG_ENABLE([assertions],
   AS_HELP_STRING([--enable-assertions], [Enable assertions in code]),,
   enable_assertions=no)
 
-AS_IF([test "x$enable_assertions" = "xyes"], [
+AS_IF([test "$enable_assertions" = "yes"], [
   AC_DEFINE([OP_ENABLE_ASSERTIONS], [1], [Enable assertions in code])
 ])
 
@@ -73,13 +73,13 @@ AC_ARG_ENABLE([http],
   enable_http=yes)
 
 AM_COND_IF(OP_WIN32,
-  AS_IF([test "x$enable_http" != "xno"],
+  AS_IF([test "$enable_http" != "no"],
     AC_CHECK_HEADER([winsock2.h],,
       AC_MSG_WARN([HTTP support requires a Winsock socket library.])
       enable_http=no
     )
   ),
-  AS_IF([test "x$enable_http" != "xno"],
+  AS_IF([test "$enable_http" != "no"],
     AC_CHECK_HEADER([sys/socket.h],,
       AC_MSG_WARN([HTTP support requires a POSIX socket library.])
       enable_http=no
@@ -87,12 +87,12 @@ AM_COND_IF(OP_WIN32,
   )
 )
 
-AS_IF([test "x$enable_http" != "xno"], [
+AS_IF([test "$enable_http" != "no"], [
    openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
    PKG_CHECK_MODULES([URL_DEPS], [openssl])
 ])
-AM_CONDITIONAL(OP_ENABLE_HTTP, [test "x$enable_http" != "xno"])
+AM_CONDITIONAL(OP_ENABLE_HTTP, [test "$enable_http" != "no"])
 AC_SUBST([openssl])
 
 PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1])
@@ -104,13 +104,13 @@ AC_ARG_ENABLE([float],
   AS_HELP_STRING([--disable-float], [Disable floating-point API]),,
   enable_float=yes)
 
-AS_IF([test "x$enable_float" = "xno"],
+AS_IF([test "$enable_float" = "no"],
   [enable_fixed_point=yes
    AC_DEFINE([OP_DISABLE_FLOAT_API], [1], [Disable floating-point API])
   ]
 )
 
-AS_IF([test "x$enable_fixed_point" = "xyes"],
+AS_IF([test "$enable_fixed_point" = "yes"],
   [AC_DEFINE([OP_FIXED_POINT], [1], [Enable fixed-point calculation])],
   [dnl This only has to be tested for if float->fixed conversions are required
    AC_SEARCH_LIBS([lrintf], [m], [
@@ -121,7 +121,7 @@ AS_IF([test "x$enable_fixed_point" = "xyes"],
   ]
 )
 lrintf_lib="$ac_cv_search_lrintf"
-AS_IF([test "x$ac_cv_search_lrintf" = "xnone required"],
+AS_IF([test "$ac_cv_search_lrintf" = "none required"],
   [lrintf_lib=""]
 )
 AC_SUBST(lrintf_lib)
