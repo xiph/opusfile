@@ -1,7 +1,9 @@
+*.a
 *.exe
 *.la
 *.lo
 *.o
+*.sw*
 *~
 .deps
 .dirstamp
@@ -31,3 +33,8 @@ m4/lt~obsolete.m4
 missing
 opusfile.pc
 opusfile-uninstalled.pc
+opusurl.pc
+opusurl-uninstalled.pc
+unix/objs
+unix/opusfile_example
+unix/seeking_example
