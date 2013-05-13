@@ -3220,3 +3220,51 @@ void *op_url_stream_create(OpusFileCallbacks *_cb,
   va_end(ap);
   return ret;
 }
+
+/*Convenience routines to open/test URLs in a single step.*/
+
+OggOpusFile *op_vopen_url(const char *_url,int *_error,va_list _ap){
+  OpusFileCallbacks  cb;
+  OggOpusFile       *of;
+  void              *source;
+  source=op_url_stream_vcreate(&cb,_url,_ap);
+  if(OP_UNLIKELY(source==NULL)){
+    if(_error!=NULL)*_error=OP_EFAULT;
+    return NULL;
+  }
+  of=op_open_callbacks(source,&cb,NULL,0,_error);
+  if(OP_UNLIKELY(of==NULL))(*cb.close)(source);
+  return of;
+}
+
+OggOpusFile *op_open_url(const char *_url,int *_error,...){
+  OggOpusFile *ret;
+  va_list      ap;
+  va_start(ap,_error);
+  ret=op_vopen_url(_url,_error,ap);
+  va_end(ap);
+  return ret;
+}
+
+OggOpusFile *op_vtest_url(const char *_url,int *_error,va_list _ap){
+  OpusFileCallbacks  cb;
+  OggOpusFile       *of;
+  void              *source;
+  source=op_url_stream_vcreate(&cb,_url,_ap);
+  if(OP_UNLIKELY(source==NULL)){
+    if(_error!=NULL)*_error=OP_EFAULT;
+    return NULL;
+  }
+  of=op_test_callbacks(source,&cb,NULL,0,_error);
+  if(OP_UNLIKELY(of==NULL))(*cb.close)(source);
+  return of;
+}
+
+OggOpusFile *op_test_url(const char *_url,int *_error,...){
+  OggOpusFile *ret;
+  va_list      ap;
+  va_start(ap,_error);
+  ret=op_vtest_url(_url,_error,ap);
+  va_end(ap);
+  return ret;
+}

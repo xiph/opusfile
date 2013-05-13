@@ -1611,21 +1611,6 @@ OggOpusFile *op_open_memory(const unsigned char *_data,size_t _size,
    _error);
 }
 
-OggOpusFile *op_vopen_url(const char *_url,int *_error,va_list _ap){
-  OpusFileCallbacks cb;
-  return op_open_close_on_failure(op_url_stream_vcreate(&cb,_url,_ap),&cb,
-   _error);
-}
-
-OggOpusFile *op_open_url(const char *_url,int *_error,...){
-  OggOpusFile *ret;
-  va_list      ap;
-  va_start(ap,_error);
-  ret=op_vopen_url(_url,_error,ap);
-  va_end(ap);
-  return ret;
-}
-
 /*Convenience routine to clean up from failure for the open functions that
    create their own streams.*/
 static OggOpusFile *op_test_close_on_failure(void *_source,
@@ -1650,21 +1635,6 @@ OggOpusFile *op_test_memory(const unsigned char *_data,size_t _size,
   OpusFileCallbacks cb;
   return op_test_close_on_failure(op_mem_stream_create(&cb,_data,_size),&cb,
    _error);
-}
-
-OggOpusFile *op_vtest_url(const char *_url,int *_error,va_list _ap){
-  OpusFileCallbacks cb;
-  return op_test_close_on_failure(op_url_stream_vcreate(&cb,_url,_ap),&cb,
-   _error);
-}
-
-OggOpusFile *op_test_url(const char *_url,int *_error,...){
-  OggOpusFile *ret;
-  va_list      ap;
-  va_start(ap,_error);
-  ret=op_vtest_url(_url,_error,ap);
-  va_end(ap);
-  return ret;
 }
 
 int op_test_open(OggOpusFile *_of){
