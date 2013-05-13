@@ -1,11 +1,23 @@
 # autoconf source script for generating configure
 
-AC_INIT([opusfile], m4_esyscmd([doc/git-version.sh]))
+dnl The package_version file will be automatically synced to the git revision
+dnl by the update_version script when configured in the repository, but will
+dnl remain constant in tarball releases unless it is manually edited.
+m4_define([CURRENT_VERSION],
+          m4_esyscmd_s([ if test -e package_version || ./update_version; then
+                             . ./package_version
+                             printf "$PACKAGE_VERSION"
+                         else
+                             printf "unknown"
+                         fi ]))
+
+AC_INIT([opusfile],[CURRENT_VERSION],[opus@xiph.org])
+AC_CONFIG_SRCDIR([src/opusfile.c])
 
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 
-AM_INIT_AUTOMAKE([1.11 foreign])
+AM_INIT_AUTOMAKE([1.11 foreign no-define])
 AM_MAINTAINER_MODE([enable])
 LT_INIT
 
@@ -130,7 +142,7 @@ if test "$HAVE_DOXYGEN" != "yes" -o "$enable_doc" != "yes" ; then
 fi
 AM_CONDITIONAL(HAVE_DOXYGEN, [test $HAVE_DOXYGEN = yes])
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
   Makefile
   opusfile.pc
   opusurl.pc
@@ -138,10 +150,11 @@ AC_OUTPUT([
   opusurl-uninstalled.pc
   doc/Doxyfile
 ])
+AC_OUTPUT
 
 AC_MSG_NOTICE([
 ------------------------------------------------------------------------
-  $PACKAGE $VERSION: Automatic configuration OK.
+  $PACKAGE_NAME $PACKAGE_VERSION: Automatic configuration OK.
 
     Assertions ................... ${enable_assertions}
 

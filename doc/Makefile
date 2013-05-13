@@ -1,5 +1,7 @@
 ## GNU makefile for opusfile documentation.
 
+-include ../package_version
+
 all: doxygen
 
 doxygen: Doxyfile ../include/opusfile.h
@@ -17,10 +19,16 @@ distclean: clean
 
 .PHONY: all clean distclean doxygen pdf
 
+../package_version:
+	@if [ -x ../update_version ]; then \
+		../update_version || true; \
+	elif [ ! -e $@ ]; then \
+		echo 'PACKAGE_VERSION="unknown"' > $@; \
+	fi
+
 # run autoconf-like replacements to finalize our config
-GIT_VERSION := $(shell ./git-version.sh)
-Doxyfile: Doxyfile.in Makefile
-	sed -e 's/@PACKAGE@/opusfile/' \
-	    -e 's/@VERSION@/$(GIT_VERSION)/' \
+Doxyfile: Doxyfile.in Makefile ../package_version
+	sed -e 's/@PACKAGE_NAME@/opusfile/' \
+	    -e 's/@PACKAGE_VERSION@/$(PACKAGE_VERSION)/' \
 	    -e 's/@top_srcdir@/../' \
 	  < $< > $@

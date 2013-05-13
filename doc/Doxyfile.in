@@ -1,7 +1,7 @@
 # Process with doxygen to generate API documentation
 
-PROJECT_NAME           = @PACKAGE@
-PROJECT_NUMBER         = @VERSION@
+PROJECT_NAME           = @PACKAGE_NAME@
+PROJECT_NUMBER         = @PACKAGE_VERSION@
 PROJECT_BRIEF          = "Stand-alone decoder library for .opus files."
 INPUT                  = @top_srcdir@/include/opusfile.h
 OPTIMIZE_OUTPUT_FOR_C  = YES

@@ -7,7 +7,7 @@ includedir=${pcfiledir}/@top_srcdir@/include
 
 Name: opusfile uninstalled
 Description: High-level Opus decoding library, URL support (not installed)
-Version: @VERSION@
+Version: @PACKAGE_VERSION@
 Requires: opusfile
 Requires.private: @openssl@
 Conflicts:
