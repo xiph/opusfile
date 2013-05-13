@@ -155,7 +155,11 @@ int main(int _argc,const char **_argv){
   }
   else{
     /*Try to treat the argument as a URL.*/
+#if defined(OP_ENABLE_HTTP)
     of=op_open_url(_argv[1],&ret,NULL);
+#else
+    of=NULL;
+#endif
 #if 0
     if(of==NULL){
       OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
