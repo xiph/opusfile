@@ -9,33 +9,48 @@ opusinclude_HEADERS = include/opusfile.h
 
 lib_LTLIBRARIES = libopusfile.la
 libopusfile_la_SOURCES = \
-	src/http.c src/info.c \
+	src/info.c \
 	src/internal.c src/internal.h \
 	src/opusfile.c src/stream.c
 libopusfile_la_LIBADD = $(DEPS_LIBS)
 libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
-if OP_ENABLE_HTTP
-if OP_WIN32
-libopusfile_la_SOURCES += src/wincerts.c
-libopusfile_la_LIBADD += -lws2_32 -lcrypt32
-endif
-endif
-
-noinst_PROGRAMS = examples/opusfile_example examples/seeking_example
-
-examples_opusfile_example_LDADD = libopusfile.la
-examples_seeking_example_LDADD = libopusfile.la
-
-debug:
-	$(MAKE) CFLAGS="${CFLAGS} -O0 -ggdb -DOP_ENABLE_ASSERTIONS" all
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opusfile.pc
 
+if OP_ENABLE_HTTP
+lib_LTLIBRARIES += libopusurl.la
+libopusurl_la_SOURCES = src/http.c
+libopusurl_la_LIBADD = libopusfile.la $(URL_DEPS_LIBS)
+libopusurl_la_LDFLAGS = -no-undefined \
+ -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
+
+pkgconfig_DATA += opusurl.pc
+
+examples_opusfile_example_LDADD = libopusurl.la libopusfile.la
+examples_seeking_example_LDADD = libopusurl.la libopusfile.la
+
+if OP_WIN32
+libopusurl_la_SOURCES += src/wincerts.c
+libopusurl_la_LIBADD += -lws2_32 -lcrypt32
+endif
+
+else
+examples_opusfile_example_LDADD = libopusfile.la
+examples_seeking_example_LDADD = libopusfile.la
+endif
+
+noinst_PROGRAMS = examples/opusfile_example examples/seeking_example
+
+debug:
+	$(MAKE) CFLAGS="${CFLAGS} -O0 -ggdb -DOP_ENABLE_ASSERTIONS" all
+
 EXTRA_DIST = \
  opusfile.pc.in \
+ opusurl.pc.in \
  opusfile-uninstalled.pc.in \
+ opusurl-uninstalled.pc.in \
  doc/Doxyfile.in \
  doc/git-version.sh \
  doc/opus_logo.svg \
