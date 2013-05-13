@@ -76,10 +76,12 @@ AM_COND_IF(OP_WIN32,
 )
 
 AS_IF([test "x$enable_http" != "xno"], [
+   openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
    PKG_CHECK_MODULES([URL_DEPS], [openssl])
 ])
 AM_CONDITIONAL(OP_ENABLE_HTTP, [test "x$enable_http" != "xno"])
+AC_SUBST([openssl])
 
 PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1])
 

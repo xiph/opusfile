@@ -6,9 +6,9 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: opusurl
-Description: High-level Opus decoding library, HTTP support
+Description: High-level Opus decoding library, URL support
 Version: @VERSION@
 Requires: opusfile
-Requires.private: openssl
+Requires.private: @openssl@
 Conflicts:
 Libs: -L${libdir} -lopusurl

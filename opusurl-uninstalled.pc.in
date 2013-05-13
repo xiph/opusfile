@@ -6,9 +6,9 @@ libdir=${pcfiledir}/.libs
 includedir=${pcfiledir}/@top_srcdir@/include
 
 Name: opusfile uninstalled
-Description: High-level Opus decoding library, HTTP support (not installed)
+Description: High-level Opus decoding library, URL support (not installed)
 Version: @VERSION@
 Requires: opusfile
+Requires.private: @openssl@
 Conflicts:
 Libs: ${libdir}/libopusurl.la
-Cflags: -I${includedir}
