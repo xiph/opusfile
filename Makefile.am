@@ -63,8 +63,8 @@ install-docs:
 	@if [ -z "$(NO_DOXYGEN)" ]; then \
 	  ( cd doc && \
 	    echo "Installing documentation in $(DESTDIR)$(docdir)"; \
+	    $(INSTALL) -d $(DESTDIR)$(docdir)/html/search; \
 	    for f in `find html -type f \! -name "installdox"` ; do \
-	      $(INSTALL) -d $(DESTDIR)$(docdir)/html/search;   \
 	      $(INSTALL_DATA) $$f $(DESTDIR)$(docdir)/$$f;     \
 	    done ) \
 	fi
