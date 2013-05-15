@@ -75,6 +75,7 @@ LIBOPUSFILE_CHEADERS = \
 internal.h \
 
 LIBOPUSURL_CSOURCES = \
+internal.c \
 http.c \
 
 ifneq ($(findstring mingw,${CC}),)
