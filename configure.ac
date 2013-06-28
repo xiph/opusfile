@@ -155,6 +155,7 @@ AC_CONFIG_FILES([
   opusurl-uninstalled.pc
   doc/Doxyfile
 ])
+AC_CONFIG_HEADERS([config.h])
 AC_OUTPUT
 
 AC_MSG_NOTICE([

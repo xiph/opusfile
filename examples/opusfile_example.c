@@ -9,6 +9,10 @@
  * by the Xiph.Org Foundation and contributors http://www.xiph.org/ *
  *                                                                  *
  ********************************************************************/
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /*For fileno()*/
 #if !defined(_POSIX_SOURCE)
 # define _POSIX_SOURCE 1
