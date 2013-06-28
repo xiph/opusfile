@@ -12,7 +12,7 @@ libopusfile_la_SOURCES = \
 	src/info.c \
 	src/internal.c src/internal.h \
 	src/opusfile.c src/stream.c
-libopusfile_la_LIBADD = $(DEPS_LIBS)
+libopusfile_la_LIBADD = $(DEPS_LIBS) $(lrintf_lib)
 libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 
