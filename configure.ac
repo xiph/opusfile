@@ -54,7 +54,7 @@ case $host in
     #  affects header declarations, not linking (unless we actually use some
     #  XP-only functions).
     AC_DEFINE_UNQUOTED(_WIN32_WINNT,0x501,
-     [We need at least WindowsXP for getaddrinfo/freaddrinfo])
+     [We need at least WindowsXP for getaddrinfo/freeaddrinfo])
     host_mingw=true
     ;;
 esac
