@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#if defined(_WIN32)
+# include <io.h>
+#endif
 
 typedef struct OpusMemStream OpusMemStream;
 
@@ -59,39 +62,58 @@ static int op_fread(void *_stream,unsigned char *_ptr,int _buf_size){
 }
 
 static int op_fseek(void *_stream,opus_int64 _offset,int _whence){
-#if defined(_MSC_VER)
-  return _fseeki64((FILE *)_stream,_offset,_whence);
-#elif defined(__MINGW32__)
-  /*i686-pc-mingw32 does not have fseeko() and requires
+#if defined(_WIN32)
+  /*_fseeki64() is not exposed until MSCVCRT80.
+    This is the default starting with MSVC 2005 (_MSC_VER>=1400), but we want
+     to allow linking against older MSVCRT versions for compatibility back to
+     XP without installing extra runtime libraries.
+    i686-pc-mingw32 does not have fseeko() and requires
      __MSVCRT_VERSION__>=0x800 for _fseeki64(), which screws up linking with
      other libraries (that don't use MSVCRT80 from MSVC 2005 by default).
     i686-w64-mingw32 does have fseeko() and respects _FILE_OFFSET_BITS, but I
      don't know how to detect that at compile time.
-    We don't need to use fopen64(), as this just dispatches to fopen() in
-     mingw32.*/
-  return fseeko64((FILE *)_stream,(off64_t)_offset,_whence);
+    We could just use fseeko64() (which is available in both), but its
+     implemented using fgetpos()/fsetpos() just like this code, except without
+     the overflow checking, so we prefer our version.*/
+  opus_int64 pos;
+  /*We don't use fpos_t directly because it might be a struct if __STDC__ is
+     non-zero or _INTEGRAL_MAX_BITS < 64.
+    I'm not certain when the latter is true, but someone could in theory set
+     the former.
+    Either way, it should be binary compatible with a normal 64-bit int (this
+     assumption is not portable, but I believe it is true for MSVCRT).*/
+  OP_ASSERT(sizeof(pos)==sizeof(fpos_t));
+  /*Translate the seek to an absolute one.*/
+  if(_whence==SEEK_CUR){
+    int ret;
+    ret=fgetpos((FILE *)_stream,(fpos_t *)&pos);
+    if(ret)return ret;
+  }
+  else if(_whence==SEEK_END)pos=_filelengthi64(_fileno((FILE *)_stream));
+  else if(_whence==SEEK_SET)pos=0;
+  else return -1;
+  /*Check for errors or overflow.*/
+  if(pos<0||_offset<-pos||_offset>OP_INT64_MAX-pos)return -1;
+  pos+=_offset;
+  return fsetpos((FILE *)_stream,(fpos_t *)&pos);
 #else
   /*This function actually conforms to the SUSv2 and POSIX.1-2001, so we prefer
-     it except in the two special-cases above.*/
+     it except on Windows.*/
   return fseeko((FILE *)_stream,(off_t)_offset,_whence);
 #endif
 }
 
 static opus_int64 op_ftell(void *_stream){
-#if defined(_MSC_VER)
-  return _ftelli64((FILE *)_stream);
-#elif defined(__MINGW32__)
-  /*i686-pc-mingw32 does not have ftello() and requires
-     __MSVCRT_VERSION__>=0x800 for _ftelli64(), which screws up linking with
-     other libraries (that don't use MSVCRT80 from MSVC 2005 by default).
-    i686-w64-mingw32 does have ftello() and respects _FILE_OFFSET_BITS, but I
-     don't know how to detect that at compile time.
-    We don't need to use fopen64(), as this just dispatches to fopen() in
-     mingw32.*/
-  return ftello64((FILE *)_stream);
+#if defined(_WIN32)
+  /*_ftelli64() is not exposed until MSCVCRT80, and ftello()/ftello64() have
+     the same problems as fseeko()/fseeko64() in MingW.
+    See above for a more detailed explanation.*/
+  opus_int64 pos;
+  OP_ASSERT(sizeof(pos)==sizeof(fpos_t));
+  return fgetpos((FILE *)_stream,(fpos_t *)&pos)?-1:pos;
 #else
   /*This function actually conforms to the SUSv2 and POSIX.1-2001, so we prefer
-     it except in the two special-cases above.*/
+     it except on Windows.*/
   return ftello((FILE *)_stream);
 #endif
 }
@@ -280,6 +302,7 @@ static int op_mem_seek(void *_stream,opus_int64 _offset,int _whence){
   ptrdiff_t      pos;
   stream=(OpusMemStream *)_stream;
   pos=stream->pos;
+  OP_ASSERT(pos>=0);
   switch(_whence){
     case SEEK_SET:{
       /*Check for overflow:*/
