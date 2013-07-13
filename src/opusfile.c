@@ -1527,12 +1527,7 @@ static int op_open1(OggOpusFile *_of,
     if(!seekable)_of->cur_link++;
     pog=&og;
   }
-  if(OP_UNLIKELY(ret<0)){
-    /*Don't auto-close the stream on failure.*/
-    _of->callbacks.close=NULL;
-    op_clear(_of);
-  }
-  else _of->ready_state=OP_PARTOPEN;
+  if(OP_LIKELY(ret>=0))_of->ready_state=OP_PARTOPEN;
   return ret;
 }
 
@@ -1569,6 +1564,9 @@ OggOpusFile *op_test_callbacks(void *_source,const OpusFileCallbacks *_cb,
       if(_error!=NULL)*_error=0;
       return of;
     }
+    /*Don't auto-close the stream on failure.*/
+    of->callbacks.close=NULL;
+    op_clear(of);
     _ogg_free(of);
   }
   if(_error!=NULL)*_error=ret;
