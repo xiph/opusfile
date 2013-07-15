@@ -433,6 +433,24 @@ const char *opus_tags_query(const OpusTags *_tags,const char *_tag,int _count)
 int opus_tags_query_count(const OpusTags *_tags,const char *_tag)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
+/**Get the track gain from an R128_TRACK_GAIN tag, if one was specified.
+   This searches for the first R128_TRACK_GAIN tag with a valid signed,
+    16-bit decimal integer value and returns the value.
+   This routine is exposed merely for convenience for applications which wish
+    to do something special with the track gain (i.e., display it).
+   If you simply wish to apply the track gain instead of the header gain, you
+    can use op_set_gain_offset() with an #OP_TRACK_GAIN type and no offset.
+   \param      _tags    An initialized #OpusTags structure.
+   \param[out] _gain_q8 The track gain, in 1/256ths of a dB.
+                        This will lie in the range [-32768,32767], and should
+                         be applied in <em>addition</em> to the header gain.
+                        On error, no value is returned, and the previous
+                         contents remain unchanged.
+   \return 0 on success, or a negative value on error.
+   \retval OP_EFALSE There was no track gain available in the given tags.*/
+int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8)
+ OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+
 /**Clears the #OpusTags structure.
    This should be called on an #OpusTags structure after it is no longer
     needed.
@@ -1379,6 +1397,39 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
     supported), you should make sure to check for this error and warn the user
     appropriately.*/
 /*@{*/
+
+/**Gain offset type that indicates that the provided offset is relative to the
+    header gain.
+   This is the default.*/
+#define OP_HEADER_GAIN   (0)
+
+/**Gain offset type that indicates that the provided offset is relative to the
+    R128_TRACK_GAIN value (if any), in addition to the header gain.*/
+#define OP_TRACK_GAIN    (3008)
+
+/**Gain offset type that indicates that the provided offset should be used as
+    the gain directly, without applying any the header or track gains.*/
+#define OP_ABSOLUTE_GAIN (3009)
+
+/**Sets the gain to be used for decoded output.
+   By default, the gain in the header is applied with no additional offset.
+   The total gain (including header gain and/or track gain, if applicable, and
+    this offset), will be clamped to [-32768,32767]/256 dB.
+   This is more than enough to saturate or underflow 16-bit PCM.
+   \note The new gain will not be applied to any already buffered, decoded
+    output.
+   This means you cannot change it sample-by-sample, as at best it will be
+    updated packet-by-packet.
+   It is meant for setting a target volume level, rather than applying smooth
+    fades, etc.
+   \param _of             The \c OggOpusFile on which to set the gain offset.
+   \param _gain_type      One of #OP_HEADER_GAIN, #OP_TRACK_GAIN, or
+                           #OP_ABSOLUTE_GAIN.
+   \param _gain_offset_q8 The gain offset to apply, in 1/256ths of a dB.
+   \return 0 on success or a negative value on error.
+   \retval #OP_EINVAL The \a _gain_type was unrecognized.*/
+int op_set_gain_offset(OggOpusFile *_of,
+ int _gain_type,opus_int32 _gain_offset_q8);
 
 /**Reads more samples from the stream.
    \note Although \a _buf_size must indicate the total number of values that

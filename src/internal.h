@@ -215,6 +215,11 @@ struct OggOpusFile{
   int                od_buffer_pos;
   /*The number of valid samples in the decoded buffer.*/
   int                od_buffer_size;
+  /*The type of gain offset to apply.
+    One of OP_HEADER_GAIN, OP_TRACK_GAIN, or OP_ABSOLUTE_GAIN.*/
+  int                gain_type;
+  /*The offset to apply to the gain.*/
+  opus_int32         gain_offset_q8;
   /*Internal state for soft clipping and dithering float->short output.*/
 #if !defined(OP_FIXED_POINT)
 # if defined(OP_SOFT_CLIP)

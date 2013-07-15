@@ -288,3 +288,41 @@ int opus_tags_query_count(const OpusTags *_tags,const char *_tag){
   }
   return found;
 }
+
+int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8){
+  char **comments;
+  int   *comment_lengths;
+  int    ncomments;
+  int    ci;
+  comments=_tags->user_comments;
+  comment_lengths=_tags->comment_lengths;
+  ncomments=_tags->comments;
+  /*Look for the first valid R128_TRACK_GAIN tag and use that.*/
+  for(ci=0;ci<ncomments;ci++){
+    if(comment_lengths[ci]>16
+     &&op_strncasecmp(comments[ci],"R128_TRACK_GAIN=",16)==0){
+      char       *p;
+      opus_int32  gain_q8;
+      int         negative;
+      p=comments[ci]+16;
+      negative=0;
+      if(*p=='-'){
+        negative=-1;
+        p++;
+      }
+      else if(*p=='+')p++;
+      gain_q8=0;
+      while(*p>='0'&&*p<='9'){
+        gain_q8=10*gain_q8+*p-'0';
+        if(gain_q8>32767-negative)break;
+        p++;
+      }
+      /*This didn't look like a signed 16-bit decimal integer.
+        Not a valid R128_TRACK_GAIN tag.*/
+      if(*p!='\0')continue;
+      *_gain_q8=(int)(gain_q8+negative^negative);
+      return 0;
+    }
+  }
+  return OP_FALSE;
+}
