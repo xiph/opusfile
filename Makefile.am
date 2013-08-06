@@ -21,17 +21,21 @@ libopusurl_la_LIBADD = libopusfile.la $(URL_DEPS_LIBS)
 libopusurl_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 
-if OP_ENABLE_HTTP
+noinst_PROGRAMS = examples/opusfile_example examples/seeking_example
+
+examples_opusfile_example_SOURCES = examples/opusfile_example.c
+examples_seeking_example_SOURCES = examples/seeking_example.c
+examples_opusfile_example_LDADD = libopusurl.la libopusfile.la
+examples_seeking_example_LDADD = libopusurl.la libopusfile.la
+
 if OP_WIN32
+if OP_ENABLE_HTTP
 libopusurl_la_SOURCES += src/wincerts.c
 libopusurl_la_LIBADD += -lws2_32 -lcrypt32
 endif
+examples_opusfile_example_SOURCES += examples/win32utf8.c
+examples_seeking_example_SOURCES += examples/win32utf8.c
 endif
-
-noinst_PROGRAMS = examples/opusfile_example examples/seeking_example
-
-examples_opusfile_example_LDADD = libopusurl.la libopusfile.la
-examples_seeking_example_LDADD = libopusurl.la libopusfile.la
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opusfile.pc opusurl.pc

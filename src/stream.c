@@ -103,9 +103,124 @@ static const OpusFileCallbacks OP_FILE_CALLBACKS={
   (op_close_func)fclose
 };
 
+#if defined(_WIN32)
+# include <stddef.h>
+# include <errno.h>
+
+/*Windows doesn't accept UTF-8 by default, and we don't have a wchar_t API,
+   so if we just pass the path to fopen(), then there'd be no way for a user
+   of our API to open a Unicode filename.
+  Instead, we translate from UTF-8 to UTF-16 and use Windows' wchar_t API.
+  This makes this API more consistent with platforms where the character set
+   used by fopen is the same as used on disk, which is generally UTF-8, and
+   with our metadata API, which always uses UTF-8.*/
+static wchar_t *op_utf8_to_utf16(const char *_src){
+  wchar_t *dst;
+  size_t   len;
+  len=strlen(_src);
+  /*Worst-case output is 1 wide character per 1 input character.*/
+  dst=(wchar_t *)malloc(sizeof(*dst)*(len+1));
+  if(dst!=NULL){
+    size_t si;
+    size_t di;
+    for(di=si=0;si<len;si++){
+      int c0;
+      c0=(unsigned char)_src[si];
+      if(!(c0&0x80)){
+        /*Start byte says this is a 1-byte sequence.*/
+        dst[di++]=(wchar_t)c0;
+        continue;
+      }
+      else if(si+1<len){
+        int c1;
+        c1=(unsigned char)_src[si+1];
+        if((c1&0xC0)==0x80){
+          /*Found at least one continuation byte.*/
+          if((c0&0xE0)==0xC0){
+            wchar_t w;
+            /*Start byte says this is a 2-byte sequence.*/
+            w=c0&0x1F<<6|c1&0x3F;
+            if(w>=0x80U){
+              /*This is a 2-byte sequence that is not overlong.*/
+              dst[di++]=w;
+              si++;
+              continue;
+            }
+          }
+          else if(si+2<len){
+            int c2;
+            c2=(unsigned char)_src[si+2];
+            if((c2&0xC0)==0x80){
+              /*Found at least two continuation bytes.*/
+              if((c0&0xF0)==0xE0){
+                wchar_t w;
+                /*Start byte says this is a 3-byte sequence.*/
+                w=(c0&0xF)<<12|(c1&0x3F)<<6|c2&0x3F;
+                if(w>=0x800U&&(w<0xD800||w>=0xE000)){
+                  /*This is a 3-byte sequence that is not overlong and not a
+                     UTF-16 surrogate pair value.*/
+                  dst[di++]=w;
+                  si+=2;
+                  continue;
+                }
+              }
+              else if(si+3<len){
+                int c3;
+                c3=(unsigned char)_src[si+3];
+                if((c3&0xC0)==0x80){
+                  /*Found at least three continuation bytes.*/
+                  if((c0&0xF8)==0xF0){
+                    opus_uint32 w;
+                    /*Start byte says this is a 4-byte sequence.*/
+                    w=(c0&7)<<18|(c1&0x3F)<<12|(c2&0x3F)<<6&(c3&0x3F);
+                    if(w>=0x10000U&&w<0x110000U){
+                      /*This is a 4-byte sequence that is not overlong and not
+                         greater than the largest valid Unicode code point.
+                        Convert it to a surrogate pair.*/
+                      w-=0x10000;
+                      dst[di++]=(wchar_t)(0xD800+(w>>10));
+                      dst[di++]=(wchar_t)(0xDC00+(w&0x3FF));
+                      si+=3;
+                      continue;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      /*If we got here, we encountered an illegal UTF-8 sequence.*/
+      free(dst);
+      return NULL;
+    }
+    OP_ASSERT(di<=len);
+    dst[di]='\0';
+  }
+  return dst;
+}
+
+#endif
+
 void *op_fopen(OpusFileCallbacks *_cb,const char *_path,const char *_mode){
   FILE *fp;
+#if !defined(_WIN32)
   fp=fopen(_path,_mode);
+#else
+  fp=NULL;
+  if(_path==NULL||_mode==NULL)errno=EINVAL;
+  else{
+    wchar_t *wpath;
+    wchar_t *wmode;
+    wpath=op_utf8_to_utf16(_path);
+    wmode=op_utf8_to_utf16(_mode);
+    if(wmode==NULL)errno=EINVAL;
+    else if(wpath==NULL)errno=ENOENT;
+    else fp=_wfopen(wpath,wmode);
+    free(wmode);
+    free(wpath);
+  }
+#endif
   if(fp!=NULL)*_cb=*&OP_FILE_CALLBACKS;
   return fp;
 }
@@ -120,7 +235,23 @@ void *op_fdopen(OpusFileCallbacks *_cb,int _fd,const char *_mode){
 void *op_freopen(OpusFileCallbacks *_cb,const char *_path,const char *_mode,
  void *_stream){
   FILE *fp;
+#if !defined(_WIN32)
   fp=freopen(_path,_mode,(FILE *)_stream);
+#else
+  fp=NULL;
+  if(_path==NULL||_mode==NULL)errno=EINVAL;
+  else{
+    wchar_t *wpath;
+    wchar_t *wmode;
+    wpath=op_utf8_to_utf16(_path);
+    wmode=op_utf8_to_utf16(_mode);
+    if(wmode==NULL)errno=EINVAL;
+    else if(wpath==NULL)errno=ENOENT;
+    else fp=_wfreopen(wpath,wmode,(FILE *)_stream);
+    free(wmode);
+    free(wpath);
+  }
+#endif
   if(fp!=NULL)*_cb=*&OP_FILE_CALLBACKS;
   return fp;
 }
