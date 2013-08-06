@@ -89,6 +89,11 @@ OPUSFILE_EXAMPLE_CSOURCES = opusfile_example.c
 
 SEEKING_EXAMPLE_CSOURCES = seeking_example.c
 
+ifneq ($(findstring mingw,${CC}),)
+OPUSFILE_EXAMPLE_CSOURCES += win32utf8.c
+SEEKING_EXAMPLE_CSOURCES += win32utf8.c
+endif
+
 FOO_CSOURCES = tests/foo.c
 
 # Create object file list.
