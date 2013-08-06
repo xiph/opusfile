@@ -207,6 +207,8 @@ clean:
 	-rmdir ${WORKDIR}
 
 # Make everything depend on changes in the Makefile
+# This vpath directive needs to be before any include statements
+vpath Makefile $(dir $(lastword $(MAKEFILE_LIST)))
 ${ALL_ASM} ${ALL_OBJS} ${ALL_DEPS} ${ALL_TARGETS} : Makefile
 
 # Specify which targets are phony for GNU make
