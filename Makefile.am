@@ -33,8 +33,8 @@ if OP_ENABLE_HTTP
 libopusurl_la_SOURCES += src/wincerts.c
 libopusurl_la_LIBADD += -lws2_32 -lcrypt32
 endif
-examples_opusfile_example_SOURCES += examples/win32utf8.c
-examples_seeking_example_SOURCES += examples/win32utf8.c
+examples_opusfile_example_SOURCES += examples/win32utf8.c examples/win32utf8.h
+examples_seeking_example_SOURCES += examples/win32utf8.c examples/win32utf8.h
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig
