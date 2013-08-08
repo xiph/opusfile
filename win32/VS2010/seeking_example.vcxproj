@@ -38,7 +38,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration)\;..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration)\;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
