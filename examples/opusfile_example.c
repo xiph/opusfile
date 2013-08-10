@@ -93,6 +93,24 @@ static void print_size(FILE *_fp,opus_int64 _nbytes,int _metric,
   else fprintf(_fp,"%li%s%c",(long)val,_spacer,SUFFIXES[shift]);
 }
 
+/*A version of strncasecmp() that is guaranteed to only ignore the case of
+   ASCII characters.*/
+static int local_strncasecmp(const char *_a,const char *_b,int _n){
+  int i;
+  for(i=0;i<_n;i++){
+    int a;
+    int b;
+    int d;
+    a=_a[i];
+    b=_b[i];
+    if(a>='a'&&a<='z')a-='a'-'A';
+    if(b>='a'&&b<='z')b-='a'-'A';
+    d=a-b;
+    if(d)return d;
+  }
+  return 0;
+}
+
 static void put_le32(unsigned char *_dst,opus_uint32 _x){
   _dst[0]=(unsigned char)(_x&0xFF);
   _dst[1]=(unsigned char)(_x>>8&0xFF);
@@ -256,7 +274,28 @@ int main(int _argc,const char **_argv){
         tags=op_tags(of,li);
         fprintf(stderr,"  Encoded by: %s\n",tags->vendor);
         for(ci=0;ci<tags->comments;ci++){
-          fprintf(stderr,"  %s\n",tags->user_comments[ci]);
+          const char *comment;
+          comment=tags->user_comments[ci];
+          if(local_strncasecmp(comment,"METADATA_BLOCK_PICTURE=",23)==0){
+            OpusPictureTag pic;
+            int            err;
+            err=opus_picture_tag_parse(&pic,comment);
+            fprintf(stderr,"  %.23s",comment);
+            if(err>=0){
+              fprintf(stderr,"%u|%s|%s|%ux%ux%u",pic.type,pic.mime_type,
+               pic.description,pic.width,pic.height,pic.depth);
+              if(pic.colors!=0)fprintf(stderr,"/%u",pic.colors);
+              if(pic.format==OP_PIC_FORMAT_URL){
+                fprintf(stderr,"|%s\n",pic.data);
+              }
+              else{
+                fprintf(stderr,"|<%u bytes of image data>\n",pic.data_length);
+              }
+              opus_picture_tag_clear(&pic);
+            }
+            else fprintf(stderr,"<error parsing picture tag>\n");
+          }
+          else fprintf(stderr,"  %s\n",tags->user_comments[ci]);
         }
         fprintf(stderr,"\n");
         if(!op_seekable(of)){

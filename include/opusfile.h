@@ -122,9 +122,10 @@ extern "C" {
 #  pragma GCC visibility push(default)
 # endif
 
-typedef struct OpusHead    OpusHead;
-typedef struct OpusTags    OpusTags;
-typedef struct OggOpusFile OggOpusFile;
+typedef struct OpusHead       OpusHead;
+typedef struct OpusTags       OpusTags;
+typedef struct OpusPictureTag OpusPictureTag;
+typedef struct OggOpusFile    OggOpusFile;
 
 /*Warning attributes for libopusfile functions.*/
 # if OP_GNUC_PREREQ(3,4)
@@ -301,6 +302,87 @@ struct OpusTags{
   char  *vendor;
 };
 
+/**\name Picture tag image formats*/
+/*@{*/
+
+/**The MIME type was not recognized, or the image data did not match the
+    declared MIME type.*/
+#define OP_PIC_FORMAT_UNKNOWN (-1)
+/**The MIME type indicates the image data is really a URL.*/
+#define OP_PIC_FORMAT_URL     (0)
+/**The image is a JPEG.*/
+#define OP_PIC_FORMAT_JPEG    (1)
+/**The image is a PNG.*/
+#define OP_PIC_FORMAT_PNG     (2)
+/**The image is a GIF.*/
+#define OP_PIC_FORMAT_GIF     (3)
+
+/*@}*/
+
+/**The contents of a METADATA_BLOCK_PICTURE tag.*/
+struct OpusPictureTag{
+  /**The picture type according to the ID3v2 APIC frame:
+     <ol start="0">
+     <li>Other</li>
+     <li>32x32 pixels 'file icon' (PNG only)</li>
+     <li>Other file icon</li>
+     <li>Cover (front)</li>
+     <li>Cover (back)</li>
+     <li>Leaflet page</li>
+     <li>Media (e.g. label side of CD)</li>
+     <li>Lead artist/lead performer/soloist</li>
+     <li>Artist/performer</li>
+     <li>Conductor</li>
+     <li>Band/Orchestra</li>
+     <li>Composer</li>
+     <li>Lyricist/text writer</li>
+     <li>Recording Location</li>
+     <li>During recording</li>
+     <li>During performance</li>
+     <li>Movie/video screen capture</li>
+     <li>A bright colored fish</li>
+     <li>Illustration</li>
+     <li>Band/artist logotype</li>
+     <li>Publisher/Studio logotype</li>
+     </ol>
+     Others are reserved and should not be used.
+     There may only be one each of picture type 1 and 2 in a file.*/
+  opus_int32     type;
+  /**The MIME type of the picture, in printable ASCII characters 0x20-0x7E.
+     The MIME type may also be <code>"-->"</code> to signify that the data part
+      is a URL pointing to the picture instead of the picture data itself.
+     In this case, a terminating NUL is appended to the URL string in #data,
+      but #data_length is set to the length of the string excluding that
+      terminating NUL.*/
+  char          *mime_type;
+  /**The description of the picture, in UTF-8.*/
+  char          *description;
+  /**The width of the picture in pixels.*/
+  opus_uint32    width;
+  /**The height of the picture in pixels.*/
+  opus_uint32    height;
+  /**The color depth of the picture in bits-per-pixel (<em>not</em>
+      bits-per-channel).*/
+  opus_uint32    depth;
+  /**For indexed-color pictures (e.g., GIF), the number of colors used, or 0
+      for non-indexed pictures.*/
+  opus_uint32    colors;
+  /**The length of the picture data in bytes.*/
+  opus_uint32    data_length;
+  /**The binary picture data.*/
+  unsigned char *data;
+  /**The format of the picture data, if known.
+     One of
+     <ul>
+     <li>#OP_PIC_FORMAT_UNKNOWN,</li>
+     <li>#OP_PIC_FORMAT_URL,</li>
+     <li>#OP_PIC_FORMAT_JPEG,</li>
+     <li>#OP_PIC_FORMAT_PNG,</li>
+     <li>#OP_PIC_FORMAT_GIF, or</li>
+     </ul>.*/
+  int            format;
+};
+
 /**\name Functions for manipulating header data
 
    These functions manipulate the #OpusHead and #OpusTags structures,
@@ -457,6 +539,51 @@ int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8)
    It will free all memory used by the structure members.
    \param _tags The #OpusTags structure to clear.*/
 void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
+
+/**Parse a single METADATA_BLOCK_PICTURE tag.
+   This decodes the BASE64-encoded content of the tag and returns a structure
+    with the MIME type, description, image parameters (if known), and the
+    compressed image data.
+   If the MIME type indicates the presence of an image format we recognize
+    (JPEG, PNG, or GIF) and the actual image data contains the magic signature
+    associated with that format, then the OpusPictureTag::format field will be
+    set to the corresponding format.
+   This is provided as a convenience to avoid requiring applications to parse
+    the MIME type and/or do their own format detection for the commonly used
+    formats.
+   In this case, we also attempt to extract the image parameters directly from
+    the image data (overriding any that were present in the tag, which the
+    specification says applications are not meant to rely on).
+   The application must still provide its own support for actually decoding the
+    image data and, if applicable, retrieving that data from URLs.
+   \param[out] _pic Returns the parsed picture data.
+                    No sanitation is done on the type, MIME type, or
+                     description fields, so these might return invalid values.
+                    The contents of this structure are left unmodified on
+                     failure.
+   \param      _tag The METADATA_BLOCK_PICTURE tag contents.
+                    The leading "METADATA_BLOCK_PICTURE=" portion is optional,
+                     to allow the function to be used on either directly on the
+                     values in OpusTags::user_comments or on the return value
+                     of opus_tags_query().
+   \return 0 on success or a negative value on error.
+   \retval #OP_ENOTFORMAT The METADATA_BLOCK_PICTURE contents were not valid.
+   \retval #OP_EFAULT     A memory allocation failed.*/
+int opus_picture_tag_parse(OpusPictureTag *_pic,const char *_tag)
+ OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+
+/**Initializes an #OpusPictureTag structure.
+   This should be called on a freshly allocated #OpusPictureTag structure
+    before attempting to use it.
+   \param _pic The #OpusPictureTag structure to initialize.*/
+void opus_picture_tag_init(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
+
+/**Clears the #OpusPictureTag structure.
+   This should be called on an #OpusPictureTag structure after it is no longer
+    needed.
+   It will free all memory used by the structure members.
+   \param _pic The #OpusPictureTag structure to clear.*/
+void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
 
 /*@}*/
 
