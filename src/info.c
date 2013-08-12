@@ -473,6 +473,7 @@ static int opus_picture_tag_parse_impl(OpusPictureTag *_pic,const char *_tag,
   for(i=0;i<_base64_sz;i++){
     opus_uint32 value;
     int         j;
+    value=0;
     for(j=0;j<4;j++){
       unsigned c;
       unsigned d;
