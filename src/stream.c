@@ -153,8 +153,9 @@ static wchar_t *op_utf8_to_utf16(const char *_src){
         dst[di++]=(wchar_t)c0;
         continue;
       }
-      else if(si+1<len){
+      else{
         int c1;
+        /*This is safe, because c0 was not 0 and _src is NUL-terminated.*/
         c1=(unsigned char)_src[si+1];
         if((c1&0xC0)==0x80){
           /*Found at least one continuation byte.*/
@@ -169,8 +170,9 @@ static wchar_t *op_utf8_to_utf16(const char *_src){
               continue;
             }
           }
-          else if(si+2<len){
+          else{
             int c2;
+            /*This is safe, because c1 was not 0 and _src is NUL-terminated.*/
             c2=(unsigned char)_src[si+2];
             if((c2&0xC0)==0x80){
               /*Found at least two continuation bytes.*/
@@ -178,16 +180,19 @@ static wchar_t *op_utf8_to_utf16(const char *_src){
                 wchar_t w;
                 /*Start byte says this is a 3-byte sequence.*/
                 w=(c0&0xF)<<12|(c1&0x3F)<<6|c2&0x3F;
-                if(w>=0x800U&&(w<0xD800||w>=0xE000)){
-                  /*This is a 3-byte sequence that is not overlong and not a
-                     UTF-16 surrogate pair value.*/
+                if(w>=0x800U&&(w<0xD800||w>=0xE000)&&w<0xFFFE){
+                  /*This is a 3-byte sequence that is not overlong, not a
+                     UTF-16 surrogate pair value, and not a 'not a character'
+                     value.*/
                   dst[di++]=w;
                   si+=2;
                   continue;
                 }
               }
-              else if(si+3<len){
+              else{
                 int c3;
+                /*This is safe, because c2 was not 0 and _src is
+                   NUL-terminated.*/
                 c3=(unsigned char)_src[si+3];
                 if((c3&0xC0)==0x80){
                   /*Found at least three continuation bytes.*/

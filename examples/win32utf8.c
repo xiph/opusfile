@@ -32,8 +32,9 @@ static char *utf16_to_utf8(const wchar_t *_src){
       dst[di++]=(char)(0x80|c0&0x3F);
       continue;
     }
-    else if(c0>=0xD800&&c0<0xDC00&&si+1<len){
+    else if(c0>=0xD800&&c0<0xDC00){
       unsigned c1;
+      /*This is safe, because c0 was not 0 and _src is NUL-terminated.*/
       c1=_src[si+1];
       if(c1>=0xDC00&&c1<0xE000){
         unsigned w;
@@ -48,9 +49,9 @@ static char *utf16_to_utf8(const wchar_t *_src){
         continue;
       }
     }
-    /*Anything else is either a valid 3-byte sequence, or an invalid
-       surrogate pair.
-      In the latter case, we just encode the value as a 3-byte
+    /*Anything else is either a valid 3-byte sequence, an invalid surrogate
+       pair, or 'not a character'.
+      In the latter two cases, we just encode the value as a 3-byte
        sequence anyway (producing technically invalid UTF-8).
       Later error handling will detect the problem, with a better
        chance of giving a useful error message.*/
