@@ -30,6 +30,10 @@ Win32 binaries:
     ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir
     make && make check && make install
   or similar. Wine is required for 'make check' to complete.
+- Compile openssl with:
+    ./Configure shared mingw64 no-asm --prefix=/path/to/builddir \
+      --cross-compile-prefix=i686-w64-mingw32
+    make depend && make -j8 && make install
 - Compile opusfile with:
     ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir \
         PKG_CONFIG_PATH=/path/to/builddir/lib/pkgconfig
@@ -43,15 +47,16 @@ Win32 binaries:
 - Copy .libs/libopusfile-0.dll to the release dir.
 - Copy .libs/libopusfile.a to the release dir.
 - Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
+- Copy ./lib/libopusurl-0.dll, etc. to the release dir.
 - Copy libogg/src/.libs/libogg-0.dll to the release dir.
 - Copy opus/.libs/libopus-0.dll to the release dir.
 - Copy any other dependent dlls
-- Copy doc/latex/refman to opusfile-${version}-win32/opusfile-${version}.pdf
+- Copy doc/latex/refman.pdf to opusfile-${version}-win32/opusfile-${version}.pdf
 - Copy examples/.libs/*.exe to the release dir.
 - Strip *.dll *.a *.exe in the release dir.
 - In the release dir, run:
     sha1sum * > SHA1SUMS.txt
-    gpg --detact-sign --armor SHA1SUMS.txt
+    gpg --detach-sign --armor SHA1SUMS.txt
 - In the parent directory, create the archive:
     zip -r opusfile-${version}-win32.zip opusfile-${version}-win32/*
 - Copy the archive to a clean system and verify the examples work
