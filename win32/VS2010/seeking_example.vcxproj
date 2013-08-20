@@ -40,14 +40,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration)\;..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration)\;LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration)\;..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration)\;..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration)\;LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\..\opus\win32\VS2010\$(Platform)\$(Configuration)\;..\..\..\ogg\win32\VS2010\$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
