@@ -101,7 +101,7 @@ void opus_tags_clear(OpusTags *_tags){
   Unlike the public API, this function requires _tags to already be
    initialized, modifies its contents before success is guaranteed, and assumes
    the caller will clear it on error.*/
-int opus_tags_parse_impl(OpusTags *_tags,
+static int opus_tags_parse_impl(OpusTags *_tags,
  const unsigned char *_data,size_t _len){
   opus_uint32 count;
   size_t      size;

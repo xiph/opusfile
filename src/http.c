@@ -1527,7 +1527,7 @@ static BIO_METHOD op_bio_retry_method={
 
 /*Establish a CONNECT tunnel and pipeline the start of the TLS handshake for
    proxying https URL requests.*/
-int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
+static int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
  OpusHTTPConn *_conn,op_sock _fd,SSL *_ssl_conn,BIO *_ssl_bio){
   BIO  *retry_bio;
   char *status_code;
@@ -1796,7 +1796,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
 }
 
 /*Perform the TLS handshake on a new connection.*/
-int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
+static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
  op_sock _fd,SSL *_ssl_conn){
   SSL_SESSION *ssl_session;
   BIO         *ssl_bio;

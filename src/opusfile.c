@@ -1003,7 +1003,7 @@ static int op_find_final_pcm_offset(OggOpusFile *_of,
 
 /*Rescale the number _x from the range [0,_from] to [0,_to].
   _from and _to must be positive.*/
-opus_int64 op_rescale64(opus_int64 _x,opus_int64 _from,opus_int64 _to){
+static opus_int64 op_rescale64(opus_int64 _x,opus_int64 _from,opus_int64 _to){
   opus_int64 frac;
   opus_int64 ret;
   int        i;
