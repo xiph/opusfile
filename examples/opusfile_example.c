@@ -168,8 +168,9 @@ int main(int _argc,const char **_argv){
     of=op_open_callbacks(op_fdopen(&cb,fileno(stdin),"rb"),&cb,NULL,0,&ret);
   }
   else{
+    OpusServerInfo info;
     /*Try to treat the argument as a URL.*/
-    of=op_open_url(_argv[1],&ret,NULL);
+    of=op_open_url(_argv[1],&ret,OP_GET_SERVER_INFO(&info),NULL);
 #if 0
     if(of==NULL){
       OpusFileCallbacks  cb={NULL,NULL,NULL,NULL};
@@ -182,9 +183,36 @@ int main(int _argc,const char **_argv){
     }
 #else
     if(of==NULL)of=op_open_file(_argv[1],&ret);
-    /*This is not a very good check, but at least it won't give false
-       positives.*/
-    else is_ssl=strncmp(_argv[1],"https:",6)==0;
+    else{
+      if(info.name!=NULL){
+        fprintf(stderr,"Station name: %s\n",info.name);
+      }
+      if(info.description!=NULL){
+        fprintf(stderr,"Station description: %s\n",info.description);
+      }
+      if(info.genre!=NULL){
+        fprintf(stderr,"Station genre: %s\n",info.genre);
+      }
+      if(info.url!=NULL){
+        fprintf(stderr,"Station homepage: %s\n",info.url);
+      }
+      if(info.bitrate_kbps>=0){
+        fprintf(stderr,"Station bitrate: %u kbps\n",
+         (unsigned)info.bitrate_kbps);
+      }
+      if(info.is_public>=0){
+        fprintf(stderr,"%s\n",
+         info.is_public?"Station is public.":"Station is private.");
+      }
+      if(info.server!=NULL){
+        fprintf(stderr,"Server software: %s\n",info.server);
+      }
+      if(info.content_type!=NULL){
+        fprintf(stderr,"Content-Type: %s\n",info.content_type);
+      }
+      is_ssl=info.is_ssl;
+      opus_server_info_clear(&info);
+    }
 #endif
   }
   if(of==NULL){

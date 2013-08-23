@@ -601,6 +601,8 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
    They may be expanded in the future.*/
 /*@{*/
 
+typedef struct OpusServerInfo OpusServerInfo;
+
 /*These are the raw numbers used to define the request codes.
   They should not be used directly.*/
 #define OP_SSL_SKIP_CERTIFICATE_CHECK_REQUEST (6464)
@@ -608,6 +610,7 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
 #define OP_HTTP_PROXY_PORT_REQUEST            (6592)
 #define OP_HTTP_PROXY_USER_REQUEST            (6656)
 #define OP_HTTP_PROXY_PASS_REQUEST            (6720)
+#define OP_GET_SERVER_INFO_REQUEST            (6784)
 
 #define OP_URL_OPT(_request) ((_request)+(char *)0)
 
@@ -615,6 +618,57 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
    provided to one of the URL options.*/
 #define OP_CHECK_INT(_x) ((void)((_x)==(opus_int32)0),(opus_int32)(_x))
 #define OP_CHECK_CONST_CHAR_PTR(_x) ((_x)+((_x)-(const char *)(_x)))
+#define OP_CHECK_SERVER_INFO_PTR(_x) ((_x)+((_x)-(OpusServerInfo *)(_x)))
+
+/**HTTP/Shoutcast/Icecast server information associated with a URL.*/
+struct OpusServerInfo{
+  /**The name of the server (icy-name/ice-name).
+     This is <code>NULL</code> if there was no <code>icy-name</code> or
+      <code>ice-name</code> header.*/
+  char        *name;
+  /**A short description of the server (icy-description/ice-description).
+     This is <code>NULL</code> if there was no <code>icy-description</code> or
+      <code>ice-description</code> header.*/
+  char        *description;
+  /**The genre the server falls under (icy-genre/ice-genre).
+     This is <code>NULL</code> if there was no <code>icy-genre</code> header.*/
+  char        *genre;
+  /**The homepage for the server (icy-url/ice-url).
+     This is <code>NULL</code> if there was no <code>icy-url</code> header.*/
+  char        *url;
+  /**The software used by the origin server (Server).
+     This is <code>NULL</code> if there was no <code>Server</code> header.*/
+  char        *server;
+  /**The media type of the entity sent to the recepient (Content-Type).
+     This is <code>NULL</code> if there was no <code>Content-Type</code>
+      header.*/
+  char        *content_type;
+  /**The nominal stream bitrate in kbps (icy-br/ice-bitrate).
+     This is <code>-1</code> if there was no <code>icy-br</code> or
+      <code>ice-bitrate</code> header.*/
+  opus_int32   bitrate_kbps;
+  /**Flag indicating whether the server is public (<code>1</code>) or not
+      (<code>0</code>) (icy-pub/ice-public).
+     This is <code>-1</code> if there was no <code>icy-pub</code> or
+      <code>ice-public</code> header.*/
+  int          is_public;
+  /**Flag indicating whether the server is using HTTPS instead of HTTP.
+     This is <code>0</code> unless HTTPS is being used.
+     This may not match the protocol used in the original URL if there were
+      redirections.*/
+  int          is_ssl;
+};
+
+/**Initializes an #OpusServerInfo structure.
+   All fields are set as if the corresponding header was not available.*/
+void opus_server_info_init(OpusServerInfo *_info) OP_ARG_NONNULL(1);
+
+/**Clears the #OpusServerInfo structure.
+   This should be called on an #OpusServerInfo structure after it is no longer
+    needed.
+   It will free all memory used by the structure members.
+   \param _info The #OpusServerInfo structure to clear.*/
+void opus_server_info_clear(OpusServerInfo *_info) OP_ARG_NONNULL(1);
 
 /**Skip the certificate check when connecting via TLS/SSL (https).
    \param _b <code>opus_int32</code>: Whether or not to skip the certificate
@@ -674,6 +728,27 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
    \hideinitializer*/
 #define OP_HTTP_PROXY_PASS(_pass) \
  OP_URL_OPT(OP_HTTP_PROXY_PASS_REQUEST),OP_CHECK_CONST_CHAR_PTR(_pass)
+
+/**Parse information about the streaming server (if any) and return it.
+   Very little validation is done.
+   In particular, OpusServerInfo::url may not be a valid URL,
+    OpusServerInfo::bitrate_kbps may not really be in kbps, and
+    OpusServerInfo::content_type may not be a valid MIME type.
+   The character set of the string fields is not specified anywhere, and should
+    not be assumed to be valid UTF-8.
+   \param _info OpusServerInfo *: Returns information about the server.
+                                  If there is any error opening the stream, the
+                                   contents of this structure remain
+                                   unmodified.
+                                  On success, fills in the structure with the
+                                   server information that was available, if
+                                   any.
+                                  After a successful return, the contents of
+                                   this structure should be freed by calling
+                                   opus_server_info_clear().
+   \hideinitializer*/
+#define OP_GET_SERVER_INFO(_info) \
+ OP_URL_OPT(OP_GET_SERVER_INFO_REQUEST),OP_CHECK_SERVER_INFO_PTR(_info)
 
 /*@}*/
 /*@}*/

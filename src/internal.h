@@ -94,6 +94,8 @@ void op_fatal_impl(const char *_str,const char *_file,int _line);
 
 # define OP_INT64_MAX (2*(((ogg_int64_t)1<<62)-1)|1)
 # define OP_INT64_MIN (-OP_INT64_MAX-1)
+# define OP_INT32_MAX (2*(((ogg_int32_t)1<<30)-1)|1)
+# define OP_INT32_MIN (-OP_INT32_MAX-1)
 
 # define OP_MIN(_a,_b)        ((_a)<(_b)?(_a):(_b))
 # define OP_MAX(_a,_b)        ((_a)>(_b)?(_a):(_b))

@@ -2130,7 +2130,7 @@ static int op_http_allow_pipelining(const char *_server){
 
 static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
  int _skip_certificate_check,const char *_proxy_host,unsigned _proxy_port,
- const char *_proxy_user,const char *_proxy_pass){
+ const char *_proxy_user,const char *_proxy_pass,OpusServerInfo *_info){
   struct addrinfo *addrs;
   const char      *last_host;
   unsigned         last_port;
@@ -2387,6 +2387,49 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
             So it should send back at least HTTP/1.1, despite our HTTP/1.0
              request.*/
           pipeline+=v1_1_compat&&op_http_allow_pipelining(cdr);
+          if(_info!=NULL&&_info->server==NULL)_info->server=op_string_dup(cdr);
+        }
+        /*Collect station information headers if the caller requested it.
+          If there's more than one copy of a header, the first one wins.*/
+        else if(_info!=NULL){
+          if(strcmp(header,"content-type")==0){
+            if(_info->content_type==NULL){
+              _info->content_type=op_string_dup(cdr);
+            }
+          }
+          else if(header[0]=='i'&&header[1]=='c'
+           &&(header[2]=='e'||header[2]=='y')&&header[3]=='-'){
+            if(strcmp(header+4,"name")==0){
+              if(_info->name==NULL)_info->name=op_string_dup(cdr);
+            }
+            else if(strcmp(header+4,"description")==0){
+              if(_info->description==NULL)_info->description=op_string_dup(cdr);
+            }
+            else if(strcmp(header+4,"genre")==0){
+              if(_info->genre==NULL)_info->genre=op_string_dup(cdr);
+            }
+            else if(strcmp(header+4,"url")==0){
+              if(_info->url==NULL)_info->url=op_string_dup(cdr);
+            }
+            else if(strcmp(header,"icy-br")==0
+             ||strcmp(header,"ice-bitrate")==0){
+              if(_info->bitrate_kbps<0){
+                opus_int64 bitrate_kbps;
+                /*Just re-using this function to parse a random unsigned
+                   integer field.*/
+                bitrate_kbps=op_http_parse_content_length(cdr);
+                if(bitrate_kbps>=0&&bitrate_kbps<=OP_INT32_MAX){
+                  _info->bitrate_kbps=(opus_int32)bitrate_kbps;
+                }
+              }
+            }
+            else if(strcmp(header,"icy-pub")==0
+             ||strcmp(header,"ice-public")==0){
+              if(_info->is_public<0&&(cdr[0]=='0'||cdr[0]=='1')&&cdr[1]=='\0'){
+                _info->is_public=cdr[0]-'0';
+              }
+            }
+          }
         }
       }
       switch(status_code[2]){
@@ -2430,6 +2473,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
       _stream->cur_conni=0;
       _stream->connect_rate=op_time_diff_ms(&end_time,&start_time);
       _stream->connect_rate=OP_MAX(_stream->connect_rate,1);
+      if(_info!=NULL)_info->is_ssl=OP_URL_IS_SSL(&_stream->url);
       /*The URL has been successfully opened.*/
       return 0;
     }
@@ -3124,12 +3168,33 @@ static const OpusFileCallbacks OP_HTTP_CALLBACKS={
 };
 #endif
 
+void opus_server_info_init(OpusServerInfo *_info){
+  _info->name=NULL;
+  _info->description=NULL;
+  _info->genre=NULL;
+  _info->url=NULL;
+  _info->server=NULL;
+  _info->content_type=NULL;
+  _info->bitrate_kbps=-1;
+  _info->is_public=-1;
+  _info->is_ssl=0;
+}
+
+void opus_server_info_clear(OpusServerInfo *_info){
+  _ogg_free(_info->content_type);
+  _ogg_free(_info->server);
+  _ogg_free(_info->url);
+  _ogg_free(_info->genre);
+  _ogg_free(_info->description);
+  _ogg_free(_info->name);
+}
+
 /*The actual URL stream creation function.
   This one isn't extensible like the application-level interface, but because
    it isn't public, we're free to change it in the future.*/
 static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
  int _skip_certificate_check,const char *_proxy_host,unsigned _proxy_port,
- const char *_proxy_user,const char *_proxy_pass){
+ const char *_proxy_user,const char *_proxy_pass,OpusServerInfo *_info){
   const char *path;
   /*Check to see if this is a valid file: URL.*/
   path=op_parse_file_url(_url);
@@ -3151,7 +3216,7 @@ static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
     if(OP_UNLIKELY(stream==NULL))return NULL;
     op_http_stream_init(stream);
     ret=op_http_stream_open(stream,_url,_skip_certificate_check,
-     _proxy_host,_proxy_port,_proxy_user,_proxy_pass);
+     _proxy_host,_proxy_port,_proxy_user,_proxy_pass,_info);
     if(OP_UNLIKELY(ret<0)){
       op_http_stream_clear(stream);
       _ogg_free(stream);
@@ -3166,22 +3231,25 @@ static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
   (void)_proxy_port;
   (void)_proxy_user;
   (void)_proxy_pass;
+  (void)_info;
   return NULL;
 #endif
 }
 
 void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
  const char *_url,va_list _ap){
-  int         skip_certificate_check;
-  const char *proxy_host;
-  opus_int32  proxy_port;
-  const char *proxy_user;
-  const char *proxy_pass;
+  int             skip_certificate_check;
+  const char     *proxy_host;
+  opus_int32      proxy_port;
+  const char     *proxy_user;
+  const char     *proxy_pass;
+  OpusServerInfo *pinfo;
   skip_certificate_check=0;
   proxy_host=NULL;
   proxy_port=8080;
   proxy_user=NULL;
   proxy_pass=NULL;
+  pinfo=NULL;
   for(;;){
     ptrdiff_t request;
     request=va_arg(_ap,char *)-(char *)NULL;
@@ -3204,12 +3272,27 @@ void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
       case OP_HTTP_PROXY_PASS_REQUEST:{
         proxy_pass=va_arg(_ap,const char *);
       }break;
+      case OP_GET_SERVER_INFO_REQUEST:{
+        pinfo=va_arg(_ap,OpusServerInfo *);
+      }break;
       /*Some unknown option.*/
       default:return NULL;
     }
   }
+  /*If the caller has requested server information, proxy it to a local copy to
+     simplify error handling.*/
+  if(pinfo!=NULL){
+    OpusServerInfo  info;
+    void           *ret;
+    opus_server_info_init(&info);
+    ret=op_url_stream_create_impl(_cb,_url,skip_certificate_check,
+     proxy_host,proxy_port,proxy_user,proxy_pass,&info);
+    if(ret!=NULL)*pinfo=*&info;
+    else opus_server_info_clear(&info);
+    return ret;
+  }
   return op_url_stream_create_impl(_cb,_url,skip_certificate_check,
-   proxy_host,proxy_port,proxy_user,proxy_pass);
+   proxy_host,proxy_port,proxy_user,proxy_pass,NULL);
 }
 
 void *op_url_stream_create(OpusFileCallbacks *_cb,
