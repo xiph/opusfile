@@ -660,7 +660,7 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
                                arguments.
    \hideinitializer*/
 #define OP_HTTP_PROXY_USER(_user) \
- OP_URL_OPT(OP_HTTP_PROXY_USER_REQUEST),OP_CHECK_CONST_CHAR_PTR(_host)
+ OP_URL_OPT(OP_HTTP_PROXY_USER_REQUEST),OP_CHECK_CONST_CHAR_PTR(_user)
 
 /**Use the given password for authentication when proxying connections.
    All proxy parameters are ignored for non-http and non-https URLs.
@@ -673,7 +673,7 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
                                arguments.
    \hideinitializer*/
 #define OP_HTTP_PROXY_PASS(_pass) \
- OP_URL_OPT(OP_HTTP_PROXY_PASS_REQUEST),OP_CHECK_CONST_CHAR_PTR(_host)
+ OP_URL_OPT(OP_HTTP_PROXY_PASS_REQUEST),OP_CHECK_CONST_CHAR_PTR(_pass)
 
 /*@}*/
 /*@}*/
