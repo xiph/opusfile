@@ -2378,7 +2378,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
           if(OP_UNLIKELY(ret<0))return ret;
           pipeline-=ret;
         }
-        else if(strcmp(header,"server")){
+        else if(strcmp(header,"server")==0){
           /*If we got a Server response header, and it wasn't from a known-bad
              server, enable pipelining, as long as it's at least HTTP/1.1.
             According to RFC 2145, the server is supposed to respond with the
