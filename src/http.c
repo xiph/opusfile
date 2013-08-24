@@ -977,11 +977,11 @@ static int op_http_conn_estimate_available(OpusHTTPConn *_conn){
 static opus_int32 op_time_diff_ms(const struct timeb *_end,
  const struct timeb *_start){
   opus_int64 dtime;
-  dtime=_end->time-_start->time;
+  dtime=_end->time-(opus_int64)_start->time;
   OP_ASSERT(_end->millitm<1000);
   OP_ASSERT(_start->millitm<1000);
-  if(OP_UNLIKELY(dtime>(0x7FFFFFFF-1000)/1000))return 0x7FFFFFFF;
-  if(OP_UNLIKELY(dtime<(-0x7FFFFFFF+999)/1000))return -0x7FFFFFFF-1;
+  if(OP_UNLIKELY(dtime>(OP_INT32_MAX-1000)/1000))return OP_INT32_MAX;
+  if(OP_UNLIKELY(dtime<(OP_INT32_MIN+1000)/1000))return OP_INT32_MIN;
   return (opus_int32)dtime*1000+_end->millitm-_start->millitm;
 }
 
@@ -2800,7 +2800,7 @@ static int op_http_conn_read_body(OpusHTTPStream *_stream,
           /*Unless there's a bug, we should be able to convert
              (next_pos,next_end) into valid (_pos,_chunk_size) parameters.*/
           OP_ASSERT(next_end<0
-           ||next_end-next_pos>=0&&next_end-next_pos<=0x7FFFFFFF);
+           ||next_end-next_pos>=0&&next_end-next_pos<=OP_INT32_MAX);
           ret=op_http_conn_open_pos(_stream,_conn,next_pos,
            next_end<0?-1:(opus_int32)(next_end-next_pos));
           if(OP_UNLIKELY(ret<0))return OP_EREAD;

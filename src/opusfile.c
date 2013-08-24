@@ -1774,11 +1774,13 @@ static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
   /*These rates are absurd, but let's handle them anyway.*/
   if(OP_UNLIKELY(_bytes>(OP_INT64_MAX-(_samples>>1))/(48000*8))){
     ogg_int64_t den;
-    if(OP_UNLIKELY(_bytes/(0x7FFFFFFFF/(48000*8))>=_samples))return 0x7FFFFFFF;
+    if(OP_UNLIKELY(_bytes/(OP_INT32_MAX/(48000*8))>=_samples)){
+      return OP_INT32_MAX;
+    }
     den=_samples/(48000*8);
     return (opus_int32)((_bytes+(den>>1))/den);
   }
-  if(OP_UNLIKELY(_samples<=0))return 0x7FFFFFFF;
+  if(OP_UNLIKELY(_samples<=0))return OP_INT32_MAX;
   /*This can't actually overflow in normal operation: even with a pre-skip of
      545 2.5 ms frames with 8 streams running at 1282*8+1 bytes per packet
      (1275 byte frames + Opus framing overhead + Ogg lacing values), that all
@@ -1786,7 +1788,8 @@ static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
     The only way to get bitrates larger than that is with excessive Opus
      padding, more encoded streams than output channels, or lots and lots of
      Ogg pages with no packets on them.*/
-  return (opus_int32)OP_MIN((_bytes*48000*8+(_samples>>1))/_samples,0x7FFFFFFF);
+  return (opus_int32)OP_MIN((_bytes*48000*8+(_samples>>1))/_samples,
+   OP_INT32_MAX);
 }
 
 opus_int32 op_bitrate(OggOpusFile *_of,int _li){
@@ -2458,7 +2461,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
   if(_pcm_offset<=link->head.pre_skip)skip=0;
   else skip=OP_MAX(_pcm_offset-80*48,0);
   OP_ASSERT(_pcm_offset-skip>=0);
-  OP_ASSERT(_pcm_offset-skip<0x7FFFFFFF-120*48);
+  OP_ASSERT(_pcm_offset-skip<OP_INT32_MAX-120*48);
   /*Skip packets until we find one with samples past our skip target.*/
   for(;;){
     op_count=_of->op_count;
@@ -2484,7 +2487,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
   /*We skipped too far.
     Either the timestamps were illegal or there was a hole in the data.*/
   if(diff>skip)return OP_EBADLINK;
-  OP_ASSERT(_pcm_offset-diff<0x7FFFFFFF);
+  OP_ASSERT(_pcm_offset-diff<OP_INT32_MAX);
   /*TODO: If there are further holes/illegal timestamps, we still won't decode
      to the correct sample.
     However, at least op_pcm_tell() will report the correct value immediately
