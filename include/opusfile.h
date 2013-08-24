@@ -71,7 +71,7 @@
     <a href="http://www.xiph.org/vorbis/doc/Vorbis_I_spec.html#x1-800004.3.9">Vorbis
     mappings</a>.
    A special stereo API can convert everything to 2 channels, making it simple
-    to support multichannel files in a application which only has stereo
+    to support multichannel files in an application which only has stereo
     output.
    Although the <tt>libopusfile</tt> ABI provides support for the theoretical
     maximum number of channels, the current implementation does not support
@@ -90,9 +90,10 @@
     (ignoring any other streams that might be concurrently multiplexed with it,
     such as a video stream).
 
-   The channel count can also change between links, but if your application is
-    not prepared to deal with this, it can use the stereo API to ensure the
-    audio from all links will always get decoded into a common format.
+   The channel count can also change between links.
+   If your application is not prepared to deal with this, it can use the stereo
+    API to ensure the audio from all links will always get decoded into a
+    common format.
    Since <tt>libopusfile</tt> always decodes to 48&nbsp;kHz, you do not have to
     worry about the sample rate changing between links (as was possible with
     Vorbis).
@@ -108,6 +109,8 @@ extern "C" {
 # include <ogg/ogg.h>
 # include <opus_multistream.h>
 
+/**@cond PRIVATE*/
+
 /*Enable special features for gcc and gcc-compatible compilers.*/
 # if !defined(OP_GNUC_PREREQ)
 #  if defined(__GNUC__)&&defined(__GNUC_MINOR__)
@@ -122,10 +125,12 @@ extern "C" {
 #  pragma GCC visibility push(default)
 # endif
 
-typedef struct OpusHead       OpusHead;
-typedef struct OpusTags       OpusTags;
-typedef struct OpusPictureTag OpusPictureTag;
-typedef struct OggOpusFile    OggOpusFile;
+typedef struct OpusHead          OpusHead;
+typedef struct OpusTags          OpusTags;
+typedef struct OpusPictureTag    OpusPictureTag;
+typedef struct OpusServerInfo    OpusServerInfo;
+typedef struct OpusFileCallbacks OpusFileCallbacks;
+typedef struct OggOpusFile       OggOpusFile;
 
 /*Warning attributes for libopusfile functions.*/
 # if OP_GNUC_PREREQ(3,4)
@@ -138,6 +143,8 @@ typedef struct OggOpusFile    OggOpusFile;
 # else
 #  define OP_ARG_NONNULL(_x)
 # endif
+
+/**@endcond*/
 
 /**\defgroup error_codes Error Codes*/
 /*@{*/
@@ -377,9 +384,9 @@ struct OpusPictureTag{
      <li>#OP_PIC_FORMAT_UNKNOWN,</li>
      <li>#OP_PIC_FORMAT_URL,</li>
      <li>#OP_PIC_FORMAT_JPEG,</li>
-     <li>#OP_PIC_FORMAT_PNG,</li>
-     <li>#OP_PIC_FORMAT_GIF, or</li>
-     </ul>.*/
+     <li>#OP_PIC_FORMAT_PNG, or</li>
+     <li>#OP_PIC_FORMAT_GIF.</li>
+     </ul>*/
   int            format;
 };
 
@@ -529,7 +536,7 @@ int opus_tags_query_count(const OpusTags *_tags,const char *_tag)
                         On error, no value is returned, and the previous
                          contents remain unchanged.
    \return 0 on success, or a negative value on error.
-   \retval OP_EFALSE There was no track gain available in the given tags.*/
+   \retval #OP_FALSE There was no track gain available in the given tags.*/
 int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
@@ -568,9 +575,10 @@ void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
                      of opus_tags_query().
    \return 0 on success or a negative value on error.
    \retval #OP_ENOTFORMAT The METADATA_BLOCK_PICTURE contents were not valid.
-   \retval #OP_EFAULT     A memory allocation failed.*/
-int opus_picture_tag_parse(OpusPictureTag *_pic,const char *_tag)
- OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+   \retval #OP_EFAULT     There was not enough memory to store the picture tag
+                           contents.*/
+OP_WARN_UNUSED_RESULT int opus_picture_tag_parse(OpusPictureTag *_pic,
+ const char *_tag) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
 /**Initializes an #OpusPictureTag structure.
    This should be called on a freshly allocated #OpusPictureTag structure
@@ -601,7 +609,7 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
    They may be expanded in the future.*/
 /*@{*/
 
-typedef struct OpusServerInfo OpusServerInfo;
+/**@cond PRIVATE*/
 
 /*These are the raw numbers used to define the request codes.
   They should not be used directly.*/
@@ -620,6 +628,8 @@ typedef struct OpusServerInfo OpusServerInfo;
 #define OP_CHECK_CONST_CHAR_PTR(_x) ((_x)+((_x)-(const char *)(_x)))
 #define OP_CHECK_SERVER_INFO_PTR(_x) ((_x)+((_x)-(OpusServerInfo *)(_x)))
 
+/**@endcond*/
+
 /**HTTP/Shoutcast/Icecast server information associated with a URL.*/
 struct OpusServerInfo{
   /**The name of the server (icy-name/ice-name).
@@ -631,10 +641,12 @@ struct OpusServerInfo{
       <code>ice-description</code> header.*/
   char        *description;
   /**The genre the server falls under (icy-genre/ice-genre).
-     This is <code>NULL</code> if there was no <code>icy-genre</code> header.*/
+     This is <code>NULL</code> if there was no <code>icy-genre</code> or
+      <code>ice-genre</code> header.*/
   char        *genre;
   /**The homepage for the server (icy-url/ice-url).
-     This is <code>NULL</code> if there was no <code>icy-url</code> header.*/
+     This is <code>NULL</code> if there was no <code>icy-url</code> or
+      <code>ice-url</code> header.*/
   char        *url;
   /**The software used by the origin server (Server).
      This is <code>NULL</code> if there was no <code>Server</code> header.*/
@@ -660,14 +672,17 @@ struct OpusServerInfo{
 };
 
 /**Initializes an #OpusServerInfo structure.
-   All fields are set as if the corresponding header was not available.*/
+   All fields are set as if the corresponding header was not available.
+   \param _info The #OpusServerInfo structure to initialize.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.*/
 void opus_server_info_init(OpusServerInfo *_info) OP_ARG_NONNULL(1);
 
 /**Clears the #OpusServerInfo structure.
    This should be called on an #OpusServerInfo structure after it is no longer
     needed.
    It will free all memory used by the structure members.
-   \param _info The #OpusServerInfo structure to clear.*/
+   \param _info The #OpusServerInfo structure to clear.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.*/
 void opus_server_info_clear(OpusServerInfo *_info) OP_ARG_NONNULL(1);
 
 /**Skip the certificate check when connecting via TLS/SSL (https).
@@ -764,8 +779,6 @@ void opus_server_info_clear(OpusServerInfo *_info) OP_ARG_NONNULL(1);
     standard <code>FILE</code> pointers, complete streams stored in a single
     block of memory, or URLs.*/
 /*@{*/
-
-typedef struct OpusFileCallbacks OpusFileCallbacks;
 
 /**Reads up to \a _nbytes bytes of data from \a _stream.
    \param      _stream The stream to read from.
@@ -900,6 +913,7 @@ OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
     takes a va_list instead of a variable number of arguments.
    It does not call the <code>va_end</code> macro, and because it invokes the
     <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \param[out]    _cb  The callbacks to use for this stream.
                        If there is an error creating the stream, nothing will
                         be filled in here.
@@ -916,7 +930,8 @@ OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
 OP_WARN_UNUSED_RESULT void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
  const char *_url,va_list _ap) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
-/**Creates a stream that reads from the given URL using the specified proxy.
+/**Creates a stream that reads from the given URL.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \param[out] _cb  The callbacks to use for this stream.
                     If there is an error creating the stream, nothing will be
                      filled in here.
@@ -1007,6 +1022,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
     takes a va_list instead of a variable number of arguments.
    It does not call the <code>va_end</code> macro, and because it invokes the
     <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \param         _url   The URL to open.
                          Currently only the <file:>, <http:>, and <https:>
                           schemes are supported.
@@ -1027,8 +1043,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_vopen_url(const char *_url,
  int *_error,va_list _ap) OP_ARG_NONNULL(1);
 
 /**Open a stream from a URL.
-   However, this approach will not work for live streams or HTTP/1.0 servers
-    (which do not support Range requets).
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \param      _url   The URL to open.
                       Currently only the <file:>, <http:>, and <https:> schemes
                        are supported.
@@ -1156,6 +1171,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_memory(const unsigned char *_data,
     takes a va_list instead of a variable number of arguments.
    It does not call the <code>va_end</code> macro, and because it invokes the
     <code>va_arg</code> macro, the value of \a _ap is undefined after the call.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \see op_test_url
    \see op_test_callbacks
    \param         _url    The URL to open.
@@ -1178,6 +1194,7 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_vtest_url(const char *_url,
  int *_error,va_list _ap) OP_ARG_NONNULL(1);
 
 /**Partially open a stream from a URL.
+   \note If you use this function, you must link against <tt>libopusurl</tt>.
    \see op_test_callbacks
    \param      _url    The URL to open.
                        Currently only the <file:>, <http:>, and <https:>
@@ -1601,7 +1618,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
     not check the error return code from op_read_float() or its associated
     functions.
    If the remote peer does not close the connection gracefully (with a TLS
-    "close notify" message), these functions will return OP_EREAD instead of 0
+    "close notify" message), these functions will return #OP_EREAD instead of 0
     when they reach the end of the file.
    If you are reading from an <https:> URL (particularly if seeking is not
     supported), you should make sure to check for this error and warn the user
