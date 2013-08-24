@@ -93,24 +93,6 @@ static void print_size(FILE *_fp,opus_int64 _nbytes,int _metric,
   else fprintf(_fp,"%li%s%c",(long)val,_spacer,SUFFIXES[shift]);
 }
 
-/*A version of strncasecmp() that is guaranteed to only ignore the case of
-   ASCII characters.*/
-static int local_strncasecmp(const char *_a,const char *_b,int _n){
-  int i;
-  for(i=0;i<_n;i++){
-    int a;
-    int b;
-    int d;
-    a=_a[i];
-    b=_b[i];
-    if(a>='a'&&a<='z')a-='a'-'A';
-    if(b>='a'&&b<='z')b-='a'-'A';
-    d=a-b;
-    if(d)return d;
-  }
-  return 0;
-}
-
 static void put_le32(unsigned char *_dst,opus_uint32 _x){
   _dst[0]=(unsigned char)(_x&0xFF);
   _dst[1]=(unsigned char)(_x>>8&0xFF);
@@ -304,7 +286,7 @@ int main(int _argc,const char **_argv){
         for(ci=0;ci<tags->comments;ci++){
           const char *comment;
           comment=tags->user_comments[ci];
-          if(local_strncasecmp(comment,"METADATA_BLOCK_PICTURE=",23)==0){
+          if(opus_tagncompare("METADATA_BLOCK_PICTURE",22,comment)==0){
             OpusPictureTag pic;
             int            err;
             err=opus_picture_tag_parse(&pic,comment);

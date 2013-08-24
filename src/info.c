@@ -251,10 +251,15 @@ int opus_tags_add_comment(OpusTags *_tags,const char *_comment){
   return 0;
 }
 
-/*Is _a a "tag=value" comment whose tag matches _b?
-  0 if it is, a non-zero value otherwise.*/
-static int op_tagcompare(const char *_a,const char *_b,int _n){
-  return op_strncasecmp(_a,_b,_n)||_a[_n]!='=';
+int opus_tagcompare(const char *_tag_name,const char *_comment){
+  return opus_tagncompare(_tag_name,strlen(_tag_name),_comment);
+}
+
+int opus_tagncompare(const char *_tag_name,int _tag_len,const char *_comment){
+  int ret;
+  OP_ASSERT(_tag_len>=0);
+  ret=op_strncasecmp(_tag_name,_comment,_tag_len);
+  return ret?ret:'='-_comment[_tag_len];
 }
 
 const char *opus_tags_query(const OpusTags *_tags,const char *_tag,int _count){
@@ -268,7 +273,7 @@ const char *opus_tags_query(const OpusTags *_tags,const char *_tag,int _count){
   user_comments=_tags->user_comments;
   found=0;
   for(ci=0;ci<ncomments;ci++){
-    if(!op_tagcompare(user_comments[ci],_tag,tag_len)){
+    if(!opus_tagncompare(_tag,tag_len,user_comments[ci])){
       /*We return a pointer to the data, not a copy.*/
       if(_count==found++)return user_comments[ci]+tag_len+1;
     }
@@ -288,7 +293,7 @@ int opus_tags_query_count(const OpusTags *_tags,const char *_tag){
   user_comments=_tags->user_comments;
   found=0;
   for(ci=0;ci<ncomments;ci++){
-    if(!op_tagcompare(user_comments[ci],_tag,tag_len))found++;
+    if(!opus_tagncompare(_tag,tag_len,user_comments[ci]))found++;
   }
   return found;
 }

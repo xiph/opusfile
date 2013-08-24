@@ -547,6 +547,32 @@ int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8)
    \param _tags The #OpusTags structure to clear.*/
 void opus_tags_clear(OpusTags *_tags) OP_ARG_NONNULL(1);
 
+/**Check if \a _comment is an instance of a \a _tag_name tag.
+   \see opus_tagncompare
+   \param _tag_name A NUL-terminated, case-insensitive, ASCII string containing
+                     the name of the tag to check for (without the terminating
+                     '=' character).
+   \param _comment  The comment string to check.
+   \return An integer less than, equal to, or greater than zero if \a _comment
+            is found respectively, to be less than, to match, or be greater
+            than a "tag=value" string whose tag matches \a _tag_name.*/
+int opus_tagcompare(const char *_tag_name,const char *_comment);
+
+/**Check if \a _comment is an instance of a \a _tag_name tag.
+   This version is slightly more efficient than opus_tagcompare() if the length
+    of the tag name is already known (e.g., because it is a constant).
+   \see opus_tagcompare
+   \param _tag_name A case-insensitive ASCII string containing the name of the
+                     tag to check for (without the terminating '=' character).
+   \param _tag_len  The number of characters in the tag name.
+                    This must be non-negative.
+   \param _comment  The comment string to check.
+   \return An integer less than, equal to, or greater than zero if \a _comment
+            is found respectively, to be less than, to match, or be greater
+            than a "tag=value" string whose tag matches the first \a _tag_len
+            characters of \a _tag_name.*/
+int opus_tagncompare(const char *_tag_name,int _tag_len,const char *_comment);
+
 /**Parse a single METADATA_BLOCK_PICTURE tag.
    This decodes the BASE64-encoded content of the tag and returns a structure
     with the MIME type, description, image parameters (if known), and the
