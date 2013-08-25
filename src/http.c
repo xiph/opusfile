@@ -60,7 +60,7 @@ static char *op_string_range_dup(const char *_start,const char *_end){
   if(OP_UNLIKELY(len>=INT_MAX))return NULL;
   ret=(char *)_ogg_malloc(sizeof(*ret)*(len+1));
   if(OP_LIKELY(ret!=NULL)){
-    memcpy(ret,_start,sizeof(*ret)*(len));
+    ret=(char *)memcpy(ret,_start,sizeof(*ret)*(len));
     ret[len]='\0';
   }
   return ret;

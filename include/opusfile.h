@@ -452,7 +452,7 @@ ogg_int64_t opus_granule_sample(const OpusHead *_head,ogg_int64_t _gp)
                       for validity.
    \param[in]  _data The contents of the 'comment' header packet.
    \param      _len  The number of bytes of data in the 'info' header packet.
-   \retval 0             Success.
+   \retval 0              Success.
    \retval #OP_ENOTFORMAT If the data does not start with the "OpusTags"
                            string.
    \retval #OP_EBADHEADER If the contents of the packet otherwise violate the
@@ -460,6 +460,15 @@ ogg_int64_t opus_granule_sample(const OpusHead *_head,ogg_int64_t _gp)
    \retval #OP_EFAULT     If there wasn't enough memory to store the tags.*/
 OP_WARN_UNUSED_RESULT int opus_tags_parse(OpusTags *_tags,
  const unsigned char *_data,size_t _len) OP_ARG_NONNULL(2);
+
+/**Performs a deep copy of an #OpusTags structure.
+   \param _dst The #OpusTags structure to copy into.
+               If this function fails, the contents of this structure remain
+                untouched.
+   \param _src The #OpusTags structure to copy from.
+   \retval 0          Success.
+   \retval #OP_EFAULT If there wasn't enough memory to copy the tags.*/
+int opus_tags_copy(OpusTags *_dst,const OpusTags *_src) OP_ARG_NONNULL(1);
 
 /**Initializes an #OpusTags structure.
    This should be called on a freshly allocated #OpusTags structure before
