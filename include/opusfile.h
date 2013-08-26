@@ -957,6 +957,10 @@ OP_WARN_UNUSED_RESULT void *op_mem_stream_create(OpusFileCallbacks *_cb,
                         schemes are supported.
                        Both <http:> and <https:> may be disabled at compile
                         time, in which case opening such URLs will always fail.
+                       Currently this only supports URIs.
+                       IRIs should be converted to UTF-8 and URL-escaped, with
+                        internationalized domain names encoded in punycode,
+                        before passing them to this function.
    \param[in,out] _ap  A list of the \ref url_options "optional flags" to use.
                        This is a variable-length list of options terminated
                         with <code>NULL</code>.
@@ -975,6 +979,10 @@ OP_WARN_UNUSED_RESULT void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
                      are supported.
                     Both <http:> and <https:> may be disabled at compile time,
                      in which case opening such URLs will always fail.
+                    Currently this only supports URIs.
+                    IRIs should be converted to UTF-8 and URL-escaped, with
+                     internationalized domain names encoded in punycode, before
+                     passing them to this function.
    \param      ...  The \ref url_options "optional flags" to use.
                     This is a variable-length list of options terminated with
                      <code>NULL</code>.
@@ -1064,6 +1072,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_memory(const unsigned char *_data,
                          Both <http:> and <https:> may be disabled at compile
                           time, in which case opening such URLs will always
                           fail.
+                         Currently this only supports URIs.
+                         IRIs should be converted to UTF-8 and URL-escaped,
+                          with internationalized domain names encoded in
+                          punycode, before passing them to this function.
    \param[out]    _error Returns 0 on success, or a failure code on error.
                          You may pass in <code>NULL</code> if you don't want
                           the failure code.
@@ -1084,6 +1096,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_vopen_url(const char *_url,
                        are supported.
                       Both <http:> and <https:> may be disabled at compile
                        time, in which case opening such URLs will always fail.
+                      Currently this only supports URIs.
+                      IRIs should be converted to UTF-8 and URL-escaped, with
+                       internationalized domain names encoded in punycode,
+                       before passing them to this function.
    \param[out] _error Returns 0 on success, or a failure code on error.
                       You may pass in <code>NULL</code> if you don't want the
                        failure code.
@@ -1215,6 +1231,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_memory(const unsigned char *_data,
                           Both <http:> and <https:> may be disabled at compile
                            time, in which case opening such URLs will always
                            fail.
+                          Currently this only supports URIs.
+                          IRIs should be converted to UTF-8 and URL-escaped,
+                           with internationalized domain names encoded in
+                           punycode, before passing them to this function.
    \param[out]    _error  Returns 0 on success, or a failure code on error.
                           You may pass in <code>NULL</code> if you don't want
                            the failure code.
@@ -1236,6 +1256,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_vtest_url(const char *_url,
                         schemes are supported.
                        Both <http:> and <https:> may be disabled at compile
                         time, in which case opening such URLs will always fail.
+                       Currently this only supports URIs.
+                       IRIs should be converted to UTF-8 and URL-escaped, with
+                        internationalized domain names encoded in punycode,
+                        before passing them to this function.
    \param[out] _error  Returns 0 on success, or a failure code on error.
                        You may pass in <code>NULL</code> if you don't want the
                         failure code.
