@@ -1775,7 +1775,7 @@ void op_set_decode_callback(OggOpusFile *_of,
    \return 0 on success or a negative value on error.
    \retval #OP_EINVAL The \a _gain_type was unrecognized.*/
 int op_set_gain_offset(OggOpusFile *_of,
- int _gain_type,opus_int32 _gain_offset_q8);
+ int _gain_type,opus_int32 _gain_offset_q8) OP_ARG_NONNULL(1);
 
 /**Reads more samples from the stream.
    \note Although \a _buf_size must indicate the total number of values that
