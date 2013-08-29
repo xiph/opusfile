@@ -3005,10 +3005,13 @@ static const float OP_FCOEF_A[4]={
   0.9030F,0.0116F,-0.5853F,-0.2571F
 };
 
-static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
+static int op_float2short_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
  float *_src,int _nsamples,int _nchannels){
-  int ci;
-  int i;
+  opus_int16 *dst;
+  int         ci;
+  int         i;
+  dst=(opus_int16 *)_dst;
+  if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
 # if defined(OP_SOFT_CLIP)
   if(_of->state_channel_count!=_nchannels){
     for(ci=0;ci<_nchannels;ci++)_of->clip_state[ci]=0;
@@ -3017,7 +3020,7 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
 # endif
   if(_of->dither_disabled){
     for(i=0;i<_nchannels*_nsamples;i++){
-      _dst[i]=op_float2int(OP_CLAMP(-32768,32768.0F*_src[i],32767));
+      dst[i]=op_float2int(OP_CLAMP(-32768,32768.0F*_src[i],32767));
     }
   }
   else{
@@ -3060,7 +3063,7 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
         /*Clamp in float out of paranoia that the input will be > 96 dBFS and
            wrap if the integer is clamped.*/
         si=op_float2int(OP_CLAMP(-32768,s+r,32767));
-        _dst[_nchannels*i+ci]=(opus_int16)si;
+        dst[_nchannels*i+ci]=(opus_int16)si;
         /*Including clipping in the noise shaping is generally disastrous: the
            futile effort to restore the clipped energy results in more clipping.
           However, small amounts---at the level which could normally be created
@@ -3076,14 +3079,6 @@ static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
     _of->dither_seed=seed;
   }
   _of->state_channel_count=_nchannels;
-}
-
-static int op_float2short_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
- op_sample *_src,int _nsamples,int _nchannels){
-  opus_int16 *dst;
-  dst=(opus_int16 *)_dst;
-  if(OP_UNLIKELY(_nsamples*_nchannels>_dst_sz))_nsamples=_dst_sz/_nchannels;
-  op_shaped_dither16(_of,dst,_src,_nsamples,_nchannels);
   return _nsamples;
 }
 
@@ -3130,18 +3125,18 @@ static int op_float2short_stereo_filter(OggOpusFile *_of,
  void *_dst,int _dst_sz,op_sample *_src,int _nsamples,int _nchannels){
   opus_int16 *dst;
   dst=(opus_int16 *)_dst;
-  _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
   if(_nchannels==1){
     int i;
-    op_shaped_dither16(_of,dst,_src,_nsamples,1);
+    _nsamples=op_float2short_filter(_of,dst,_dst_sz>>1,_src,_nsamples,1);
     for(i=_nsamples;i-->0;)dst[2*i+0]=dst[2*i+1]=dst[i];
   }
   else{
     if(_nchannels>2){
+      _nsamples=OP_MIN(_nsamples,_dst_sz>>1);
       _nsamples=op_stereo_filter(_of,_src,_nsamples*2,
        _src,_nsamples,_nchannels);
     }
-    op_shaped_dither16(_of,dst,_src,_nsamples,2);
+    _nsamples=op_float2short_filter(_of,dst,_dst_sz,_src,_nsamples,2);
   }
   return _nsamples;
 }
