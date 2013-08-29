@@ -1828,11 +1828,8 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
   int           seekable;
   int           cur_link;
   int           ret;
-  if(OP_LIKELY(_of->ready_state>=OP_INITSET)
-   &&OP_LIKELY(_of->op_pos<_of->op_count)){
-    /*We're ready to decode and have at least one packet available already.*/
-    return 1;
-  }
+  /*We shouldn't get here if we have unprocessed packets.*/
+  OP_ASSERT(_of->ready_state<OP_INITSET||_of->op_pos>=_of->op_count);
   if(!_readp)return 0;
   seekable=_of->seekable;
   links=_of->links;
@@ -2700,8 +2697,6 @@ static int op_read_native(OggOpusFile *_of,
              what was decoded.*/
           _of->bytes_tracked+=pop->bytes;
           _of->samples_tracked+=trimmed_duration-od_buffer_pos;
-          /*Don't grab another page yet.*/
-          if(OP_LIKELY(od_buffer_pos<trimmed_duration))continue;
         }
         else{
           /*Otherwise decode directly into the user's buffer.*/
@@ -2728,6 +2723,9 @@ static int op_read_native(OggOpusFile *_of,
             }
           }
         }
+        /*Don't grab another page yet.
+          This one might have more packets, or might have buffered data now.*/
+        continue;
       }
     }
     /*Suck in another page.*/
