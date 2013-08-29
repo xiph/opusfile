@@ -1777,6 +1777,18 @@ void op_set_decode_callback(OggOpusFile *_of,
 int op_set_gain_offset(OggOpusFile *_of,
  int _gain_type,opus_int32 _gain_offset_q8) OP_ARG_NONNULL(1);
 
+/**Sets whether or not dithering is enabled for 16-bit decoding.
+   By default, when <tt>libopusfile</tt> is compiled to use floating-point
+    internally, calling op_read() or op_read_stereo() will first decode to
+    float, and then convert to fixed-point using noise-shaping dithering.
+   This flag can be used to disable that dithering.
+   When the application uses op_read_float() or op_read_float_stereo(), or when
+    the library has been compiled to decode directly to fixed point, this flag
+    has no effect.
+   \param _of      The \c OggOpusFile on which to enable or disable dithering.
+   \param _enabled A non-zero value to enable dithering, or 0 to disable it.*/
+void op_set_dither_enabled(OggOpusFile *_of,int _enabled) OP_ARG_NONNULL(1);
+
 /**Reads more samples from the stream.
    \note Although \a _buf_size must indicate the total number of values that
     can be stored in \a _pcm, the return value is the number of samples

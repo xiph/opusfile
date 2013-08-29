@@ -2566,6 +2566,13 @@ int op_set_gain_offset(OggOpusFile *_of,
   return 0;
 }
 
+void op_set_dither_enabled(OggOpusFile *_of,int _enabled){
+#if !defined(OP_FIXED_POINT)
+  _of->dither_disabled=!_enabled;
+  if(!_enabled)_of->dither_mute=65;
+#endif
+}
+
 /*Allocate the decoder scratch buffer.
   This is done lazily, since if the user provides large enough buffers, we'll
    never need it.*/
@@ -3000,69 +3007,74 @@ static const float OP_FCOEF_A[4]={
 
 static void op_shaped_dither16(OggOpusFile *_of,opus_int16 *_dst,
  float *_src,int _nsamples,int _nchannels){
-  opus_uint32 seed;
-  int         mute;
-  int         ci;
-  int         i;
-  mute=_of->dither_mute;
-  seed=_of->dither_seed;
+  int ci;
+  int i;
+# if defined(OP_SOFT_CLIP)
   if(_of->state_channel_count!=_nchannels){
-    mute=65;
-# if defined(OP_SOFT_CLIP)
     for(ci=0;ci<_nchannels;ci++)_of->clip_state[ci]=0;
-# endif
   }
-# if defined(OP_SOFT_CLIP)
   opus_pcm_soft_clip(_src,_nsamples,_nchannels,_of->clip_state);
 # endif
-  /*In order to avoid replacing digital silence with quiet dither noise, we
-     mute if the output has been silent for a while.*/
-  if(mute>64)memset(_of->dither_a,0,sizeof(*_of->dither_a)*4*_nchannels);
-  for(i=0;i<_nsamples;i++){
-    int silent;
-    silent=1;
-    for(ci=0;ci<_nchannels;ci++){
-      float r;
-      float s;
-      float err;
-      int   si;
-      int   j;
-      s=_src[_nchannels*i+ci];
-      silent&=s==0;
-      s*=OP_GAIN;
-      err=0;
-      for(j=0;j<4;j++){
-        err+=OP_FCOEF_B[j]*_of->dither_b[ci*4+j]
-         -OP_FCOEF_A[j]*_of->dither_a[ci*4+j];
-      }
-      for(j=3;j-->0;)_of->dither_a[ci*4+j+1]=_of->dither_a[ci*4+j];
-      for(j=3;j-->0;)_of->dither_b[ci*4+j+1]=_of->dither_b[ci*4+j];
-      _of->dither_a[ci*4]=err;
-      s-=err;
-      if(mute>16)r=0;
-      else{
-        seed=op_rand(seed);
-        r=seed*OP_PRNG_GAIN;
-        seed=op_rand(seed);
-        r-=seed*OP_PRNG_GAIN;
-      }
-      /*Clamp in float out of paranoia that the input will be > 96 dBFS and
-         wrap if the integer is clamped.*/
-      si=op_float2int(OP_CLAMP(-32768,s+r,32767));
-      _dst[_nchannels*i+ci]=(opus_int16)si;
-      /*Including clipping in the noise shaping is generally disastrous: the
-         futile effort to restore the clipped energy results in more clipping.
-        However, small amounts---at the level which could normally be created
-         by dither and rounding---are harmless and can even reduce clipping
-         somewhat due to the clipping sometimes reducing the dither + rounding
-         error.*/
-      _of->dither_b[ci*4]=mute>16?0:OP_CLAMP(-1.5F,si-s,1.5F);
+  if(_of->dither_disabled){
+    for(i=0;i<_nchannels*_nsamples;i++){
+      _dst[i]=op_float2int(OP_CLAMP(-32768,32768.0F*_src[i],32767));
     }
-    mute++;
-    if(!silent)mute=0;
   }
-  _of->dither_mute=OP_MIN(mute,65);
-  _of->dither_seed=seed;
+  else{
+    opus_uint32 seed;
+    int         mute;
+    seed=_of->dither_seed;
+    mute=_of->dither_mute;
+    if(_of->state_channel_count!=_nchannels)mute=65;
+    /*In order to avoid replacing digital silence with quiet dither noise, we
+       mute if the output has been silent for a while.*/
+    if(mute>64)memset(_of->dither_a,0,sizeof(*_of->dither_a)*4*_nchannels);
+    for(i=0;i<_nsamples;i++){
+      int silent;
+      silent=1;
+      for(ci=0;ci<_nchannels;ci++){
+        float r;
+        float s;
+        float err;
+        int   si;
+        int   j;
+        s=_src[_nchannels*i+ci];
+        silent&=s==0;
+        s*=OP_GAIN;
+        err=0;
+        for(j=0;j<4;j++){
+          err+=OP_FCOEF_B[j]*_of->dither_b[ci*4+j]
+           -OP_FCOEF_A[j]*_of->dither_a[ci*4+j];
+        }
+        for(j=3;j-->0;)_of->dither_a[ci*4+j+1]=_of->dither_a[ci*4+j];
+        for(j=3;j-->0;)_of->dither_b[ci*4+j+1]=_of->dither_b[ci*4+j];
+        _of->dither_a[ci*4]=err;
+        s-=err;
+        if(mute>16)r=0;
+        else{
+          seed=op_rand(seed);
+          r=seed*OP_PRNG_GAIN;
+          seed=op_rand(seed);
+          r-=seed*OP_PRNG_GAIN;
+        }
+        /*Clamp in float out of paranoia that the input will be > 96 dBFS and
+           wrap if the integer is clamped.*/
+        si=op_float2int(OP_CLAMP(-32768,s+r,32767));
+        _dst[_nchannels*i+ci]=(opus_int16)si;
+        /*Including clipping in the noise shaping is generally disastrous: the
+           futile effort to restore the clipped energy results in more clipping.
+          However, small amounts---at the level which could normally be created
+           by dither and rounding---are harmless and can even reduce clipping
+           somewhat due to the clipping sometimes reducing the dither + rounding
+           error.*/
+        _of->dither_b[ci*4]=mute>16?0:OP_CLAMP(-1.5F,si-s,1.5F);
+      }
+      mute++;
+      if(!silent)mute=0;
+    }
+    _of->dither_mute=OP_MIN(mute,65);
+    _of->dither_seed=seed;
+  }
   _of->state_channel_count=_nchannels;
 }
 
