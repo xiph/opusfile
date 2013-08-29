@@ -1414,7 +1414,7 @@ int op_seekable(OggOpusFile *_of) OP_ARG_NONNULL(1);
    The actual number of links is not known until the stream is fully opened.
    \param _of The \c OggOpusFile from which to retrieve the link count.
    \return For fully-open seekable sources, this returns the total number of
-            links in the whole stream.
+            links in the whole stream, which will be at least 1.
            For partially-open or unseekable sources, this always returns 1.*/
 int op_link_count(OggOpusFile *_of) OP_ARG_NONNULL(1);
 
