@@ -1686,25 +1686,25 @@ void op_free(OggOpusFile *_of){
   }
 }
 
-int op_seekable(OggOpusFile *_of){
+int op_seekable(const OggOpusFile *_of){
   return _of->seekable;
 }
 
-int op_link_count(OggOpusFile *_of){
+int op_link_count(const OggOpusFile *_of){
   return _of->nlinks;
 }
 
-ogg_uint32_t op_serialno(OggOpusFile *_of,int _li){
+ogg_uint32_t op_serialno(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable)_li=0;
   return _of->links[_li<0?_of->cur_link:_li].serialno;
 }
 
-int op_channel_count(OggOpusFile *_of,int _li){
+int op_channel_count(const OggOpusFile *_of,int _li){
   return op_head(_of,_li)->channel_count;
 }
 
-opus_int64 op_raw_total(OggOpusFile *_of,int _li){
+opus_int64 op_raw_total(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED)
    ||OP_UNLIKELY(!_of->seekable)
    ||OP_UNLIKELY(_li>=_of->nlinks)){
@@ -1715,7 +1715,7 @@ opus_int64 op_raw_total(OggOpusFile *_of,int _li){
    -_of->links[_li].offset;
 }
 
-ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li){
+ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
   OggOpusLink *links;
   ogg_int64_t  diff;
   int          nlinks;
@@ -1745,13 +1745,13 @@ ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li){
   return diff-links[_li].head.pre_skip;
 }
 
-const OpusHead *op_head(OggOpusFile *_of,int _li){
+const OpusHead *op_head(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable)_li=0;
   return &_of->links[_li<0?_of->cur_link:_li].head;
 }
 
-const OpusTags *op_tags(OggOpusFile *_of,int _li){
+const OpusTags *op_tags(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable){
     if(_of->ready_state<OP_STREAMSET&&_of->ready_state!=OP_PARTOPEN){
@@ -1763,7 +1763,7 @@ const OpusTags *op_tags(OggOpusFile *_of,int _li){
   return &_of->links[_li].tags;
 }
 
-int op_current_link(OggOpusFile *_of){
+int op_current_link(const OggOpusFile *_of){
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   return _of->cur_link;
 }
@@ -1792,7 +1792,7 @@ static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
    OP_INT32_MAX);
 }
 
-opus_int32 op_bitrate(OggOpusFile *_of,int _li){
+opus_int32 op_bitrate(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED)||OP_UNLIKELY(!_of->seekable)
    ||OP_UNLIKELY(_li>=_of->nlinks)){
     return OP_EINVAL;
@@ -2493,7 +2493,7 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
   return 0;
 }
 
-opus_int64 op_raw_tell(OggOpusFile *_of){
+opus_int64 op_raw_tell(const OggOpusFile *_of){
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   return _of->offset;
 }
@@ -2529,7 +2529,7 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
   return pcm_offset;
 }
 
-ogg_int64_t op_pcm_tell(OggOpusFile *_of){
+ogg_int64_t op_pcm_tell(const OggOpusFile *_of){
   ogg_int64_t gp;
   int         nbuffered;
   int         li;

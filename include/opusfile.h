@@ -1406,7 +1406,7 @@ void op_free(OggOpusFile *_of);
    This function may be called on partially-opened streams.
    \param _of The \c OggOpusFile whose seekable status is to be returned.
    \return A non-zero value if seekable, and 0 if unseekable.*/
-int op_seekable(OggOpusFile *_of) OP_ARG_NONNULL(1);
+int op_seekable(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Returns the number of links in this chained stream.
    This function may be called on partially-opened streams, but it will always
@@ -1416,7 +1416,7 @@ int op_seekable(OggOpusFile *_of) OP_ARG_NONNULL(1);
    \return For fully-open seekable sources, this returns the total number of
             links in the whole stream, which will be at least 1.
            For partially-open or unseekable sources, this always returns 1.*/
-int op_link_count(OggOpusFile *_of) OP_ARG_NONNULL(1);
+int op_link_count(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Get the serial number of the given link in a (possibly-chained) Ogg Opus
     stream.
@@ -1431,7 +1431,7 @@ int op_link_count(OggOpusFile *_of) OP_ARG_NONNULL(1);
             the serial number of the last link.
            If the source is not seekable, this always returns the serial number
             of the current link.*/
-opus_uint32 op_serialno(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+opus_uint32 op_serialno(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the channel count of the given link in a (possibly-chained) Ogg Opus
     stream.
@@ -1448,7 +1448,7 @@ opus_uint32 op_serialno(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
             the channel count of the last link.
            If the source is not seekable, this always returns the channel count
             of the current link.*/
-int op_channel_count(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+int op_channel_count(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the total (compressed) size of the stream, or of an individual link in
     a (possibly-chained) Ogg Opus stream, including all headers and Ogg muxing
@@ -1466,7 +1466,7 @@ int op_channel_count(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \retval #OP_EINVAL The source is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
-opus_int64 op_raw_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+opus_int64 op_raw_total(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the total PCM length (number of samples at 48 kHz) of the stream, or of
     an individual link in a (possibly-chained) Ogg Opus stream.
@@ -1484,7 +1484,7 @@ opus_int64 op_raw_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \retval #OP_EINVAL The source is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
-ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the ID header information for the given link in a (possibly chained) Ogg
     Opus stream.
@@ -1500,7 +1500,7 @@ ogg_int64_t op_pcm_total(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
                information for the current link is always returned, if
                available.
    \return The contents of the ID header for the given link.*/
-const OpusHead *op_head(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+const OpusHead *op_head(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Get the comment header information for the given link in a (possibly
     chained) Ogg Opus stream.
@@ -1518,7 +1518,7 @@ const OpusHead *op_head(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \return The contents of the comment header for the given link, or
             <code>NULL</code> if this is an unseekable stream that encountered
             an invalid link.*/
-const OpusTags *op_tags(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+const OpusTags *op_tags(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Retrieve the index of the current link.
    This is the link that produced the data most recently read by
@@ -1535,7 +1535,7 @@ const OpusTags *op_tags(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
             each time a new link is encountered (even though op_link_count()
             always returns 1).
    \retval #OP_EINVAL The stream was only partially open.*/
-int op_current_link(OggOpusFile *_of) OP_ARG_NONNULL(1);
+int op_current_link(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Computes the bitrate for a given link in a (possibly chained) Ogg Opus
     stream.
@@ -1548,7 +1548,7 @@ int op_current_link(OggOpusFile *_of) OP_ARG_NONNULL(1);
    \retval #OP_EINVAL The stream was only partially open, the stream was not
                        seekable, or \a _li was larger than the number of
                        links.*/
-opus_int32 op_bitrate(OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
+opus_int32 op_bitrate(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
 /**Compute the instantaneous bitrate, measured as the ratio of bits to playable
     samples decoded since a) the last call to op_bitrate_instant(), b) the last
@@ -1567,7 +1567,7 @@ opus_int32 op_bitrate_instant(OggOpusFile *_of) OP_ARG_NONNULL(1);
    \param _of The \c OggOpusFile from which to retrieve the position indicator.
    \return The byte position that is currently being read from.
    \retval #OP_EINVAL The stream was only partially open.*/
-opus_int64 op_raw_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+opus_int64 op_raw_tell(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Obtain the PCM offset of the next sample to be read.
    If the stream is not properly timestamped, this might not increment by the
@@ -1576,7 +1576,7 @@ opus_int64 op_raw_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
    \param _of The \c OggOpusFile from which to retrieve the PCM offset.
    \return The PCM offset of the next sample to be read.
    \retval #OP_EINVAL The stream was only partially open.*/
-ogg_int64_t op_pcm_tell(OggOpusFile *_of) OP_ARG_NONNULL(1);
+ogg_int64_t op_pcm_tell(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /*@}*/
 /*@}*/
