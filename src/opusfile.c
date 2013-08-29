@@ -2548,6 +2548,12 @@ ogg_int64_t op_pcm_tell(OggOpusFile *_of){
   return op_get_pcm_offset(_of,gp,li);
 }
 
+void op_set_decode_callback(OggOpusFile *_of,
+ op_decode_cb_func _decode_cb,void *_ctx){
+  _of->decode_cb=_decode_cb;
+  _of->decode_cb_ctx=_ctx;
+}
+
 int op_set_gain_offset(OggOpusFile *_of,
  int _gain_type,opus_int32 _gain_offset_q8){
   if(_gain_type!=OP_HEADER_GAIN&&_gain_type!=OP_TRACK_GAIN
@@ -2584,6 +2590,39 @@ static int op_init_buffer(OggOpusFile *_of){
    sizeof(*_of->od_buffer)*nchannels_max*120*48);
   if(_of->od_buffer==NULL)return OP_EFAULT;
   return 0;
+}
+
+/*Decode a single packet into the target buffer.*/
+static int op_decode(OggOpusFile *_of,op_sample *_pcm,
+ const ogg_packet *_op,int _nsamples,int _nchannels){
+  int ret;
+  /*First we try using the application-provided decode callback.*/
+  if(_of->decode_cb!=NULL){
+#if defined(OP_FIXED_POINT)
+    ret=(*_of->decode_cb)(_of->decode_cb_ctx,_of->od,_pcm,_op,
+     _nsamples,_nchannels,OP_DEC_FORMAT_SHORT,_of->cur_link);
+#else
+    ret=(*_of->decode_cb)(_of->decode_cb_ctx,_of->od,_pcm,_op,
+     _nsamples,_nchannels,OP_DEC_FORMAT_FLOAT,_of->cur_link);
+#endif
+  }
+  else ret=OP_DEC_USE_DEFAULT;
+  /*If the application didn't want to handle decoding, do it ourselves.*/
+  if(ret==OP_DEC_USE_DEFAULT){
+#if defined(OP_FIXED_POINT)
+    ret=opus_multistream_decode(_of->od,
+     _op->packet,_op->bytes,_pcm,_nsamples,0);
+#else
+    ret=opus_multistream_decode_float(_of->od,
+     _op->packet,_op->bytes,_pcm,_nsamples,0);
+#endif
+    OP_ASSERT(ret<0||ret==_nsamples);
+  }
+  /*If the application returned a positive value other than 0 or
+     OP_DEC_USE_DEFAULT, fail.*/
+  else if(OP_UNLIKELY(ret>0))return OP_EBADPACKET;
+  if(OP_UNLIKELY(ret<0))return OP_EBADPACKET;
+  return ret;
 }
 
 /*Read more samples from the stream, using the same API as op_read() or
@@ -2649,15 +2688,8 @@ static int op_read_native(OggOpusFile *_of,
             if(OP_UNLIKELY(ret<0))return ret;
             buf=_of->od_buffer;
           }
-#if defined(OP_FIXED_POINT)
-          ret=opus_multistream_decode(_of->od,
-           pop->packet,pop->bytes,buf,120*48,0);
-#else
-          ret=opus_multistream_decode_float(_of->od,
-           pop->packet,pop->bytes,buf,120*48,0);
-#endif
-          if(OP_UNLIKELY(ret<0))return OP_EBADPACKET;
-          OP_ASSERT(ret==duration);
+          ret=op_decode(_of,buf,pop,duration,nchannels);
+          if(OP_UNLIKELY(ret<0))return ret;
           /*Perform pre-skip/pre-roll.*/
           od_buffer_pos=(int)OP_MIN(trimmed_duration,cur_discard_count);
           cur_discard_count-=od_buffer_pos;
@@ -2673,15 +2705,8 @@ static int op_read_native(OggOpusFile *_of,
         }
         else{
           /*Otherwise decode directly into the user's buffer.*/
-#if defined(OP_FIXED_POINT)
-          ret=opus_multistream_decode(_of->od,pop->packet,pop->bytes,
-           _pcm,_buf_size/nchannels,0);
-#else
-          ret=opus_multistream_decode_float(_of->od,pop->packet,pop->bytes,
-           _pcm,_buf_size/nchannels,0);
-#endif
-          if(OP_UNLIKELY(ret<0))return OP_EBADPACKET;
-          OP_ASSERT(ret==duration);
+          ret=op_decode(_of,_pcm,pop,duration,nchannels);
+          if(OP_UNLIKELY(ret<0))return ret;
           if(OP_LIKELY(trimmed_duration>0)){
             /*Perform pre-skip/pre-roll.*/
             od_buffer_pos=(int)OP_MIN(trimmed_duration,cur_discard_count);

@@ -203,6 +203,10 @@ struct OggOpusFile{
   int                op_count;
   /*Central working state for the packet-to-PCM decoder.*/
   OpusMSDecoder     *od;
+  /*The application-provided packet decode callback.*/
+  op_decode_cb_func  decode_cb;
+  /*The application-provided packet decode callback context.*/
+  void              *decode_cb_ctx;
   /*The stream count used to initialize the decoder.*/
   int                od_stream_count;
   /*The coupled stream count used to initialize the decoder.*/

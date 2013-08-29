@@ -1684,6 +1684,66 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset) OP_ARG_NONNULL(1);
     appropriately.*/
 /*@{*/
 
+/**Indicates that the decoding callback should produce signed 16-bit
+    native-endian output samples.*/
+#define OP_DEC_FORMAT_SHORT (7008)
+/**Indicates that the decoding callback should produce 32-bit native-endian
+    float samples.*/
+#define OP_DEC_FORMAT_FLOAT (7040)
+
+/**Indicates that the decoding callback did not decode anything, and that
+    <tt>libopusfile</tt> should decode normally instead.*/
+#define OP_DEC_USE_DEFAULT  (6720)
+
+/**Called to decode an Opus packet.
+   This should invoke the functional equivalent of opus_multistream_decode() or
+    opus_multistream_decode_float(), except that it returns 0 on success
+    instead of the number of decoded samples (which is known a priori).
+   \param _ctx       The application-provided callback context.
+   \param _decoder   The decoder to use to decode the packet.
+   \param[out] _pcm  The buffer to decode into.
+                     This will always have enough room for \a _nchannels of
+                      \a _nsamples samples, which should be placed into this
+                      buffer interleaved.
+   \param _op        The packet to decode.
+                     This will always have its granule position set to a valid
+                      value.
+   \param _nsamples  The number of samples expected from the packet.
+   \param _nchannels The number of channels expected from the packet.
+   \param _format    The desired sample output format.
+                     This is either #OP_DEC_FORMAT_SHORT or
+                      #OP_DEC_FORMAT_FLOAT.
+   \param _li        The index of the link from which this packet was decoded.
+   \return A non-negative value on success, or a negative value on error.
+           The error codes should be the same as those returned by
+            opus_multistream_decode() or opus_multistream_decode_float().
+   \retval 0                   Decoding was successful.
+                               The application has filled the buffer with
+                                exactly <code>\a _nsamples*\a
+                                _nchannels</code> samples in the requested
+                                format.
+   \retval #OP_DEC_USE_DEFAULT No decoding was done.
+                               <tt>libopusfile</tt> should decode normally
+                                instead.*/
+typedef int (*op_decode_cb_func)(void *_ctx,OpusMSDecoder *_decoder,void *_pcm,
+ const ogg_packet *_op,int _nsamples,int _nchannels,int _format,int _li);
+
+/**Sets the packet decode callback function.
+   This is called once for each packet that needs to be decoded.
+   A call to this function is no guarantee that the audio will eventually be
+    delivered to the application.
+   Some or all of the data from the packet may be discarded (i.e., at the
+    beginning or end of a link, or after a seek), however the callback is
+    required to provide all of it.
+   \param _of        The \c OggOpusFile on which to set the decode callback.
+   \param _decode_cb The callback function to call.
+                     This may be <code>NULL</code> to disable calling the
+                      callback.
+   \param _ctx       The application-provided context pointer to pass to the
+                      callback on each call.*/
+void op_set_decode_callback(OggOpusFile *_of,
+ op_decode_cb_func _decode_cb,void *_ctx) OP_ARG_NONNULL(1);
+
 /**Gain offset type that indicates that the provided offset is relative to the
     header gain.
    This is the default.*/
