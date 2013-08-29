@@ -2712,12 +2712,12 @@ static int op_read_native(OggOpusFile *_of,
             od_buffer_pos=(int)OP_MIN(trimmed_duration,cur_discard_count);
             cur_discard_count-=od_buffer_pos;
             _of->cur_discard_count=cur_discard_count;
-            if(OP_UNLIKELY(od_buffer_pos>0)
-             &&OP_LIKELY(od_buffer_pos<trimmed_duration)){
-              memmove(_pcm,_pcm+od_buffer_pos*nchannels,
-               sizeof(*_pcm)*(trimmed_duration-od_buffer_pos)*nchannels);
-            }
             trimmed_duration-=od_buffer_pos;
+            if(OP_LIKELY(trimmed_duration>0)
+             &&OP_UNLIKELY(od_buffer_pos>0)){
+              memmove(_pcm,_pcm+od_buffer_pos*nchannels,
+               sizeof(*_pcm)*trimmed_duration*nchannels);
+            }
             /*Update bitrate tracking based on the actual samples we used from
                what was decoded.*/
             _of->bytes_tracked+=pop->bytes;
