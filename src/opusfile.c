@@ -2638,10 +2638,8 @@ static int op_read_native(OggOpusFile *_of,
       od_buffer_pos=_of->od_buffer_pos;
       nsamples=_of->od_buffer_size-od_buffer_pos;
       /*If we have buffered samples, return them.*/
-      if(OP_UNLIKELY(nsamples>0)){
-        if(OP_UNLIKELY(nsamples*nchannels>_buf_size)){
-          nsamples=_buf_size/nchannels;
-        }
+      if(nsamples>0){
+        if(nsamples*nchannels>_buf_size)nsamples=_buf_size/nchannels;
         memcpy(_pcm,_of->od_buffer+nchannels*od_buffer_pos,
          sizeof(*_pcm)*nchannels*nsamples);
         od_buffer_pos+=nsamples;
