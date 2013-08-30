@@ -167,7 +167,7 @@ static int op_seek_helper(OggOpusFile *_of,opus_int64 _offset){
 
 /*Get the current position indicator of the underlying source.
   This should be the same as the value reported by tell().*/
-static opus_int64 op_position(OggOpusFile *_of){
+static opus_int64 op_position(const OggOpusFile *_of){
   /*The current position indicator is _not_ simply offset.
     We may also have unprocessed, buffered data in the sync state.*/
   return _of->offset+_of->oy.fill-_of->oy.returned;
@@ -226,7 +226,7 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
   return OP_FALSE;
 }
 
-static int op_add_serialno(ogg_page *_og,
+static int op_add_serialno(const ogg_page *_og,
  ogg_uint32_t **_serialnos,int *_nserialnos,int *_cserialnos){
   ogg_uint32_t *serialnos;
   int           nserialnos;
@@ -259,7 +259,7 @@ static int op_lookup_serialno(ogg_uint32_t _s,
   return i<_nserialnos;
 }
 
-static int op_lookup_page_serialno(ogg_page *_og,
+static int op_lookup_page_serialno(const ogg_page *_og,
  const ogg_uint32_t *_serialnos,int _nserialnos){
   return op_lookup_serialno(ogg_page_serialno(_og),_serialnos,_nserialnos);
 }
@@ -1147,7 +1147,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        (potentially not a page we care about).*/
     /*Scan the seek records we already have to save us some bisection.*/
     for(sri=0;sri<nsr;sri++){
-      if(op_lookup_serialno(_sr[sri].serialno,*_serialnos,*_nserialnos))break;
+      if(op_lookup_serialno(_sr[sri].serialno,serialnos,nserialnos))break;
     }
     /*Is the last page in our current list of serial numbers?*/
     if(sri<=0)break;
@@ -1333,11 +1333,11 @@ static void op_update_gain(OggOpusFile *_of){
 }
 
 static int op_make_decode_ready(OggOpusFile *_of){
-  OpusHead *head;
-  int       li;
-  int       stream_count;
-  int       coupled_count;
-  int       channel_count;
+  const OpusHead *head;
+  int             li;
+  int             stream_count;
+  int             coupled_count;
+  int             channel_count;
   if(_of->ready_state>OP_STREAMSET)return 0;
   if(OP_UNLIKELY(_of->ready_state<OP_STREAMSET))return OP_EFAULT;
   li=_of->seekable?_of->cur_link:0;
@@ -1519,14 +1519,12 @@ static int op_open1(OggOpusFile *_of,
   seekable=_cb->seek!=NULL&&(*_cb->seek)(_source,0,SEEK_CUR)!=-1;
   /*If seek is implemented, tell must also be implemented.*/
   if(seekable){
+    opus_int64 pos;
     if(OP_UNLIKELY(_of->callbacks.tell==NULL))return OP_EINVAL;
-    else{
-      opus_int64 pos;
-      pos=(*_of->callbacks.tell)(_of->source);
-      /*If the current position is not equal to the initial bytes consumed,
-         absolute seeking will not work.*/
-      if(OP_UNLIKELY(pos!=(opus_int64)_initial_bytes))return OP_EINVAL;
-    }
+    pos=(*_of->callbacks.tell)(_of->source);
+    /*If the current position is not equal to the initial bytes consumed,
+       absolute seeking will not work.*/
+    if(OP_UNLIKELY(pos!=(opus_int64)_initial_bytes))return OP_EINVAL;
   }
   _of->seekable=seekable;
   /*Don't seek yet.
@@ -2084,7 +2082,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
 }
 
 int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
-  int          ret;
+  int ret;
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   /*Don't dump the decoder state if we can't seek.*/
   if(OP_UNLIKELY(!_of->seekable))return OP_ENOSEEK;
@@ -2115,10 +2113,10 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
    position in an individual link.*/
 static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
  ogg_int64_t _pcm_offset,int *_li){
-  OggOpusLink *links;
-  ogg_int64_t  duration;
-  int          nlinks;
-  int          li;
+  const OggOpusLink *links;
+  ogg_int64_t        duration;
+  int                nlinks;
+  int                li;
   OP_ASSERT(_pcm_offset>=0);
   nlinks=_of->nlinks;
   links=_of->links;
@@ -2166,25 +2164,25 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
   Account for that (and report it as an error condition).*/
 static int op_pcm_seek_page(OggOpusFile *_of,
  ogg_int64_t _target_gp,int _li){
-  OggOpusLink  *link;
-  ogg_page      og;
-  ogg_int64_t   pcm_pre_skip;
-  ogg_int64_t   pcm_start;
-  ogg_int64_t   pcm_end;
-  ogg_int64_t   best_gp;
-  ogg_int64_t   diff;
-  ogg_uint32_t  serialno;
-  opus_int32    pre_skip;
-  opus_int64    begin;
-  opus_int64    end;
-  opus_int64    boundary;
-  opus_int64    best;
-  opus_int64    page_offset;
-  opus_int64    d0;
-  opus_int64    d1;
-  opus_int64    d2;
-  int           force_bisect;
-  int           ret;
+  const OggOpusLink *link;
+  ogg_page           og;
+  ogg_int64_t        pcm_pre_skip;
+  ogg_int64_t        pcm_start;
+  ogg_int64_t        pcm_end;
+  ogg_int64_t        best_gp;
+  ogg_int64_t        diff;
+  ogg_uint32_t       serialno;
+  opus_int32         pre_skip;
+  opus_int64         begin;
+  opus_int64         end;
+  opus_int64         boundary;
+  opus_int64         best;
+  opus_int64         page_offset;
+  opus_int64         d0;
+  opus_int64         d1;
+  opus_int64         d2;
+  int                force_bisect;
+  int                ret;
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
   link=_of->links+_li;
@@ -2405,16 +2403,16 @@ static int op_pcm_seek_page(OggOpusFile *_of,
 }
 
 int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
-  OggOpusLink *link;
-  ogg_int64_t  pcm_start;
-  ogg_int64_t  target_gp;
-  ogg_int64_t  prev_packet_gp;
-  ogg_int64_t  skip;
-  ogg_int64_t  diff;
-  int          op_count;
-  int          op_pos;
-  int          ret;
-  int          li;
+  const OggOpusLink *link;
+  ogg_int64_t        pcm_start;
+  ogg_int64_t        target_gp;
+  ogg_int64_t        prev_packet_gp;
+  ogg_int64_t        skip;
+  ogg_int64_t        diff;
+  int                op_count;
+  int                op_pos;
+  int                ret;
+  int                li;
   if(OP_UNLIKELY(_of->ready_state<OP_OPENED))return OP_EINVAL;
   if(OP_UNLIKELY(!_of->seekable))return OP_ENOSEEK;
   if(OP_UNLIKELY(_pcm_offset<0))return OP_EINVAL;
@@ -2503,10 +2501,10 @@ opus_int64 op_raw_tell(const OggOpusFile *_of){
   For unseekable sources, this gets reset to 0 at the beginning of each link.*/
 static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
  ogg_int64_t _gp,int _li){
-  OggOpusLink *links;
-  ogg_int64_t  pcm_offset;
-  ogg_int64_t  delta;
-  int          li;
+  const OggOpusLink *links;
+  ogg_int64_t        pcm_offset;
+  ogg_int64_t        delta;
+  int                li;
   links=_of->links;
   pcm_offset=0;
   OP_ASSERT(_li<_of->nlinks);
@@ -2579,9 +2577,9 @@ void op_set_dither_enabled(OggOpusFile *_of,int _enabled){
 static int op_init_buffer(OggOpusFile *_of){
   int nchannels_max;
   if(_of->seekable){
-    OggOpusLink *links;
-    int          nlinks;
-    int          li;
+    const OggOpusLink *links;
+    int                nlinks;
+    int                li;
     links=_of->links;
     nlinks=_of->nlinks;
     nchannels_max=1;
@@ -2657,11 +2655,11 @@ static int op_read_native(OggOpusFile *_of,
       /*If we have buffered packets, decode one.*/
       op_pos=_of->op_pos;
       if(OP_LIKELY(op_pos<_of->op_count)){
-        ogg_packet  *pop;
-        ogg_int64_t  diff;
-        opus_int32   cur_discard_count;
-        int          duration;
-        int          trimmed_duration;
+        const ogg_packet *pop;
+        ogg_int64_t       diff;
+        opus_int32        cur_discard_count;
+        int               duration;
+        int               trimmed_duration;
         pop=_of->op+op_pos++;
         _of->op_pos=op_pos;
         cur_discard_count=_of->cur_discard_count;
@@ -2743,6 +2741,9 @@ static int op_read_native(OggOpusFile *_of,
   }
 }
 
+/*A generic filter to apply to the decoded audio data.
+  _src is non-const because we will destructively modify the contents of the
+   source buffer that we consume in some cases.*/
 typedef int (*op_read_filter_func)(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_sample *_src,int _nsamples,int _nchannels);
 
