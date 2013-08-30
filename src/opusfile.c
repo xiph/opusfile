@@ -2749,7 +2749,7 @@ typedef int (*op_read_filter_func)(OggOpusFile *_of,void *_dst,int _dst_sz,
 
 /*Decode some samples and then apply a custom filter to them.
   This is used to convert to different output formats.*/
-static int op_read_native_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
+static int op_filter_read_native(OggOpusFile *_of,void *_dst,int _dst_sz,
  op_read_filter_func _filter,int *_li){
   int ret;
   /*Ensure we have some decoded samples in our buffer.*/
@@ -2888,7 +2888,7 @@ static int op_stereo_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
 }
 
 int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
-  return op_read_native_filter(_of,_pcm,_buf_size,op_stereo_filter,NULL);
+  return op_filter_read_native(_of,_pcm,_buf_size,op_stereo_filter,NULL);
 }
 
 # if !defined(OP_DISABLE_FLOAT_API)
@@ -2906,7 +2906,7 @@ static int op_short2float_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
 }
 
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
-  return op_read_native_filter(_of,_pcm,_buf_size,op_short2float_filter,_li);
+  return op_filter_read_native(_of,_pcm,_buf_size,op_short2float_filter,_li);
 }
 
 static int op_short2float_stereo_filter(OggOpusFile *_of,
@@ -2950,7 +2950,7 @@ static int op_short2float_stereo_filter(OggOpusFile *_of,
 }
 
 int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
-  return op_read_native_filter(_of,_pcm,_buf_size,
+  return op_filter_read_native(_of,_pcm,_buf_size,
    op_short2float_stereo_filter,NULL);
 }
 
@@ -3084,7 +3084,7 @@ static int op_float2short_filter(OggOpusFile *_of,void *_dst,int _dst_sz,
 }
 
 int op_read(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size,int *_li){
-  return op_read_native_filter(_of,_pcm,_buf_size,op_float2short_filter,_li);
+  return op_filter_read_native(_of,_pcm,_buf_size,op_float2short_filter,_li);
 }
 
 int op_read_float(OggOpusFile *_of,float *_pcm,int _buf_size,int *_li){
@@ -3143,13 +3143,13 @@ static int op_float2short_stereo_filter(OggOpusFile *_of,
 }
 
 int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
-  return op_read_native_filter(_of,_pcm,_buf_size,
+  return op_filter_read_native(_of,_pcm,_buf_size,
    op_float2short_stereo_filter,NULL);
 }
 
 int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
   _of->state_channel_count=0;
-  return op_read_native_filter(_of,_pcm,_buf_size,op_stereo_filter,NULL);
+  return op_filter_read_native(_of,_pcm,_buf_size,op_stereo_filter,NULL);
 }
 
 #endif
