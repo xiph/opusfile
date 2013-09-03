@@ -2519,9 +2519,17 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
     _gp=links[_li].pcm_end;
   }
   if(OP_LIKELY(op_granpos_cmp(_gp,links[_li].pcm_start)>0)){
-    OP_ALWAYS_TRUE(!op_granpos_diff(&delta,_gp,links[_li].pcm_start));
+    if(OP_UNLIKELY(op_granpos_diff(&delta,_gp,links[_li].pcm_start)<0)){
+      /*This means an unseekable stream claimed to have a page from more than
+         2 billion days after we joined.*/
+      OP_ASSERT(!_of->seekable);
+      return OP_INT64_MAX;
+    }
     if(delta<links[_li].head.pre_skip)delta=0;
     else delta-=links[_li].head.pre_skip;
+    /*In the seekable case, _gp was limited by pcm_end.
+      In the unseekable case, pcm_offset should be 0.*/
+    OP_ASSERT(pcm_offset<=OP_INT64_MAX-delta);
     pcm_offset+=delta;
   }
   return pcm_offset;
