@@ -162,7 +162,7 @@ static wchar_t *op_utf8_to_utf16(const char *_src){
           if((c0&0xE0)==0xC0){
             wchar_t w;
             /*Start byte says this is a 2-byte sequence.*/
-            w=c0&0x1F<<6|c1&0x3F;
+            w=(c0&0x1F)<<6|c1&0x3F;
             if(w>=0x80U){
               /*This is a 2-byte sequence that is not overlong.*/
               dst[di++]=w;
