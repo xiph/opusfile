@@ -2216,6 +2216,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
       if(_proxy_host!=NULL){
         /*We need to establish a CONNECT tunnel to handle https proxying.
           Build the request we'll send to do so.*/
+        _stream->proxy_connect.nbuf=0;
         ret=op_sb_append(&_stream->proxy_connect,"CONNECT ",8);
         ret|=op_sb_append_string(&_stream->proxy_connect,_stream->url.host);
         ret|=op_sb_append_port(&_stream->proxy_connect,_stream->url.port);
