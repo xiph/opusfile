@@ -2316,13 +2316,15 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     if(status_code[0]=='2'){
       opus_int64 content_length;
       opus_int64 range_length;
-      int        pipeline;
+      int        pipeline_supported;
+      int        pipeline_disabled;
       /*We only understand 20x codes.*/
       if(status_code[1]!='0')return OP_FALSE;
       content_length=-1;
       range_length=-1;
-      /*Pipelining is disabled by default.*/
-      pipeline=0;
+      /*Pipelining must be explicitly enabled.*/
+      pipeline_supported=0;
+      pipeline_disabled=0;
       for(;;){
         char *header;
         char *cdr;
@@ -2380,7 +2382,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
              error out and reconnect, adding lots of latency.*/
           ret=op_http_parse_connection(cdr);
           if(OP_UNLIKELY(ret<0))return ret;
-          pipeline-=ret;
+          pipeline_disabled|=ret;
         }
         else if(strcmp(header,"server")==0){
           /*If we got a Server response header, and it wasn't from a known-bad
@@ -2390,7 +2392,8 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
              suspected that we incorrectly implement the HTTP specification.
             So it should send back at least HTTP/1.1, despite our HTTP/1.0
              request.*/
-          pipeline+=v1_1_compat&&op_http_allow_pipelining(cdr);
+          pipeline_supported=v1_1_compat;
+          if(v1_1_compat)pipeline_disabled|=!op_http_allow_pipelining(cdr);
           if(_info!=NULL&&_info->server==NULL)_info->server=op_string_dup(cdr);
         }
         /*Collect station information headers if the caller requested it.
@@ -2468,9 +2471,9 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
         default:return OP_FALSE;
       }
       _stream->content_length=content_length;
-      _stream->pipeline=pipeline>0;
+      _stream->pipeline=pipeline_supported&&!pipeline_disabled;
       /*Pipelining requires HTTP/1.1 persistent connections.*/
-      if(pipeline)_stream->request.buf[minor_version_pos]='1';
+      if(_stream->pipeline)_stream->request.buf[minor_version_pos]='1';
       _stream->conns[0].pos=0;
       _stream->conns[0].end_pos=_stream->seekable?content_length:-1;
       _stream->conns[0].chunk_size=-1;
