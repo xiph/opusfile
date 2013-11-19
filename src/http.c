@@ -616,6 +616,8 @@ static void op_sb_clear(OpusStringBuf *_sb){
   _ogg_free(_sb->buf);
 }
 
+/*Make sure we have room for at least _capacity characters (plus 1 more for the
+   terminating NUL).*/
 static int op_sb_ensure_capacity(OpusStringBuf *_sb,int _capacity){
   char *buf;
   int   cbuf;
@@ -633,6 +635,8 @@ static int op_sb_ensure_capacity(OpusStringBuf *_sb,int _capacity){
   return 0;
 }
 
+/*Increase the capacity of the buffer, but not to more than _max_size
+   characters (plus 1 more for the terminating NUL).*/
 static int op_sb_grow(OpusStringBuf *_sb,int _max_size){
   char *buf;
   int   cbuf;
