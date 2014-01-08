@@ -19,7 +19,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 
-AM_INIT_AUTOMAKE([1.11 foreign no-define dist-zip])
+AM_INIT_AUTOMAKE([1.11 foreign no-define dist-zip subdir-objects])
 AM_MAINTAINER_MODE([enable])
 LT_INIT
 
