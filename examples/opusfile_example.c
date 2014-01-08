@@ -165,6 +165,7 @@ int main(int _argc,const char **_argv){
     }
 #else
     if(of==NULL)of=op_open_file(_argv[1],&ret);
+#endif
     else{
       if(info.name!=NULL){
         fprintf(stderr,"Station name: %s\n",info.name);
@@ -195,7 +196,6 @@ int main(int _argc,const char **_argv){
       is_ssl=info.is_ssl;
       opus_server_info_clear(&info);
     }
-#endif
   }
   if(of==NULL){
     fprintf(stderr,"Failed to open file '%s': %i\n",_argv[1],ret);
