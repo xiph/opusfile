@@ -32,7 +32,7 @@ Win32 binaries:
   or similar. Wine is required for 'make check' to complete.
 - Compile openssl with:
     ./Configure shared mingw64 no-asm --prefix=/path/to/builddir \
-      --cross-compile-prefix=i686-w64-mingw32
+      --cross-compile-prefix=i686-w64-mingw32-
     make depend && make -j8 && make install
 - Compile opusfile with:
     ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir \
