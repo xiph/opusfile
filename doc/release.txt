@@ -48,9 +48,9 @@ Win32 binaries:
 - Copy .libs/libopusfile.a to the release dir.
 - Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
 - Copy ./lib/libopusurl-0.dll, etc. to the release dir.
-- Copy libogg/src/.libs/libogg-0.dll to the release dir.
-- Copy opus/.libs/libopus-0.dll to the release dir.
-- Copy any other dependent dlls
+- Copy ./bin/*.ddl to the release dir for dependencies.
+- Copy any other dependent dlls, e.g. on Fedora 20 I needed to copy
+    /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll
 - Copy doc/latex/refman.pdf to opusfile-${version}-win32/opusfile-${version}.pdf
 - Copy examples/.libs/*.exe to the release dir.
 - Strip *.dll *.a *.exe in the release dir.
@@ -65,6 +65,8 @@ Win32 binaries:
 - Verify file permissions and that it's available at the expected
   URL.
 - Update links on <http://www.opus-codec.org/downloads/>.
+- Add doc/latex/refman as docs/opusfile_api-${version}.pdf on opus-codec.org
+- Add doc/html as docs/opusfile_api-${version} on opus-codec.org
 
 Binary releases are copied manually to
 ftp.mozilla.org:/pub/mozilla.org/opus/win32/
