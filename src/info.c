@@ -28,11 +28,13 @@ static int op_parse_int16le(const unsigned char *_data){
 }
 
 static opus_uint32 op_parse_uint32le(const unsigned char *_data){
-  return _data[0]|_data[1]<<8|_data[2]<<16|_data[3]<<24;
+  return _data[0]|(opus_uint32)_data[1]<<8|
+   (opus_uint32)_data[2]<<16|(opus_uint32)_data[3]<<24;
 }
 
 static opus_uint32 op_parse_uint32be(const unsigned char *_data){
-  return _data[3]|_data[2]<<8|_data[1]<<16|_data[0]<<24;
+  return _data[3]|(opus_uint32)_data[2]<<8|
+   (opus_uint32)_data[1]<<16|(opus_uint32)_data[0]<<24;
 }
 
 int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
