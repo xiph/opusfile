@@ -261,10 +261,11 @@ int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value){
   _tags->user_comments[ncomments]=comment=
    (char *)_ogg_malloc(sizeof(*comment)*(tag_len+value_len+2));
   if(OP_UNLIKELY(comment==NULL))return OP_EFAULT;
-  _tags->comment_lengths[ncomments]=tag_len+value_len+1;
   memcpy(comment,_tag,sizeof(*comment)*tag_len);
   comment[tag_len]='=';
   memcpy(comment+tag_len+1,_value,sizeof(*comment)*(value_len+1));
+  _tags->comment_lengths[ncomments]=tag_len+value_len+1;
+  _tags->comments=ncomments+1;
   return 0;
 }
 
@@ -280,6 +281,7 @@ int opus_tags_add_comment(OpusTags *_tags,const char *_comment){
   _tags->user_comments[ncomments]=op_strdup_with_len(_comment,comment_len);
   if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
   _tags->comment_lengths[ncomments]=comment_len;
+  _tags->comments=ncomments+1;
   return 0;
 }
 
