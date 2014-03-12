@@ -512,14 +512,10 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
      OP_ADV_OFFSET(_of->offset,OP_CHUNK_SIZE))<0)){
       return OP_ENOTFORMAT;
     }
-    /*If this page also belongs to our Opus stream, submit it and break.*/
-    if(_of->ready_state==OP_STREAMSET
-     &&_of->os.serialno==ogg_page_serialno(_og)){
-      ogg_stream_pagein(&_of->os,_og);
-      break;
-    }
   }
   if(OP_UNLIKELY(_of->ready_state!=OP_STREAMSET))return OP_ENOTFORMAT;
+  /*If the first non-header page belonged to our Opus stream, submit it.*/
+  if(_of->os.serialno==ogg_page_serialno(_og))ogg_stream_pagein(&_of->os,_og);
   /*Loop getting packets.*/
   for(;;){
     switch(ogg_stream_packetout(&_of->os,&op)){
