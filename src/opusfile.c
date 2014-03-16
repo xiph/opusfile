@@ -496,13 +496,14 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
       ogg_stream_pagein(&_of->os,_og);
       if(OP_LIKELY(ogg_stream_packetout(&_of->os,&op)>0)){
         ret=opus_head_parse(_head,op.packet,op.bytes);
-        /*If it's just a stream type we don't recognize, ignore it.*/
-        if(ret==OP_ENOTFORMAT)continue;
-        /*Everything else is fatal.*/
-        if(OP_UNLIKELY(ret<0))return ret;
+        if(OP_UNLIKELY(ret<0)){
+          /*If it's just a stream type we don't recognize, ignore it.
+            Everything else is fatal.*/
+          if(ret!=OP_ENOTFORMAT)return ret;
+        }
         /*Found a valid Opus header.
           Continue setup.*/
-        _of->ready_state=OP_STREAMSET;
+        else _of->ready_state=OP_STREAMSET;
       }
     }
     /*Get the next page.
