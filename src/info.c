@@ -564,7 +564,7 @@ static int opus_picture_tag_parse_impl(OpusPictureTag *_pic,const char *_tag,
   i+=4;
   /*If one of these is set, they all must be, but colors==0 is a valid value.*/
   colors_set=width!=0||height!=0||depth!=0||colors!=0;
-  if(width==0||height==0||depth==0&&colors_set)return OP_ENOTFORMAT;
+  if((width==0||height==0||depth==0)&&colors_set)return OP_ENOTFORMAT;
   data_length=op_parse_uint32be(_buf+i);
   i+=4;
   if(data_length>_buf_sz-i)return OP_ENOTFORMAT;
