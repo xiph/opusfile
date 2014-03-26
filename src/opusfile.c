@@ -156,8 +156,8 @@ static int op_get_data(OggOpusFile *_of,int _nbytes){
 /*Save a tiny smidge of verbosity to make the code more readable.*/
 static int op_seek_helper(OggOpusFile *_of,opus_int64 _offset){
   if(_offset==_of->offset)return 0;
-  if(_of->callbacks.seek==NULL||
-   (*_of->callbacks.seek)(_of->source,_offset,SEEK_SET)){
+  if(_of->callbacks.seek==NULL
+   ||(*_of->callbacks.seek)(_of->source,_offset,SEEK_SET)){
     return OP_EREAD;
   }
   _of->offset=_offset;
@@ -496,22 +496,20 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
       ogg_stream_pagein(&_of->os,_og);
       if(OP_LIKELY(ogg_stream_packetout(&_of->os,&op)>0)){
         ret=opus_head_parse(_head,op.packet,op.bytes);
-        if(OP_UNLIKELY(ret<0)){
-          /*If it's just a stream type we don't recognize, ignore it.
-            Everything else is fatal.*/
-          if(ret!=OP_ENOTFORMAT)return ret;
-        }
         /*Found a valid Opus header.
           Continue setup.*/
-        else _of->ready_state=OP_STREAMSET;
+        if(OP_LIKELY(ret>=0))_of->ready_state=OP_STREAMSET;
+        /*If it's just a stream type we don't recognize, ignore it.
+          Everything else is fatal.*/
+        else if(ret!=OP_ENOTFORMAT)return ret;
       }
     }
     /*Get the next page.
       No need to clamp the boundary offset against _of->end, as all errors
-       become OP_ENOTFORMAT.*/
+       become OP_ENOTFORMAT or OP_EBADHEADER.*/
     if(OP_UNLIKELY(op_get_next_page(_of,_og,
      OP_ADV_OFFSET(_of->offset,OP_CHUNK_SIZE))<0)){
-      return OP_ENOTFORMAT;
+      return _of->ready_state<OP_STREAMSET?OP_ENOTFORMAT:OP_EBADHEADER;
     }
   }
   if(OP_UNLIKELY(_of->ready_state!=OP_STREAMSET))return OP_ENOTFORMAT;
