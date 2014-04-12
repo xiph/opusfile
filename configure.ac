@@ -86,6 +86,7 @@ AM_COND_IF(OP_WIN32,
     )
   )
 )
+AC_SEARCH_LIBS(ftime, [compat], , [enable_http=no])
 
 AS_IF([test "$enable_http" != "no"], [
    openssl="openssl"
