@@ -17,8 +17,12 @@ config.log
 config.status
 config.sub
 configure
+config.h.in
+config.h
+compile
 depcomp
 doc/Doxyfile
+doc/doxygen-build.stamp
 examples/opusfile_example
 examples/seeking_example
 install-sh
@@ -36,6 +40,8 @@ opusfile-uninstalled.pc
 opusurl.pc
 opusurl-uninstalled.pc
 package_version
+stamp-h1
+test-driver
 unix/objs
 unix/opusfile_example
 unix/seeking_example
