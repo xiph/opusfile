@@ -721,7 +721,7 @@ static struct addrinfo *op_resolve(const char *_host,unsigned _port){
   char             service[6];
   memset(&hints,0,sizeof(hints));
   hints.ai_socktype=SOCK_STREAM;
-#if !defined(_WIN32)
+#if defined(AI_NUMERICSERV)
   hints.ai_flags=AI_NUMERICSERV;
 #endif
   OP_ASSERT(_port<=65535U);
