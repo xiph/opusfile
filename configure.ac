@@ -124,6 +124,11 @@ AS_IF([test "$enable_fixed_point" = "yes"],
   ]
 )
 
+AC_ARG_ENABLE([examples],
+  AS_HELP_STRING([--disable-examples], [Disable building of examples]),,
+  enable_examples=yes)
+AM_CONDITIONAL([OP_ENABLE_EXAMPLES], [test "$enable_examples" = "yes"])
+
 AS_CASE(["$ac_cv_search_lrintf"],
   ["no"],[],
   ["none required"],[],
@@ -172,6 +177,7 @@ AC_MSG_NOTICE([
 
     Hidden visibility ............ ${cc_cv_flag_visibility}
 
+    Building Examples ............ ${enable_examples}
     API documentation ............ ${enable_doc}
 ------------------------------------------------------------------------
 ])

@@ -21,7 +21,9 @@ libopusurl_la_LIBADD = libopusfile.la $(URL_DEPS_LIBS)
 libopusurl_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 
+if OP_ENABLE_EXAMPLES
 noinst_PROGRAMS = examples/opusfile_example examples/seeking_example
+endif
 
 examples_opusfile_example_SOURCES = examples/opusfile_example.c
 examples_seeking_example_SOURCES = examples/seeking_example.c
