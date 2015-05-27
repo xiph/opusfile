@@ -125,7 +125,7 @@ AS_IF([test "$enable_fixed_point" = "yes"],
 )
 
 AC_ARG_ENABLE([examples],
-  AS_HELP_STRING([--disable-examples], [Disable building of examples]),,
+  AS_HELP_STRING([--disable-examples], [Do not build example applications]),,
   enable_examples=yes)
 AM_CONDITIONAL([OP_ENABLE_EXAMPLES], [test "$enable_examples" = "yes"])
 
@@ -177,7 +177,7 @@ AC_MSG_NOTICE([
 
     Hidden visibility ............ ${cc_cv_flag_visibility}
 
-    Building Examples ............ ${enable_examples}
+    API code examples ............ ${enable_examples}
     API documentation ............ ${enable_doc}
 ------------------------------------------------------------------------
 ])
