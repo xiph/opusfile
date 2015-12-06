@@ -2041,7 +2041,8 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
             op_granpos_add(&prev_packet_gp,prev_packet_gp,total_duration)
              should succeed and give prev_packet_gp==cur_page_gp.
             But we don't bother to check that, as there isn't much we can do
-             if it's not true.
+             if it's not true, and it actually will not be true on the first
+             page after a seek, if there was a continued packet.
             The only thing we guarantee is that the start and end granule
              positions of the packets are valid, and that they are monotonic
              within a page.
@@ -2143,6 +2144,20 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
   return -1;
 }
 
+/*A small helper to determine if an Ogg page contains data that continues onto
+   a subsequent page.*/
+static int op_page_continues(ogg_page *_og){
+  int header_len;
+  int nlacing;
+  header_len=_og->header_len;
+  OP_ASSERT(header_len>=27);
+  nlacing=_og->header[26];
+  OP_ASSERT(header_len>=27+nlacing);
+  /*This also correctly handles the (unlikely) case of nlacing==0, because
+     0!=255.*/
+  return _og->header[27+nlacing-1]==255;
+}
+
 /*This controls how close the target has to be to use the current stream
    position to subdivide the initial range.
   Two minutes seems to be a good default.*/
@@ -2174,11 +2189,13 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   opus_int64         end;
   opus_int64         boundary;
   opus_int64         best;
+  opus_int64         best_start;
   opus_int64         page_offset;
   opus_int64         d0;
   opus_int64         d1;
   opus_int64         d2;
   int                force_bisect;
+  int                reset_needed;
   int                ret;
   _of->bytes_tracked=0;
   _of->samples_tracked=0;
@@ -2186,8 +2203,9 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   best_gp=pcm_start=link->pcm_start;
   pcm_end=link->pcm_end;
   serialno=link->serialno;
-  best=begin=link->data_offset;
+  best=best_start=begin=link->data_offset;
   page_offset=-1;
+  reset_needed=1;
   /*We discard the first 80 ms of data after a seek, so seek back that much
      farther.
     If we can't, simply seek to the beginning of the link.*/
@@ -2231,8 +2249,11 @@ static int op_pcm_seek_page(OggOpusFile *_of,
           if(diff<0){
             OP_ASSERT(offset>=begin);
             if(offset-begin>=end-begin>>1||diff>-OP_CUR_TIME_THRESH){
-              best=begin=offset;
+              best=best_start=begin=offset;
               best_gp=pcm_start=gp;
+              /*Don't reset the Ogg stream state, or we'll dump any continued
+                 packets from previous pages.*/
+              reset_needed=0;
             }
           }
           else{
@@ -2328,7 +2349,10 @@ static int op_pcm_seek_page(OggOpusFile *_of,
            of the stream it came from or whether or not it has a timestamp.*/
         next_boundary=OP_MIN(page_offset,next_boundary);
         if(serialno!=(ogg_uint32_t)ogg_page_serialno(&og))continue;
-        gp=ogg_page_granulepos(&og);
+        /*Ignore the granule position on pages where no packets end.
+          Otherwise we wouldn't properly track continued packets through
+           them.*/
+        gp=ogg_page_packets(&og)>0?ogg_page_granulepos(&og):-1;
         if(gp==-1)continue;
         if(op_granpos_cmp(gp,_target_gp)<0){
           /*We found a page that ends before our target.
@@ -2343,6 +2367,15 @@ static int op_pcm_seek_page(OggOpusFile *_of,
           /*Save the byte offset of the end of the page with this granule
              position.*/
           best=begin;
+          /*If this page ends with a continued packet, remember the offset of
+             its start, so that we can prime the stream with the continued
+             packet data.
+            This will likely mean an extra seek backwards, since chances are
+             we will scan forward at least one more page to figure out where
+             we're stopping, but continued packets are rare enough it's not
+             worth the machinery to buffer two pages instead of one to avoid
+             that seek.*/
+          best_start=op_page_continues(&og)?page_offset:best;
           best_gp=pcm_start=gp;
           OP_ALWAYS_TRUE(!op_granpos_diff(&diff,_target_gp,pcm_start));
           /*If we're more than a second away from our target, break out and
@@ -2375,27 +2408,41 @@ static int op_pcm_seek_page(OggOpusFile *_of,
     }
   }
   /*Found our page.
-    Seek to the end of it and update prev_packet_gp.
-    Our caller will set cur_discard_count.
-    This is an easier case than op_raw_seek(), as we don't need to keep any
-     packets from the page we found.*/
+    The packets we want will end on pages that come after best, but the first
+     packet might be continued from data in the best page itself.
+    In that case, best_start will point to the start of the best page, rather
+     than the end, because that's where we need to start reading.
+    When there is no danger of a continued packet, best_start==best.*/
   /*Seek, if necessary.*/
-  if(best!=page_offset){
+  if(best_start!=page_offset){
     page_offset=-1;
-    ret=op_seek_helper(_of,best);
+    ret=op_seek_helper(_of,best_start);
     if(OP_UNLIKELY(ret<0))return ret;
   }
   OP_ASSERT(op_granpos_cmp(best_gp,pcm_start)>=0);
   _of->cur_link=_li;
   _of->ready_state=OP_STREAMSET;
+  /*Update prev_packet_gp to allow per-packet granule position assignment.
+    If best_start!=best, this is often wrong, but we'll be overwriting it
+     again shortly.*/
   _of->prev_packet_gp=best_gp;
-  ogg_stream_reset_serialno(&_of->os,serialno);
+  if(reset_needed)ogg_stream_reset_serialno(&_of->os,serialno);
   ret=op_fetch_and_process_page(_of,page_offset<0?NULL:&og,page_offset,1,0,1);
   if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
+  if(best_start<best){
+    /*The previous call merely primed the stream state to make sure we got the
+       data for a continued packet.
+      Now load the packets we actually wanted.*/
+    _of->prev_packet_gp=best_gp;
+    _of->op_pos=_of->op_count;
+    ret=op_fetch_and_process_page(_of,NULL,-1,1,0,1);
+    if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
+  }
   /*Verify result.*/
   if(OP_UNLIKELY(op_granpos_cmp(_of->prev_packet_gp,_target_gp)>0)){
     return OP_EBADLINK;
   }
+  /*Our caller will set cur_discard_count to handle pre-roll.*/
   return 0;
 }
 
