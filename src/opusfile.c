@@ -237,7 +237,9 @@ static int op_add_serialno(const ogg_page *_og,
   nserialnos=*_nserialnos;
   cserialnos=*_cserialnos;
   if(OP_UNLIKELY(nserialnos>=cserialnos)){
-    if(OP_UNLIKELY(cserialnos>INT_MAX-1>>1))return OP_EFAULT;
+    if(OP_UNLIKELY(cserialnos>INT_MAX/(int)sizeof(*serialnos)-1>>1)){
+      return OP_EFAULT;
+    }
     cserialnos=2*cserialnos+1;
     OP_ASSERT(nserialnos<cserialnos);
     serialnos=(ogg_uint32_t *)_ogg_realloc(serialnos,
