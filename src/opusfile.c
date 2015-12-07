@@ -2147,12 +2147,10 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
 /*A small helper to determine if an Ogg page contains data that continues onto
    a subsequent page.*/
 static int op_page_continues(ogg_page *_og){
-  int header_len;
   int nlacing;
-  header_len=_og->header_len;
-  OP_ASSERT(header_len>=27);
+  OP_ASSERT(_og->header_len>=27);
   nlacing=_og->header[26];
-  OP_ASSERT(header_len>=27+nlacing);
+  OP_ASSERT(_og->header_len>=27+nlacing);
   /*This also correctly handles the (unlikely) case of nlacing==0, because
      0!=255.*/
   return _og->header[27+nlacing-1]==255;
