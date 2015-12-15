@@ -2263,7 +2263,7 @@ static int op_pcm_seek_page(OggOpusFile *_of,
                generally 1 second or less), we can loop them continuously
                without seeking at all.*/
             OP_ALWAYS_TRUE(!op_granpos_add(&prev_page_gp,_of->op[0].granulepos,
-             op_get_packet_duration(_of->op[0].packet,_of->op[0].bytes)));
+             -op_get_packet_duration(_of->op[0].packet,_of->op[0].bytes)));
             if(op_granpos_cmp(prev_page_gp,_target_gp)<=0){
               /*Don't call op_decode_clear(), because it will dump our
                  packets.*/
