@@ -1307,13 +1307,20 @@ static void op_update_gain(OggOpusFile *_of){
      track gain must lie in the range [-32768,32767], and the user-supplied
      offset has been pre-clamped to [-98302,98303].*/
   switch(_of->gain_type){
+    case OP_ALBUM_GAIN:{
+      int album_gain_q8;
+      album_gain_q8=0;
+      opus_tags_get_album_gain(&_of->links[li].tags,&album_gain_q8);
+      gain_q8+=album_gain_q8;
+      gain_q8+=head->output_gain;
+    }break;
     case OP_TRACK_GAIN:{
       int track_gain_q8;
       track_gain_q8=0;
       opus_tags_get_track_gain(&_of->links[li].tags,&track_gain_q8);
       gain_q8+=track_gain_q8;
-    }
-    /*Fall through.*/
+      gain_q8+=head->output_gain;
+    }break;
     case OP_HEADER_GAIN:gain_q8+=head->output_gain;break;
     case OP_ABSOLUTE_GAIN:break;
     default:OP_ASSERT(0);
@@ -2666,8 +2673,8 @@ void op_set_decode_callback(OggOpusFile *_of,
 
 int op_set_gain_offset(OggOpusFile *_of,
  int _gain_type,opus_int32 _gain_offset_q8){
-  if(_gain_type!=OP_HEADER_GAIN&&_gain_type!=OP_TRACK_GAIN
-   &&_gain_type!=OP_ABSOLUTE_GAIN){
+  if(_gain_type!=OP_HEADER_GAIN&&_gain_type!=OP_ALBUM_GAIN
+   &&_gain_type!=OP_TRACK_GAIN&&_gain_type!=OP_ABSOLUTE_GAIN){
     return OP_EINVAL;
   }
   _of->gain_type=_gain_type;

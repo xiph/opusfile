@@ -332,19 +332,20 @@ int opus_tags_query_count(const OpusTags *_tags,const char *_tag){
   return found;
 }
 
-int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8){
+static int opus_tags_get_gain(const OpusTags *_tags,int *_gain_q8,
+ const char *_tag_name,size_t _tag_len){
   char **comments;
   int    ncomments;
   int    ci;
   comments=_tags->user_comments;
   ncomments=_tags->comments;
-  /*Look for the first valid R128_TRACK_GAIN tag and use that.*/
+  /*Look for the first valid tag with the name _tag_name and use that.*/
   for(ci=0;ci<ncomments;ci++){
-    if(opus_tagncompare("R128_TRACK_GAIN",15,comments[ci])==0){
+    if(opus_tagncompare(_tag_name,_tag_len,comments[ci])==0){
       char       *p;
       opus_int32  gain_q8;
       int         negative;
-      p=comments[ci]+16;
+      p=comments[ci]+_tag_len+1;
       negative=0;
       if(*p=='-'){
         negative=-1;
@@ -358,13 +359,21 @@ int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8){
         p++;
       }
       /*This didn't look like a signed 16-bit decimal integer.
-        Not a valid R128_TRACK_GAIN tag.*/
+        Not a valid gain tag.*/
       if(*p!='\0')continue;
       *_gain_q8=(int)(gain_q8+negative^negative);
       return 0;
     }
   }
   return OP_FALSE;
+}
+
+int opus_tags_get_album_gain(const OpusTags *_tags,int *_gain_q8){
+  return opus_tags_get_gain(_tags,_gain_q8,"R128_ALBUM_GAIN",15);
+}
+
+int opus_tags_get_track_gain(const OpusTags *_tags,int *_gain_q8){
+  return opus_tags_get_gain(_tags,_gain_q8,"R128_TRACK_GAIN",15);
 }
 
 static int op_is_jpeg(const unsigned char *_buf,size_t _buf_sz){
