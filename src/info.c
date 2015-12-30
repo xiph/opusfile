@@ -92,8 +92,11 @@ void opus_tags_init(OpusTags *_tags){
 }
 
 void opus_tags_clear(OpusTags *_tags){
+  int ncomments;
   int ci;
-  for(ci=_tags->comments;ci-->0;)_ogg_free(_tags->user_comments[ci]);
+  ncomments=_tags->comments;
+  if(_tags->user_comments!=NULL)ncomments++;
+  for(ci=ncomments;ci-->0;)_ogg_free(_tags->user_comments[ci]);
   _ogg_free(_tags->user_comments);
   _ogg_free(_tags->comment_lengths);
   _ogg_free(_tags->vendor);
@@ -103,19 +106,27 @@ void opus_tags_clear(OpusTags *_tags){
 static int op_tags_ensure_capacity(OpusTags *_tags,size_t _ncomments){
   char   **user_comments;
   int     *comment_lengths;
+  int      cur_ncomments;
+  char    *binary_suffix_data;
+  int      binary_suffix_len;
   size_t   size;
   if(OP_UNLIKELY(_ncomments>=(size_t)INT_MAX))return OP_EFAULT;
   size=sizeof(*_tags->comment_lengths)*(_ncomments+1);
   if(size/sizeof(*_tags->comment_lengths)!=_ncomments+1)return OP_EFAULT;
+  cur_ncomments=_tags->comments;
+  comment_lengths=_tags->comment_lengths;
+  binary_suffix_len=comment_lengths==NULL?0:comment_lengths[cur_ncomments];
   comment_lengths=(int *)_ogg_realloc(_tags->comment_lengths,size);
   if(OP_UNLIKELY(comment_lengths==NULL))return OP_EFAULT;
-  comment_lengths[_ncomments]=0;
+  comment_lengths[_ncomments]=binary_suffix_len;
   _tags->comment_lengths=comment_lengths;
   size=sizeof(*_tags->user_comments)*(_ncomments+1);
   if(size/sizeof(*_tags->user_comments)!=_ncomments+1)return OP_EFAULT;
+  user_comments=_tags->user_comments;
+  binary_suffix_data=user_comments==NULL?NULL:user_comments[cur_ncomments];
   user_comments=(char **)_ogg_realloc(_tags->user_comments,size);
   if(OP_UNLIKELY(user_comments==NULL))return OP_EFAULT;
-  user_comments[_ncomments]=NULL;
+  user_comments[_ncomments]=binary_suffix_data;
   _tags->user_comments=user_comments;
   return 0;
 }
@@ -192,6 +203,13 @@ static int opus_tags_parse_impl(OpusTags *_tags,
     _data+=count;
     len-=count;
   }
+  if(len>0&&(_data[0]&1)){
+    if(len>(opus_uint32)INT_MAX)return OP_EFAULT;
+    _tags->user_comments[ncomments]=(char *)_ogg_malloc(len);
+    if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
+    memcpy(_tags->user_comments[ncomments],_data,len);
+    _tags->comment_lengths[ncomments]=(int)len;
+  }
   return 0;
 }
 
@@ -232,6 +250,16 @@ static int opus_tags_copy_impl(OpusTags *_dst,const OpusTags *_src){
     _dst->comment_lengths[ci]=len;
     _dst->comments=ci+1;
   }
+  if(_src->comment_lengths!=NULL){
+    int len;
+    len=_src->comment_lengths[ncomments];
+    if(len>0){
+      _dst->user_comments[ncomments]=(char *)_ogg_malloc(len);
+      if(OP_UNLIKELY(_dst->user_comments[ncomments]==NULL))return OP_EFAULT;
+      memcpy(_dst->user_comments[ncomments],_src->user_comments[ncomments],len);
+      _dst->comment_lengths[ncomments]=len;
+    }
+  }
   return 0;
 }
 
@@ -257,31 +285,49 @@ int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value){
   tag_len=strlen(_tag);
   value_len=strlen(_value);
   /*+2 for '=' and '\0'.*/
-  _tags->comment_lengths[ncomments]=0;
-  _tags->user_comments[ncomments]=comment=
-   (char *)_ogg_malloc(sizeof(*comment)*(tag_len+value_len+2));
+  comment=(char *)_ogg_malloc(sizeof(*comment)*(tag_len+value_len+2));
   if(OP_UNLIKELY(comment==NULL))return OP_EFAULT;
   memcpy(comment,_tag,sizeof(*comment)*tag_len);
   comment[tag_len]='=';
   memcpy(comment+tag_len+1,_value,sizeof(*comment)*(value_len+1));
+  _tags->user_comments[ncomments]=comment;
   _tags->comment_lengths[ncomments]=tag_len+value_len+1;
   _tags->comments=ncomments+1;
   return 0;
 }
 
 int opus_tags_add_comment(OpusTags *_tags,const char *_comment){
-  int comment_len;
-  int ncomments;
-  int ret;
+  char *comment;
+  int   comment_len;
+  int   ncomments;
+  int   ret;
   ncomments=_tags->comments;
   ret=op_tags_ensure_capacity(_tags,ncomments+1);
   if(OP_UNLIKELY(ret<0))return ret;
   comment_len=(int)strlen(_comment);
-  _tags->comment_lengths[ncomments]=0;
-  _tags->user_comments[ncomments]=op_strdup_with_len(_comment,comment_len);
+  comment=op_strdup_with_len(_comment,comment_len);
   if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
+  _tags->user_comments[ncomments]=comment;
   _tags->comment_lengths[ncomments]=comment_len;
   _tags->comments=ncomments+1;
+  return 0;
+}
+
+int opus_tags_set_binary_suffix(OpusTags *_tags,
+ const unsigned char *_data,int _len){
+  unsigned char *binary_suffix_data;
+  int            ncomments;
+  int            ret;
+  if(_len<0||_len>0&&(_data==NULL||!(_data[0]&1)))return OP_EINVAL;
+  ncomments=_tags->comments;
+  ret=op_tags_ensure_capacity(_tags,ncomments);
+  if(OP_UNLIKELY(ret<0))return ret;
+  binary_suffix_data=
+   (unsigned char *)_ogg_realloc(_tags->user_comments[ncomments],_len);
+  if(OP_UNLIKELY(binary_suffix_data==NULL))return OP_EFAULT;
+  memcpy(binary_suffix_data,_data,_len);
+  _tags->user_comments[ncomments]=(char *)binary_suffix_data;
+  _tags->comment_lengths[ncomments]=_len;
   return 0;
 }
 
@@ -330,6 +376,17 @@ int opus_tags_query_count(const OpusTags *_tags,const char *_tag){
     if(!opus_tagncompare(_tag,tag_len,user_comments[ci]))found++;
   }
   return found;
+}
+
+const unsigned char *opus_tags_get_binary_suffix(const OpusTags *_tags,
+ int *_len){
+  int ncomments;
+  int len;
+  ncomments=_tags->comments;
+  len=_tags->comment_lengths==NULL?0:_tags->comment_lengths[ncomments];
+  *_len=len;
+  OP_ASSERT(len==0||_tags->user_comments!=NULL);
+  return len>0?(const unsigned char *)_tags->user_comments[ncomments]:NULL;
 }
 
 static int opus_tags_get_gain(const OpusTags *_tags,int *_gain_q8,

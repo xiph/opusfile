@@ -259,6 +259,7 @@ int main(int _argc,const char **_argv){
       if(li!=prev_li){
         const OpusHead *head;
         const OpusTags *tags;
+        int             binary_suffix_len;
         int             ci;
         /*We found a new link.
           Print out some information.*/
@@ -306,6 +307,10 @@ int main(int _argc,const char **_argv){
             else fprintf(stderr,"<error parsing picture tag>\n");
           }
           else fprintf(stderr,"  %s\n",tags->user_comments[ci]);
+        }
+        if(opus_tags_get_binary_suffix(tags,&binary_suffix_len)!=NULL){
+          fprintf(stderr,"<%u bytes of unknown binary metadata>\n",
+           binary_suffix_len);
         }
         fprintf(stderr,"\n");
         if(!op_seekable(of)){

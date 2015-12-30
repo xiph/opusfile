@@ -503,6 +503,22 @@ int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value)
 int opus_tags_add_comment(OpusTags *_tags,const char *_comment)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
+/**Replace the binary suffix data at the end of the packet (if any).
+   \param _tags An initialized #OpusTags structure.
+   \param _data A buffer of binary data to append after the encoded user
+                 comments.
+                The least significant bit of the first byte of this data must
+                 be set (to ensure the data is preserved by other editors).
+   \param _len  The number of bytes of binary data to append.
+                This may be zero to remove any existing binary suffix data.
+   \return 0 on success, or a negative value on error.
+   \retval #OP_EINVAL \a _len was negative, or \a _len was positive but
+                       \a _data was <code>NULL</code> or the least significant
+                       bit of the first byte was not set.
+   \retval #OP_EFAULT An internal memory allocation failed.*/
+int opus_tags_set_binary_suffix(OpusTags *_tags,
+ const unsigned char *_data,int _len) OP_ARG_NONNULL(1);
+
 /**Look up a comment value by its tag.
    \param _tags  An initialized #OpusTags structure.
    \param _tag   The tag to look up.
@@ -530,6 +546,14 @@ const char *opus_tags_query(const OpusTags *_tags,const char *_tag,int _count)
    \return The number of instances of this particular tag.*/
 int opus_tags_query_count(const OpusTags *_tags,const char *_tag)
  OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
+
+/**Retrieve the binary suffix data at the end of the packet (if any).
+   \param      _tags An initialized #OpusTags structure.
+   \param[out] _len  Returns the number of bytes of binary suffix data returned.
+   \return A pointer to the binary suffix data, or <code>NULL</code> if none
+            was present.*/
+const unsigned char *opus_tags_get_binary_suffix(const OpusTags *_tags,
+ int *_len) OP_ARG_NONNULL(1) OP_ARG_NONNULL(2);
 
 /**Get the album gain from an R128_ALBUM_GAIN tag, if one was specified.
    This searches for the first R128_ALBUM_GAIN tag with a valid signed,
