@@ -1,0 +1,23 @@
+= Cross-compiling under mingw =
+
+Just running 'make' in this directory should download
+and build opusfile and it's dependencies. Some mingw
+libraries need to be compiled into the final package.
+
+== Generic instructions ==
+
+To build opusfile under mingw, you need to first build:
+
+libogg
+libopus
+openssl
+
+For 'make check' to work, you may need wine installed.
+
+To build openssl, try:
+
+ CROSS_COMPILE="i686-w64-mingw32-" ./Configure mingw no-asm no-shared --prefix=$PWD/mingw && make depend && make -j8 && make install
+
+To build opusfile, try:
+
+ CC=i686-w64-mingw32-gcc PKG_CONFIG_PATH=$PWD/lib/pkgconfig RANLIB=i686-w64-mingw32-ranlib make -f ../unix/Makefile
