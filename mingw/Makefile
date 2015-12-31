@@ -34,7 +34,8 @@ clean:
 
 # Generate rules to download and verify each dependency.
 define WGET_template =
- # Generate unpacked tarball name from the url.
+ # Generate tarball name from the url.
+ DEP_TARBALLS += $$(notdir $$($(1)_URL))
  $(1)_DIR := $$(basename $$(basename $$(notdir $$($(1)_URL))))
  DEP_DIRS += $$($(1)_DIR)
 
@@ -57,6 +58,11 @@ define WGET_template =
  $(1): $(1)_BUILD
 endef
 $(foreach dep,$(DEPS),$(eval $(call WGET_template,$(dep))))
+
+fetch: $(DEP_TARBALLS)
+
+realclean: clean
+	$(RM) $(DEP_TARBALLS)
 
 # Build scripts for each specific target.
 
