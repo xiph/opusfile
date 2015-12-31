@@ -17,12 +17,12 @@ ssl_SHA := b3658b84e9ea606a5ded3c972a5517cd785282e7ea86b20c78aa4b773a047fb7
 libopusfile-0.dll: ../unix/Makefile $(DEPS)
 	CC=$(TOOL_PREFIX)-gcc \
 	RANLIB=$(TOOL_PREFIX)-ranlib \
-	PKG_CONFIG_PATH=${PWD}/lib/pkgconfig \
+	PKG_CONFIG_PATH=$(CURDIR)/lib/pkgconfig \
 	$(MAKE) -f $<
 
 opusfile: $(DEPS)
-	../configure --host=$(TOOL_PREFIX) --prefix=${PWD} \
-	  PKG_CONFIG_PATH=${PWD}/lib/pkgconfig
+	../configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR) \
+	  PKG_CONFIG_PATH=$(CURDIR)/lib/pkgconfig
 	$(MAKE)
 
 clean:
@@ -57,18 +57,18 @@ $(foreach dep,$(DEPS),$(eval $(call WGET_template,$(dep))))
 
 # NOTE: 'make check' generally requires wine with cross-compiling.
 ogg_BUILD: $(ogg_DIR)
-	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=${PWD}
+	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR)
 	$(MAKE) -C $< check
 	$(MAKE) -C $< install
 
 opus_BUILD: $(opus_DIR)
-	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=${PWD}
+	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR)
 	$(MAKE) -C $< check
 	$(MAKE) -C $< install
 
 ssl_BUILD: $(ssl_DIR)
 	cd $< && ./Configure shared mingw64 no-asm \
-	  --prefix=${PWD} \
+	  --prefix=$(CURDIR) \
 	  --cross-compile-prefix=$(TOOL_PREFIX)-
 	$(MAKE) -C $< depend
 	$(MAKE) -C $<

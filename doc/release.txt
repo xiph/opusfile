@@ -23,7 +23,7 @@ to https://archive.mozilla.org/pub/opus/
 Win32 binaries:
 
 - Assuming the mingw cross toolchain:
-- run cd mingw && make
+- run `make -C mingw`
   - Downloads versions of libogg, opus, openssl.
   - Compiles them.
   - Compiles static opusfile and examples against the built deps.
