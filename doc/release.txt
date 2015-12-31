@@ -23,10 +23,15 @@ to https://archive.mozilla.org/pub/opus/
 Win32 binaries:
 
 - Assuming the mingw cross toolchain:
-- rust make -C mingw
+- run cd mingw && make
   - Downloads versions of libogg, opus, openssl.
   - Compiles them.
-  - Compiles opusfile and examples against the built deps.
+  - Compiles static opusfile and examples against the built deps.
+- Compile dyname opusfile with:
+  - ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir/mingw \
+        PKG_CONFIG_PATH=/path/to/builddir/mingw/lib/pkgconfig
+  - make && make check && make -C doc/latex
+- Add api docs to opus-codec.org
 - mkdir opusfile-${version}-win32
 - Copy AUTHORS COPYING README.txt include/opusfile.h to the release dir.
 - Merge changes between README.txt and the version in the last
@@ -45,8 +50,8 @@ Win32 binaries:
 - Copy examples/.libs/*.exe to the release dir.
 - Strip *.dll *.a *.exe in the release dir.
 - In the release dir, run:
-    sha1sum * > SHA1SUMS.txt
-    gpg --detach-sign --armor SHA1SUMS.txt
+    sha256sum * > SHA256SUMS.txt
+    gpg --detach-sign --armor SHA256SUMS.txt
 - In the parent directory, create the archive:
     zip -r opusfile-${version}-win32.zip opusfile-${version}-win32/*
 - Copy the archive to a clean system and verify the examples work
