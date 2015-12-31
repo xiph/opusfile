@@ -27,7 +27,7 @@ Win32 binaries:
   - Downloads versions of libogg, opus, openssl.
   - Compiles them.
   - Compiles static opusfile and examples against the built deps.
-- Compile dyname opusfile with:
+- Compile dynamic opusfile with:
   - ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir/mingw \
         PKG_CONFIG_PATH=/path/to/builddir/mingw/lib/pkgconfig
   - make && make check && make -C doc/latex
