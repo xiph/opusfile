@@ -27,11 +27,16 @@ opusfile: $(DEPS)
 
 clean:
 	$(RM) -r objs
+	$(RM) -r  bin include lib share ssl
+	$(RM) -r $(DEP_DIRS)
+	$(RM) opusfile_example.exe seeking_example.exe
+	$(RM) libopusfile.a libopusurl.a
 
 # Generate rules to download and verify each dependency.
 define WGET_template =
  # Generate unpacked tarball name from the url.
  $(1)_DIR := $$(basename $$(basename $$(notdir $$($(1)_URL))))
+ DEP_DIRS += $$($(1)_DIR)
 
  # Verify and unpack tarball.
  $$($(1)_DIR): $$(notdir $$($(1)_URL))
