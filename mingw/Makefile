@@ -69,12 +69,10 @@ realclean: clean
 # NOTE: 'make check' generally requires wine with cross-compiling.
 ogg_BUILD: $(ogg_DIR)
 	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR)
-	$(MAKE) -C $< check
 	$(MAKE) -C $< install
 
 opus_BUILD: $(opus_DIR)
 	cd $< && ./configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR)
-	$(MAKE) -C $< check
 	$(MAKE) -C $< install
 
 ssl_BUILD: $(ssl_DIR)
