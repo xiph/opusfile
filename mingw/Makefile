@@ -86,3 +86,30 @@ ssl_BUILD: $(ssl_DIR)
 	$(MAKE) -C $< install
 
 # CROSS_COMPILE="i686-w64-mingw32-" ./Configure mingw no-asm no-shared --prefix=$PWD/mingw && make depend && make -j8 && make install
+
+# Package the binaries.
+DIST=opusfile-0.7rc-f22docker-win32
+package: $(DIST).zip
+
+$(DIST).zip: $(DIST)
+	zip -r $@ $</*
+	@echo $@ ready to go.
+
+$(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll ssleay32.dll) 
+	cd .. && make install
+	mkdir -p $(DIST)
+	cp ../AUTHORS ../COPYING ../README.txt ../include/opusfile.h $@
+	cp ../.libs/libopusfile-0.dll $@
+	cp ../.libs/libopusfile.a $@
+	cp ../.libs/libopusfile.dll.a $@
+	cp ../.libs/libopusurl-0.dll $@
+	cp ../.libs/libopusurl.a $@
+	cp ../.libs/libopusurl.dll.a $@
+	cp bin/*.dll $@
+	cp ../examples/.libs/*.exe $@
+	cp /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll $@
+	cp /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll $@
+	i686-w64-mingw32-strip $@/*.exe
+	i686-w64-mingw32-strip $@/*.dll
+	i686-w64-mingw32-strip $@/*.a
+	cd $@ && sha256sum * > SHA256SUMS.txt
