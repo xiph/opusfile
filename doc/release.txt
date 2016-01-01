@@ -42,7 +42,7 @@ Win32 binaries:
 - Copy .libs/libopusfile.a to the release dir.
 - Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
 - Copy ./lib/libopusurl-0.dll, etc. to the release dir.
-- Copy ./bin/*.ddl to the release dir for dependencies.
+- Copy ./bin/*.dll to the release dir for dependencies.
 - Copy any other dependent dlls, e.g. on Fedora 23 I needed to copy
     /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll
     /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
