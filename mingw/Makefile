@@ -14,6 +14,8 @@ opus_SHA := 9b84ff56bd7720d5554103c557664efac2b8b18acc4bbcc234cb881ab9a3371e
 ssl_URL := https://openssl.org/source/openssl-1.0.1q.tar.gz
 ssl_SHA := b3658b84e9ea606a5ded3c972a5517cd785282e7ea86b20c78aa4b773a047fb7
 
+all: $(DEPS)
+
 libopusfile-0.dll: ../unix/Makefile $(DEPS)
 	CC=$(TOOL_PREFIX)-gcc \
 	RANLIB=$(TOOL_PREFIX)-ranlib \
