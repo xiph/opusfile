@@ -1,10 +1,10 @@
-FROM fedora:22
+FROM fedora:23
 MAINTAINER opus@xiph.org
 
 # Linux build.
 RUN dnf update -y
 RUN dnf install -y git gcc make wget xz
-RUN dnf install -y autoconf automake libtool
+RUN dnf install -y autoconf automake libtool pkgconfig
 
 # mingw cross build.
 RUN dnf install -y mingw32-gcc zip
