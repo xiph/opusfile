@@ -23,6 +23,8 @@ compile
 depcomp
 doc/Doxyfile
 doc/doxygen-build.stamp
+doc/html
+doc/latex
 examples/opusfile_example
 examples/seeking_example
 install-sh
