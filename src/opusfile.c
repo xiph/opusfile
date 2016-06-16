@@ -1823,14 +1823,11 @@ opus_int32 op_bitrate_instant(OggOpusFile *_of){
   This handles the case where we're at a bitstream boundary and dumps the
    decoding machine.
   If the decoding machine is unloaded, it loads it.
-  It also keeps prev_packet_gp up to date (seek and read both use this; seek
-   uses a special hack with _readp).
+  It also keeps prev_packet_gp up to date (seek and read both use this).
   Return: <0) Error, OP_HOLE (lost packet), or OP_EOF.
-           0) Need more data (only if _readp==0).
-           1) Got at least one audio data packet.*/
+           0) Got at least one audio data packet.*/
 static int op_fetch_and_process_page(OggOpusFile *_of,
- ogg_page *_og,opus_int64 _page_offset,
- int _readp,int _spanp,int _ignore_holes){
+ ogg_page *_og,opus_int64 _page_offset,int _spanp,int _ignore_holes){
   OggOpusLink  *links;
   ogg_uint32_t  cur_serialno;
   int           seekable;
@@ -1838,7 +1835,6 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
   int           ret;
   /*We shouldn't get here if we have unprocessed packets.*/
   OP_ASSERT(_of->ready_state<OP_INITSET||_of->op_pos>=_of->op_count);
-  if(!_readp)return 0;
   seekable=_of->seekable;
   links=_of->links;
   cur_link=seekable?_of->cur_link:0;
@@ -1937,7 +1933,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
         /*Otherwise, we're done.*/
         ret=op_make_decode_ready(_of);
         if(OP_UNLIKELY(ret<0))return ret;
-        return 1;
+        return 0;
       }
     }
     /*The buffered page is the data we want, and we're ready for it.
@@ -2088,7 +2084,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
         _of->prev_page_offset=_page_offset;
         _of->op_count=pi;
         /*If end-trimming didn't trim all the packets, we're done.*/
-        if(OP_LIKELY(pi>0))return 1;
+        if(OP_LIKELY(pi>0))return 0;
       }
     }
   }
@@ -2106,7 +2102,7 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
   _of->samples_tracked=0;
   ret=op_seek_helper(_of,_pos);
   if(OP_UNLIKELY(ret<0))return OP_EREAD;
-  ret=op_fetch_and_process_page(_of,NULL,-1,1,1,1);
+  ret=op_fetch_and_process_page(_of,NULL,-1,1,1);
   /*If we hit EOF, op_fetch_and_process_page() leaves us uninitialized.
     Instead, jump to the end.*/
   if(ret==OP_EOF){
@@ -2118,7 +2114,6 @@ int op_raw_seek(OggOpusFile *_of,opus_int64 _pos){
     _of->cur_discard_count=0;
     ret=0;
   }
-  else if(ret>0)ret=0;
   return ret;
 }
 
@@ -2506,8 +2501,8 @@ static int op_pcm_seek_page(OggOpusFile *_of,
   /*Update prev_packet_gp to allow per-packet granule position assignment.*/
   _of->prev_packet_gp=best_gp;
   _of->prev_page_offset=best_start;
-  ret=op_fetch_and_process_page(_of,page_offset<0?NULL:&og,page_offset,1,0,1);
-  if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
+  ret=op_fetch_and_process_page(_of,page_offset<0?NULL:&og,page_offset,0,1);
+  if(OP_UNLIKELY(ret<0))return OP_EBADLINK;
   /*Verify result.*/
   if(OP_UNLIKELY(op_granpos_cmp(_of->prev_packet_gp,_target_gp)>0)){
     return OP_EBADLINK;
@@ -2589,8 +2584,8 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
     if(op_pos<op_count)break;
     /*We skipped all the packets on this page.
       Fetch another.*/
-    ret=op_fetch_and_process_page(_of,NULL,-1,1,0,1);
-    if(OP_UNLIKELY(ret<=0))return OP_EBADLINK;
+    ret=op_fetch_and_process_page(_of,NULL,-1,0,1);
+    if(OP_UNLIKELY(ret<0))return OP_EBADLINK;
   }
   OP_ALWAYS_TRUE(!op_granpos_diff(&diff,prev_packet_gp,pcm_start));
   /*We skipped too far.
@@ -2854,7 +2849,7 @@ static int op_read_native(OggOpusFile *_of,
       }
     }
     /*Suck in another page.*/
-    ret=op_fetch_and_process_page(_of,NULL,-1,1,1,0);
+    ret=op_fetch_and_process_page(_of,NULL,-1,1,0);
     if(OP_UNLIKELY(ret==OP_EOF)){
       if(_li!=NULL)*_li=_of->cur_link;
       return 0;
