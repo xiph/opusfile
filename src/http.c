@@ -231,7 +231,7 @@ typedef SOCKET op_sock;
 #   define POLLRDBAND (0x0200)
 /*There is data to read.*/
 #   define POLLIN     (POLLRDNORM|POLLRDBAND)
-/* There is urgent data to read.*/
+/*There is urgent data to read.*/
 #   define POLLPRI    (0x0400)
 /*Equivalent to POLLOUT.*/
 #   define POLLWRNORM (0x0010)
@@ -894,7 +894,7 @@ static void op_http_stream_init(OpusHTTPStream *_stream){
 /*Close the connection and move it to the free list.
   _stream:     The stream containing the free list.
   _conn:       The connection to close.
-  _penxt:      The linked-list pointer currently pointing to this connection.
+  _pnext:      The linked-list pointer currently pointing to this connection.
   _gracefully: Whether or not to shut down cleanly.*/
 static void op_http_conn_close(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
  OpusHTTPConn **_pnext,int _gracefully){
