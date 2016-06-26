@@ -2779,7 +2779,7 @@ static int op_http_conn_read_body(OpusHTTPStream *_stream,
     Otherwise, we'd need a _pnext pointer if we needed to close the connection,
      and re-opening it would re-organize the lists.*/
   OP_ASSERT(_stream->lru_head==_conn);
-  /*We should have filterd out empty reads by this point.*/
+  /*We should have filtered out empty reads by this point.*/
   OP_ASSERT(_buf_size>0);
   pos=_conn->pos;
   end_pos=_conn->end_pos;
