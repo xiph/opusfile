@@ -199,6 +199,7 @@ static int opus_tags_parse_impl(OpusTags *_tags,
       if(_tags->user_comments[ci]==NULL)return OP_EFAULT;
       _tags->comment_lengths[ci]=(int)count;
       _tags->comments=ci+1;
+      _tags->user_comments[ci+1]=NULL;
     }
     _data+=count;
     len-=count;
