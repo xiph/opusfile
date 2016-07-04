@@ -1931,7 +1931,9 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
         /*If we didn't get any packets out of op_find_initial_pcm_offset(),
            keep going (this is possible if end-trimming trimmed them all).*/
         if(_of->op_count<=0)continue;
-        /*Otherwise, we're done.*/
+        /*Otherwise, we're done.
+          TODO: This resets bytes_tracked, which misses the header bytes
+           already processed by op_find_initial_pcm_offset().*/
         ret=op_make_decode_ready(_of);
         if(OP_UNLIKELY(ret<0))return ret;
         return 0;
