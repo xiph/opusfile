@@ -306,7 +306,7 @@ int opus_tags_add_comment(OpusTags *_tags,const char *_comment){
   if(OP_UNLIKELY(ret<0))return ret;
   comment_len=(int)strlen(_comment);
   comment=op_strdup_with_len(_comment,comment_len);
-  if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
+  if(OP_UNLIKELY(comment==NULL))return OP_EFAULT;
   _tags->user_comments[ncomments]=comment;
   _tags->comment_lengths[ncomments]=comment_len;
   _tags->comments=ncomments+1;
