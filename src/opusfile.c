@@ -1844,36 +1844,27 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
   for(;;){
     ogg_page og;
     OP_ASSERT(_of->ready_state>=OP_OPENED);
-    /*This loop is not strictly necessary, but there's no sense in doing the
-       extra checks of the larger loop for the common case in a multiplexed
-       bistream where the page is simply part of a different logical
-       bitstream.*/
-    do{
-      /*If we were given a page to use, use it.*/
-      if(_og!=NULL){
-        *&og=*_og;
-        _og=NULL;
-      }
-      /*Keep reading until we get a page with the correct serialno.*/
-      else _page_offset=op_get_next_page(_of,&og,_of->end);
-      /*EOF: Leave uninitialized.*/
-      if(_page_offset<0)return _page_offset<OP_FALSE?(int)_page_offset:OP_EOF;
-      if(OP_LIKELY(_of->ready_state>=OP_STREAMSET)){
-        if(cur_serialno!=(ogg_uint32_t)ogg_page_serialno(&og)){
-          /*Two possibilities:
-             1) Another stream is multiplexed into this logical section, or*/
-          if(OP_LIKELY(!ogg_page_bos(&og)))continue;
-          /* 2) Our decoding just traversed a bitstream boundary.*/
-          if(!_spanp)return OP_EOF;
-          if(OP_LIKELY(_of->ready_state>=OP_INITSET))op_decode_clear(_of);
-          break;
-        }
-      }
-      /*Bitrate tracking: add the header's bytes here.
-        The body bytes are counted when we consume the packets.*/
-      _of->bytes_tracked+=og.header_len;
+    /*If we were given a page to use, use it.*/
+    if(_og!=NULL){
+      *&og=*_og;
+      _og=NULL;
     }
-    while(0);
+    /*Keep reading until we get a page with the correct serialno.*/
+    else _page_offset=op_get_next_page(_of,&og,_of->end);
+    /*EOF: Leave uninitialized.*/
+    if(_page_offset<0)return _page_offset<OP_FALSE?(int)_page_offset:OP_EOF;
+    if(OP_LIKELY(_of->ready_state>=OP_STREAMSET)
+     &&cur_serialno!=(ogg_uint32_t)ogg_page_serialno(&og)){
+      /*Two possibilities:
+         1) Another stream is multiplexed into this logical section, or*/
+      if(OP_LIKELY(!ogg_page_bos(&og)))continue;
+      /* 2) Our decoding just traversed a bitstream boundary.*/
+      if(!_spanp)return OP_EOF;
+      if(OP_LIKELY(_of->ready_state>=OP_INITSET))op_decode_clear(_of);
+    }
+    /*Bitrate tracking: add the header's bytes here.
+      The body bytes are counted when we consume the packets.*/
+    else _of->bytes_tracked+=og.header_len;
     /*Do we need to load a new machine before submitting the page?
       This is different in the seekable and non-seekable cases.
       In the seekable case, we already have all the header information loaded
