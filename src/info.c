@@ -205,10 +205,12 @@ static int opus_tags_parse_impl(OpusTags *_tags,
   }
   if(len>0&&(_data[0]&1)){
     if(len>(opus_uint32)INT_MAX)return OP_EFAULT;
-    _tags->user_comments[ncomments]=(char *)_ogg_malloc(len);
-    if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
-    memcpy(_tags->user_comments[ncomments],_data,len);
-    _tags->comment_lengths[ncomments]=(int)len;
+    if(_tags!=NULL){
+      _tags->user_comments[ncomments]=(char *)_ogg_malloc(len);
+      if(OP_UNLIKELY(_tags->user_comments[ncomments]==NULL))return OP_EFAULT;
+      memcpy(_tags->user_comments[ncomments],_data,len);
+      _tags->comment_lengths[ncomments]=(int)len;
+    }
   }
   return 0;
 }
