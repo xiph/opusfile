@@ -505,6 +505,7 @@ static int op_fetch_headers_impl(OggOpusFile *_of,OpusHead *_head,
           Everything else is fatal.*/
         else if(ret!=OP_ENOTFORMAT)return ret;
       }
+      /*TODO: Should a BOS page with no packets be an error?*/
     }
     /*Get the next page.
       No need to clamp the boundary offset against _of->end, as all errors
