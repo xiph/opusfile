@@ -8,11 +8,11 @@ DEPS = ogg opus ssl
 ogg_URL := http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz
 ogg_SHA := 3f687ccdd5ac8b52d76328fbbfebc70c459a40ea891dbf3dccb74a210826e79b
 
-opus_URL := https://archive.mozilla.org/pub/opus/opus-1.1.1.tar.gz
-opus_SHA := 9b84ff56bd7720d5554103c557664efac2b8b18acc4bbcc234cb881ab9a3371e
+opus_URL := https://archive.mozilla.org/pub/opus/opus-1.1.2.tar.gz
+opus_SHA := 0e290078e31211baa7b5886bcc8ab6bc048b9fc83882532da4a1a45e58e907fd
 
-ssl_URL := https://openssl.org/source/openssl-1.0.1q.tar.gz
-ssl_SHA := b3658b84e9ea606a5ded3c972a5517cd785282e7ea86b20c78aa4b773a047fb7
+ssl_URL := https://openssl.org/source/openssl-1.0.2h.tar.gz
+ssl_SHA := 1d4007e53aad94a5b2002fe045ee7bb0b3d98f1a47f8b2bc851dcd1c74332919
 
 all: $(DEPS)
 
