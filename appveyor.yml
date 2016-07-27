@@ -1,0 +1,25 @@
+image: Visual Studio 2015
+configuration:
+- Debug
+- Release
+
+platform:
+- Win32
+- x64
+
+install:
+- git clone -q https://github.com/xiph/opus.git %APPVEYOR_BUILD_FOLDER%\..\opus
+- git clone -q https://github.com/xiph/ogg.git %APPVEYOR_BUILD_FOLDER%\..\ogg
+- msbuild "%APPVEYOR_BUILD_FOLDER%\..\opus\win32\VS2015\opus.vcxproj" /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
+- msbuild "%APPVEYOR_BUILD_FOLDER%\..\ogg\win32\VS2015\libogg_static.sln" /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
+
+build:
+  project: win32\VS2015\opusfile.sln
+  parallel: true
+  verbosity: minimal
+
+after_build:
+- 7z a opusfile.zip win32\VS2015\%PLATFORM%\%CONFIGURATION%\opusfile.lib include\opusfile.h
+
+artifacts:
+- path: opusfile.zip
