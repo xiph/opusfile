@@ -4,6 +4,7 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleaseDLL/
+[Rr]elese-NoHTTP/
 [Rr]eleases/
 *.manifest
 *.lastbuildstate
