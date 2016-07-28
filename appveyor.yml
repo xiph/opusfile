@@ -2,6 +2,7 @@ image: Visual Studio 2015
 configuration:
 - Debug
 - Release
+- Release-NoHTTP
 
 platform:
 - Win32
@@ -11,8 +12,8 @@ install:
 - cd %APPVEYOR_BUILD_FOLDER%\..
 - git clone -q https://github.com/xiph/opus.git opus
 - git clone -q https://github.com/xiph/ogg.git ogg
-- msbuild opus\win32\VS2015\opus.vcxproj /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
-- msbuild ogg\win32\VS2015\libogg_static.sln /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Configuration=%CONFIGURATION%;Platform=%PLATFORM%
+- msbuild opus\win32\VS2015\opus.vcxproj /p:Configuration=%CONFIGURATION:-NoHTTP=%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+- msbuild ogg\win32\VS2015\libogg_static.sln /p:Configuration=%CONFIGURATION:-NoHTTP=%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 - git clone -q --branch=OpenSSL_1_0_2-stable https://github.com/openssl/openssl.git openssl
 - ps: >-
         If ($env:Platform -Match "Win32") {
