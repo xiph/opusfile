@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = -I$(top_srcdir)/include $(DEPS_CFLAGS)
 
-dist_doc_DATA = COPYING AUTHORS README.txt
+dist_doc_DATA = COPYING AUTHORS README.md
 
 opusincludedir = ${includedir}/opus
 opusinclude_HEADERS = include/opusfile.h
