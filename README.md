@@ -1,4 +1,4 @@
-## Opusfile ##
+# Opusfile
 
 The opusfile and opusurl libraries provide a high-level API for
 decoding and seeking within .opus files on disk or over http(s).
