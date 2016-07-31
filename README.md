@@ -1,5 +1,8 @@
 # Opusfile
 
+[![Travis Build Status](https://travis-ci.org/xiph/opusfile.svg?branch=master)](https://travis-ci.org/xiph/opusfile)
+[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/rillian/opusfile?branch=master&svg=true)](https://ci.appveyor.com/project/rillian/opusfile)
+
 The opusfile and opusurl libraries provide a high-level API for
 decoding and seeking within .opus files on disk or over http(s).
 
