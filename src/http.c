@@ -307,6 +307,12 @@ static int op_poll_win32(struct pollfd *_fds,nfds_t _nfds,int _timeout){
    operate on sockets, because we don't use non-socket I/O here, and this
    minimizes the changes needed to deal with Winsock.*/
 #  define close(_fd) closesocket(_fd)
+/*This takes an int for the address length, even though the value is of type
+   socklen_t (defined as an unsigned integer type with at least 32 bits).*/
+#  define connect(_fd,_addr,_addrlen) \
+ (OP_UNLIKELY((_addrlen)>(socklen_t)INT_MAX)? \
+  WSASetLastError(WSA_NOT_ENOUGH_MEMORY),-1: \
+  connect(_fd,_addr,(int)(_addrlen)))
 /*This relies on sizeof(u_long)==sizeof(int), which is always true on both
    Win32 and Win64.*/
 #  define ioctl(_fd,_req,_arg) ioctlsocket(_fd,_req,(u_long *)(_arg))
@@ -471,7 +477,7 @@ static int op_parse_url_impl(OpusParsedURL *_dst,const char *_src){
   scheme_end=_src+strspn(_src,OP_URL_SCHEME);
   if(OP_UNLIKELY(*scheme_end!=':')
    ||OP_UNLIKELY(scheme_end-_src<4)||OP_UNLIKELY(scheme_end-_src>5)
-   ||OP_UNLIKELY(op_strncasecmp(_src,"https",scheme_end-_src)!=0)){
+   ||OP_UNLIKELY(op_strncasecmp(_src,"https",(int)(scheme_end-_src))!=0)){
     /*Unsupported protocol.*/
     return OP_EIMPL;
   }
@@ -674,7 +680,10 @@ static int op_sb_append(OpusStringBuf *_sb,const char *_s,int _len){
 }
 
 static int op_sb_append_string(OpusStringBuf *_sb,const char *_s){
-  return op_sb_append(_sb,_s,strlen(_s));
+  size_t len;
+  len=strlen(_s);
+  if(OP_UNLIKELY(len>(size_t)INT_MAX))return OP_EFAULT;
+  return op_sb_append(_sb,_s,(int)len);
 }
 
 static int op_sb_append_port(OpusStringBuf *_sb,unsigned _port){
@@ -962,7 +971,8 @@ static int op_http_conn_write_fully(OpusHTTPConn *_conn,
       ret=send(fd.fd,_buf,_buf_size,0);
       if(ret>0){
         _buf+=ret;
-        _buf_size-=ret;
+        OP_ASSERT(ret<=_buf_size);
+        _buf_size-=(int)ret;
         continue;
       }
       err=op_errno();
@@ -1077,8 +1087,9 @@ static int op_http_conn_read(OpusHTTPConn *_conn,
       if(ret>0){
         /*Read some data.
           Keep going to see if there's more.*/
-        nread+=ret;
-        nread_unblocked+=ret;
+        OP_ASSERT(ret<=_buf_size-nread);
+        nread+=(int)ret;
+        nread_unblocked+=(int)ret;
         continue;
       }
       /*If we already read some data or the connection was closed, return
@@ -1620,6 +1631,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   size_t      pattern_label_len;
   size_t      pattern_prefix_len;
   size_t      pattern_suffix_len;
+  if(OP_UNLIKELY(_host_len>(size_t)INT_MAX))return 0;
   pattern=(const char *)ASN1_STRING_data(_pattern);
   pattern_len=strlen(pattern);
   /*Check the pattern for embedded NULs.*/
@@ -1627,6 +1639,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   pattern_label_len=strcspn(pattern,".");
   OP_ASSERT(pattern_label_len<=pattern_len);
   pattern_prefix_len=strcspn(pattern,"*");
+  if(OP_UNLIKELY(pattern_prefix_len>(size_t)INT_MAX))return 0;
   if(pattern_prefix_len>=pattern_label_len){
     /*"The client SHOULD NOT attempt to match a presented identifier in which
        the wildcard character comprises a label other than the left-most label
@@ -1637,7 +1650,8 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
       Don't use the system strcasecmp here, as that uses the locale and
        RFC 4343 makes clear that DNS's case-insensitivity only applies to
        the ASCII range.*/
-    return _host_len==pattern_len&&op_strncasecmp(_host,pattern,_host_len)==0;
+    return _host_len==pattern_len
+     &&op_strncasecmp(_host,pattern,(int)_host_len)==0;
   }
   /*"However, the client SHOULD NOT attempt to match a presented identifier
      where the wildcard character is embedded within an A-label or U-label of
@@ -1672,10 +1686,11 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   pattern_suffix_len=pattern_len-pattern_prefix_len-1;
   host_suffix_len=_host_len-host_label_len
    +pattern_label_len-pattern_prefix_len-1;
+  OP_ASSERT(host_suffix_len<=_host_len);
   return pattern_suffix_len==host_suffix_len
-   &&op_strncasecmp(_host,pattern,pattern_prefix_len)==0
+   &&op_strncasecmp(_host,pattern,(int)pattern_prefix_len)==0
    &&op_strncasecmp(_host+_host_len-host_suffix_len,
-   pattern+pattern_prefix_len+1,host_suffix_len)==0;
+   pattern+pattern_prefix_len+1,(int)host_suffix_len)==0;
 }
 
 /*Convert a host to a numeric address, if possible.
@@ -1851,7 +1866,8 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
   BIO         *ssl_bio;
   int          skip_certificate_check;
   int          ret;
-  ssl_bio=BIO_new_socket(_fd,BIO_NOCLOSE);
+  /*This always takes an int, even though with Winsock op_sock is a SOCKET.*/
+  ssl_bio=BIO_new_socket((int)_fd,BIO_NOCLOSE);
   if(OP_LIKELY(ssl_bio==NULL))return OP_FALSE;
 # if !defined(OPENSSL_NO_TLSEXT)
   /*Support for RFC 6066 Server Name Indication.*/
@@ -1911,11 +1927,10 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
                     left to try.
                     *_addr will be set to NULL in this case.*/
 static int op_sock_connect_next(op_sock _fd,
- const struct addrinfo **_addr,int _ai_family){
-  const struct addrinfo *addr;
-  int                    err;
-  addr=*_addr;
-  for(;;){
+ struct addrinfo **_addr,int _ai_family){
+  struct addrinfo *addr;
+  int              err;
+  for(addr=*_addr;;addr=addr->ai_next){
     /*Move to the next address of the requested type.*/
     for(;addr!=NULL&&addr->ai_family!=_ai_family;addr=addr->ai_next);
     *_addr=addr;
@@ -1925,7 +1940,6 @@ static int op_sock_connect_next(op_sock _fd,
     err=op_errno();
     /*Winsock will set WSAEWOULDBLOCK.*/
     if(OP_LIKELY(err==EINPROGRESS||err==EWOULDBLOCK))return 0;
-    addr=addr->ai_next;
   }
 }
 
@@ -1933,15 +1947,15 @@ static int op_sock_connect_next(op_sock _fd,
 # define OP_NPROTOS (2)
 
 static int op_http_connect_impl(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
- const struct addrinfo *_addrs,struct timeb *_start_time){
-  const struct addrinfo *addr;
-  const struct addrinfo *addrs[OP_NPROTOS];
-  struct pollfd          fds[OP_NPROTOS];
-  int                    ai_family;
-  int                    nprotos;
-  int                    ret;
-  int                    pi;
-  int                    pj;
+ struct addrinfo *_addrs,struct timeb *_start_time){
+  struct addrinfo *addr;
+  struct addrinfo *addrs[OP_NPROTOS];
+  struct pollfd    fds[OP_NPROTOS];
+  int              ai_family;
+  int              nprotos;
+  int              ret;
+  int              pi;
+  int              pj;
   for(pi=0;pi<OP_NPROTOS;pi++)addrs[pi]=NULL;
   /*Try connecting via both IPv4 and IPv6 simultaneously, and keep the first
      one that succeeds.
@@ -2065,7 +2079,7 @@ static int op_http_connect_impl(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
 }
 
 static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
- const struct addrinfo *_addrs,struct timeb *_start_time){
+ struct addrinfo *_addrs,struct timeb *_start_time){
   struct timeb     resolve_time;
   struct addrinfo *new_addrs;
   int              ret;
@@ -2138,19 +2152,20 @@ static char *op_base64_encode(char *_dst,const char *_src,int _len){
    Scheme and append it to the given string buffer.*/
 static int op_sb_append_basic_auth_header(OpusStringBuf *_sb,
  const char *_header,const char *_user,const char *_pass){
-  int user_len;
-  int pass_len;
-  int user_pass_len;
-  int base64_len;
-  int nbuf_total;
-  int ret;
+  size_t user_len;
+  size_t pass_len;
+  int    user_pass_len;
+  int    base64_len;
+  int    nbuf_total;
+  int    ret;
   ret=op_sb_append_string(_sb,_header);
   ret|=op_sb_append(_sb,": Basic ",8);
   user_len=strlen(_user);
   pass_len=strlen(_pass);
+  if(OP_UNLIKELY(user_len>(size_t)INT_MAX))return OP_EFAULT;
   if(OP_UNLIKELY(pass_len>INT_MAX-user_len))return OP_EFAULT;
-  if(OP_UNLIKELY(user_len+pass_len>(INT_MAX>>2)*3-3))return OP_EFAULT;
-  user_pass_len=user_len+1+pass_len;
+  if(OP_UNLIKELY((int)(user_len+pass_len)>(INT_MAX>>2)*3-3))return OP_EFAULT;
+  user_pass_len=(int)(user_len+pass_len)+1;
   base64_len=OP_BASE64_LENGTH(user_pass_len);
   /*Stick "user:pass" at the end of the buffer so we can Base64 encode it
      in-place.*/
@@ -2160,9 +2175,9 @@ static int op_sb_append_basic_auth_header(OpusStringBuf *_sb,
   ret|=op_sb_ensure_capacity(_sb,nbuf_total);
   if(OP_UNLIKELY(ret<0))return ret;
   _sb->nbuf=nbuf_total-user_pass_len;
-  OP_ALWAYS_TRUE(!op_sb_append(_sb,_user,user_len));
+  OP_ALWAYS_TRUE(!op_sb_append(_sb,_user,(int)user_len));
   OP_ALWAYS_TRUE(!op_sb_append(_sb,":",1));
-  OP_ALWAYS_TRUE(!op_sb_append(_sb,_pass,pass_len));
+  OP_ALWAYS_TRUE(!op_sb_append(_sb,_pass,(int)pass_len));
   op_base64_encode(_sb->buf+nbuf_total-base64_len,
    _sb->buf+nbuf_total-user_pass_len,user_pass_len);
   return op_sb_append(_sb,"\r\n",2);
@@ -2781,7 +2796,7 @@ static int op_http_conn_open_pos(OpusHTTPStream *_stream,
   ret=op_http_conn_handle_response(_stream,_conn);
   if(OP_UNLIKELY(ret!=0))return OP_FALSE;
   ftime(&end_time);
-  _stream->cur_conni=_conn-_stream->conns;
+  _stream->cur_conni=(int)(_conn-_stream->conns);
   OP_ASSERT(_stream->cur_conni>=0&&_stream->cur_conni<OP_NCONNS_MAX);
   /*The connection has been successfully opened.
     Update the connection time estimate.*/
@@ -2885,7 +2900,7 @@ static int op_http_conn_read_body(OpusHTTPStream *_stream,
       content_length=_stream->content_length;
     }
     OP_ASSERT(end_pos>pos);
-    _buf_size=OP_MIN(_buf_size,end_pos-pos);
+    _buf_size=(int)OP_MIN(_buf_size,end_pos-pos);
   }
   nread=op_http_conn_read(_conn,(char *)_buf,_buf_size,1);
   if(OP_UNLIKELY(nread<0))return nread;
@@ -2921,7 +2936,7 @@ static int op_http_conn_read_body(OpusHTTPStream *_stream,
 static int op_http_stream_read(void *_stream,
  unsigned char *_ptr,int _buf_size){
   OpusHTTPStream *stream;
-  ptrdiff_t       nread;
+  int             nread;
   opus_int64      size;
   opus_int64      pos;
   int             ci;
@@ -3125,7 +3140,8 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
       *pnext=conn->next;
       conn->next=stream->lru_head;
       stream->lru_head=conn;
-      stream->cur_conni=conn-stream->conns;
+      stream->cur_conni=(int)(conn-stream->conns);
+      OP_ASSERT(stream->cur_conni>=0&&stream->cur_conni<OP_NCONNS_MAX);
       return 0;
     }
     pnext=&conn->next;
@@ -3177,7 +3193,8 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
       *pnext=conn->next;
       conn->next=stream->lru_head;
       stream->lru_head=conn;
-      stream->cur_conni=conn-stream->conns;
+      stream->cur_conni=(int)(conn-stream->conns);
+      OP_ASSERT(stream->cur_conni>=0&&stream->cur_conni<OP_NCONNS_MAX);
       return 0;
     }
     close_pnext=pnext;

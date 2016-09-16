@@ -86,14 +86,15 @@ int op_test(OpusHead *_head,
     This is to prevent us spending a lot of time allocating memory and looking
      for Ogg pages in non-Ogg files.*/
   if(memcmp(_initial_data,"OggS",4)!=0)return OP_ENOTFORMAT;
+  if(OP_UNLIKELY(_initial_bytes>(size_t)LONG_MAX))return OP_EFAULT;
   ogg_sync_init(&oy);
-  data=ogg_sync_buffer(&oy,_initial_bytes);
+  data=ogg_sync_buffer(&oy,(long)_initial_bytes);
   if(data!=NULL){
     ogg_stream_state os;
     ogg_page         og;
     int              ret;
     memcpy(data,_initial_data,_initial_bytes);
-    ogg_sync_wrote(&oy,_initial_bytes);
+    ogg_sync_wrote(&oy,(long)_initial_bytes);
     ogg_stream_init(&os,-1);
     err=OP_FALSE;
     do{
@@ -1504,6 +1505,7 @@ static int op_open1(OggOpusFile *_of,
   int       seekable;
   int       ret;
   memset(_of,0,sizeof(*_of));
+  if(OP_UNLIKELY(_initial_bytes>(size_t)LONG_MAX))return OP_EFAULT;
   _of->end=-1;
   _of->source=_source;
   *&_of->callbacks=*_cb;
@@ -1520,9 +1522,9 @@ static int op_open1(OggOpusFile *_of,
      decoding entire files from RAM.*/
   if(_initial_bytes>0){
     char *buffer;
-    buffer=ogg_sync_buffer(&_of->oy,_initial_bytes);
+    buffer=ogg_sync_buffer(&_of->oy,(long)_initial_bytes);
     memcpy(buffer,_initial_data,_initial_bytes*sizeof(*buffer));
-    ogg_sync_wrote(&_of->oy,_initial_bytes);
+    ogg_sync_wrote(&_of->oy,(long)_initial_bytes);
   }
   /*Can we seek?
     Stevens suggests the seek test is portable.*/
