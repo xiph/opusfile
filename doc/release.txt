@@ -36,11 +36,11 @@ Win32 binaries:
   - make && make check && make -C doc/latex
 - Add api docs to opus-codec.org.
 - mkdir opusfile-${version}-win32
-- Copy AUTHORS COPYING README.txt include/opusfile.h to the release dir.
-- Merge changes between README.txt and the version in the last
+- Copy AUTHORS COPYING README.md include/opusfile.h to the release dir.
+- Merge changes between README.md and the version in the last
   binary release. E.g. it's good to include versions of the dependencies,
   release notes, etc.
-- Convert README.txt to DOS line endings.
+- Convert README.md to DOS line endings.
 - Copy .libs/libopusfile-0.dll to the release dir.
 - Copy .libs/libopusfile.a to the release dir.
 - Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
