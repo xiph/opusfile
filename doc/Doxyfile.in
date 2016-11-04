@@ -15,4 +15,6 @@ WARN_NO_PARAMDOC       = YES
 JAVADOC_AUTOBRIEF      = YES
 SORT_MEMBER_DOCS       = NO
 
+HAVE_DOT               = @HAVE_DOT@
+
 PROJECT_LOGO           = @top_srcdir@/doc/opus_logo.svg
