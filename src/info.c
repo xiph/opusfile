@@ -410,7 +410,7 @@ static int opus_tags_get_gain(const OpusTags *_tags,int *_gain_q8,
   ncomments=_tags->comments;
   /*Look for the first valid tag with the name _tag_name and use that.*/
   for(ci=0;ci<ncomments;ci++){
-    OP_ASSERT(tag_len<=(size_t)INT_MAX);
+    OP_ASSERT(_tag_len<=(size_t)INT_MAX);
     if(opus_tagncompare(_tag_name,(int)_tag_len,comments[ci])==0){
       char       *p;
       opus_int32  gain_q8;
