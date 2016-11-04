@@ -98,7 +98,7 @@ $(DIST).zip: $(DIST)
 $(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll ssleay32.dll) 
 	cd .. && make install
 	mkdir -p $(DIST)
-	cp ../AUTHORS ../COPYING ../README.txt ../include/opusfile.h $@
+	cp ../AUTHORS ../COPYING ../README.md ../include/opusfile.h $@
 	cp ../.libs/libopusfile-0.dll $@
 	cp ../.libs/libopusfile.a $@
 	cp ../.libs/libopusfile.dll.a $@
