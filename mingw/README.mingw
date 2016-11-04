@@ -1,7 +1,7 @@
 = Cross-compiling under mingw =
 
 Just running 'make' in this directory should download
-and build opusfile and it's dependencies. Some mingw
+and build opusfile and its dependencies. Some mingw
 libraries need to be compiled into the final package.
 
 == Generic instructions ==
