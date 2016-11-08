@@ -2,7 +2,7 @@ FROM fedora:24
 MAINTAINER opus@xiph.org
 
 # Linux build.
-RUN dnf update -y
+RUN dnf update -y --setopt=deltarpm=0
 RUN dnf install -y git gcc make wget xz
 RUN dnf install -y autoconf automake libtool pkgconfig
 
