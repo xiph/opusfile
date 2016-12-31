@@ -1713,11 +1713,14 @@ static struct addrinfo *op_inet_pton(const char *_host){
    the procedure from Section 6 of RFC 6125.
   Return: 0 if the certificate doesn't match, and a non-zero value if it does.*/
 static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
-  X509                   *peer_cert;
-  STACK_OF(GENERAL_NAME) *san_names;
-  char                   *host;
-  size_t                  host_len;
-  int                     ret;
+  X509            *peer_cert;
+  struct addrinfo *addr;
+  char            *host;
+  size_t           host_len;
+  unsigned char   *ip;
+  int              ip_len;
+  int              check_cn;
+  int              ret;
   host=_stream->url.host;
   host_len=strlen(host);
   peer_cert=SSL_get_peer_certificate(_ssl_conn);
@@ -1725,139 +1728,150 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
   if(OP_UNLIKELY(peer_cert==NULL))return 0;
   ret=0;
   OP_ASSERT(host_len<INT_MAX);
-  /*RFC 2818 says (after correcting for Eratta 1077): "If a subjectAltName
-     extension of type dNSName is present, that MUST be used as the identity.
-    Otherwise, the (most specific) Common Name field in the Subject field of
-     the certificate MUST be used.
-    Although the use of the Common Name is existing practice, it is deprecated
-     and Certification Authorities are encouraged to use the dNSName
-     instead."
-    "Matching is performed using the matching rules specified by RFC 2459.
-    If more than one identity of a given type is present in the certificate
-     (e.g., more than one dNSName name), a match in any one of the set is
-     considered acceptable.
-    Names may contain the wildcard character * which is condered to match any
-     single domain name component or component fragment.
-    E.g., *.a.com matches foo.a.com but not bar.foo.a.com.
-    f*.com matches foo.com but not bar.com."
-    "In some cases, the URI is specified as an IP address rather than a
-     hostname.
-    In this case, the iPAddress subjectAltName must be present in the
-     certificate and must exactly match the IP in the URI."*/
-  san_names=X509_get_ext_d2i(peer_cert,NID_subject_alt_name,NULL,NULL);
-  if(san_names!=NULL){
-    struct addrinfo *addr;
-    unsigned char   *ip;
-    int              ip_len;
-    int              nsan_names;
-    int              sni;
-    /*Check to see if the host was specified as a simple IP address.*/
-    addr=op_inet_pton(host);
-    ip=NULL;
-    ip_len=0;
-    if(addr!=NULL){
-      switch(addr->ai_family){
-        case AF_INET:{
-          struct sockaddr_in *s;
-          s=(struct sockaddr_in *)addr->ai_addr;
-          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
-          ip=(unsigned char *)&s->sin_addr;
-          ip_len=sizeof(s->sin_addr);
-        }break;
-        case AF_INET6:{
-          struct sockaddr_in6 *s;
-          s=(struct sockaddr_in6 *)addr->ai_addr;
-          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
-          ip=(unsigned char *)&s->sin6_addr;
-          ip_len=sizeof(s->sin6_addr);
-        }break;
-      }
+  /*By default, fall back to checking the Common Name if we don't check any
+     subjectAltNames of type dNSName.*/
+  check_cn=1;
+  /*Check to see if the host was specified as a simple IP address.*/
+  addr=op_inet_pton(host);
+  ip=NULL;
+  ip_len=0;
+  if(addr!=NULL){
+    switch(addr->ai_family){
+      case AF_INET:{
+        struct sockaddr_in *s;
+        s=(struct sockaddr_in *)addr->ai_addr;
+        OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+        ip=(unsigned char *)&s->sin_addr;
+        ip_len=sizeof(s->sin_addr);
+        /*RFC 6125 says, "In this case, the iPAddress subjectAltName must [sic]
+           be present in the certificate and must [sic] exactly match the IP in
+           the URI."
+          So don't allow falling back to a Common Name.*/
+        check_cn=0;
+      }break;
+      case AF_INET6:{
+        struct sockaddr_in6 *s;
+        s=(struct sockaddr_in6 *)addr->ai_addr;
+        OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+        ip=(unsigned char *)&s->sin6_addr;
+        ip_len=sizeof(s->sin6_addr);
+        check_cn=0;
+      }break;
     }
-    /*We can only verify fully-qualified domain names.
-      To quote RFC 6125: "The extracted data MUST include only information that
-       can be securely parsed out of the inputs (e.g., parsing the fully
-       qualified DNS domain name out of the "host" component (or its
-       equivalent) of a URI or deriving the application service type from the
-       scheme of a URI) ..."
-      We don't have a way to check (without relying on DNS records, which might
-       be subverted) if this address is fully-qualified.
-      This is particularly problematic when using a CONNECT tunnel, as it is
-       the server that does DNS lookup, not us.
-      However, we are certain that if the hostname has no '.', it is definitely
-       not a fully-qualified domain name (with the exception of crazy TLDs that
-       actually resolve, like "uz", but I am willing to ignore those).
-      RFC 1535 says "...in any event where a '.' exists in a specified name it
-       should be assumed to be a fully qualified domain name (FQDN) and SHOULD
-       be tried as a rooted name first."
-      That doesn't give us any security guarantees, of course (a subverted DNS
-       could fail the original query and our resolver might still retry with a
-       local domain appended).
-      If we don't have a FQDN, just set the number of names to 0, so we'll fail
-       and clean up any resources we allocated.*/
-    if(ip==NULL&&strchr(host,'.')==NULL)nsan_names=0;
-    /*RFC 2459 says there MUST be at least one, but we don't depend on it.*/
-    else nsan_names=sk_GENERAL_NAME_num(san_names);
-    for(sni=0;sni<nsan_names;sni++){
-      const GENERAL_NAME *name;
-      name=sk_GENERAL_NAME_value(san_names,sni);
-      if(ip==NULL){
-        if(name->type==GEN_DNS
-         &&op_http_hostname_match(host,host_len,name->d.dNSName)){
-          ret=1;
-          break;
+  }
+  /*We can only verify IP addresses and "fully-qualified" domain names.
+    To quote RFC 6125: "The extracted data MUST include only information that
+     can be securely parsed out of the inputs (e.g., parsing the fully
+     qualified DNS domain name out of the "host" component (or its
+     equivalent) of a URI or deriving the application service type from the
+     scheme of a URI) ..."
+    We don't have a way to check (without relying on DNS records, which might
+     be subverted) if this address is fully-qualified.
+    This is particularly problematic when using a CONNECT tunnel, as it is
+     the server that does DNS lookup, not us.
+    However, we are certain that if the hostname has no '.', it is definitely
+     not a fully-qualified domain name (with the exception of crazy TLDs that
+     actually resolve, like "uz", but I am willing to ignore those).
+    RFC 1535 says "...in any event where a '.' exists in a specified name it
+     should be assumed to be a fully qualified domain name (FQDN) and SHOULD
+     be tried as a rooted name first."
+    That doesn't give us any security guarantees, of course (a subverted DNS
+     could fail the original query and our resolver might still retry with a
+     local domain appended).*/
+  if(ip!=NULL||strchr(host,'.')!=NULL){
+    STACK_OF(GENERAL_NAME) *san_names;
+    /*RFC 2818 says (after correcting for Eratta 1077): "If a subjectAltName
+       extension of type dNSName is present, that MUST be used as the identity.
+      Otherwise, the (most specific) Common Name field in the Subject field of
+       the certificate MUST be used.
+      Although the use of the Common Name is existing practice, it is
+       deprecated and Certification Authorities are encouraged to use the
+       dNSName instead."
+      "Matching is performed using the matching rules specified by RFC 2459.
+      If more than one identity of a given type is present in the certificate
+       (e.g., more than one dNSName name), a match in any one of the set is
+       considered acceptable.
+      Names may contain the wildcard character * which is condered to match any
+       single domain name component or component fragment.
+      E.g., *.a.com matches foo.a.com but not bar.foo.a.com.
+      f*.com matches foo.com but not bar.com."
+      "In some cases, the URI is specified as an IP address rather than a
+       hostname.
+      In this case, the iPAddress subjectAltName must be present in the
+       certificate and must exactly match the IP in the URI."*/
+    san_names=X509_get_ext_d2i(peer_cert,NID_subject_alt_name,NULL,NULL);
+    if(san_names!=NULL){
+      int nsan_names;
+      int sni;
+      /*RFC 2459 says there MUST be at least one, but we don't depend on it.*/
+      nsan_names=sk_GENERAL_NAME_num(san_names);
+      for(sni=0;sni<nsan_names;sni++){
+        const GENERAL_NAME *name;
+        name=sk_GENERAL_NAME_value(san_names,sni);
+        if(ip==NULL){
+          if(name->type==GEN_DNS){
+            /*We have a subjectAltName extension of type dNSName, so don't fall
+               back to a Common Name.
+              https://marc.info/?l=openssl-dev&m=139617145216047&w=2 says that
+               subjectAltNames of other types do not trigger this restriction,
+               (e.g., if they are all IP addresses, we will still check a
+               non-IP hostname against a Common Name).*/
+            check_cn=0;
+            if(op_http_hostname_match(host,host_len,name->d.dNSName)){
+              ret=1;
+              break;
+            }
+          }
+        }
+        else if(name->type==GEN_IPADD){
+          unsigned const char *cert_ip;
+          /*If we do have an IP address, compare it directly.
+            RFC 6125: "When the reference identity is an IP address, the
+             identity MUST be converted to the 'network byte order' octet
+             string representation.
+            For IP Version 4, as specified in RFC 791, the octet string will
+             contain exactly four octets.
+            For IP Version 6, as specified in RFC 2460, the octet string will
+             contain exactly sixteen octets.
+            This octet string is then compared against subjectAltName values of
+             type iPAddress.
+            A match occurs if the reference identity octet string and the value
+             octet strings are identical."*/
+          cert_ip=ASN1_STRING_get0_data(name->d.iPAddress);
+          if(ip_len==ASN1_STRING_length(name->d.iPAddress)
+           &&memcmp(ip,cert_ip,ip_len)==0){
+            ret=1;
+            break;
+          }
         }
       }
-      else if(name->type==GEN_IPADD){
-        unsigned const char *cert_ip;
-        /*If we do have an IP address, compare it directly.
-          RFC 6125: "When the reference identity is an IP address, the identity
-           MUST be converted to the 'network byte order' octet string
-           representation.
-          For IP Version 4, as specified in RFC 791, the octet string will
-           contain exactly four octets.
-          For IP Version 6, as specified in RFC 2460, the octet string will
-           contain exactly sixteen octets.
-          This octet string is then compared against subjectAltName values of
-           type iPAddress.
-          A match occurs if the reference identity octet string and the value
-           octet strings are identical."*/
-        cert_ip=ASN1_STRING_get0_data(name->d.iPAddress);
-        if(ip_len==ASN1_STRING_length(name->d.iPAddress)
-         &&memcmp(ip,cert_ip,ip_len)==0){
-          ret=1;
-          break;
-        }
+      sk_GENERAL_NAME_pop_free(san_names,GENERAL_NAME_free);
+    }
+    /*If we're supposed to fall back to a Common Name, match against it here.*/
+    if(check_cn){
+      int last_cn_loc;
+      int cn_loc;
+      /*RFC 6125 says that at least one significant CA is known to issue certs
+         with multiple CNs, although it SHOULD NOT.
+        It also says: "The server's identity may also be verified by comparing
+         the reference identity to the Common Name (CN) value in the last
+         Relative Distinguished Name (RDN) of the subject field of the server's
+         certificate (where "last" refers to the DER-encoded order...)."
+        So find the last one and check it.*/
+      cn_loc=-1;
+      do{
+        last_cn_loc=cn_loc;
+        cn_loc=X509_NAME_get_index_by_NID(X509_get_subject_name(peer_cert),
+         NID_commonName,last_cn_loc);
       }
+      while(cn_loc>=0);
+      ret=last_cn_loc>=0
+       &&op_http_hostname_match(host,host_len,
+       X509_NAME_ENTRY_get_data(
+       X509_NAME_get_entry(X509_get_subject_name(peer_cert),last_cn_loc)));
     }
-    sk_GENERAL_NAME_pop_free(san_names,GENERAL_NAME_free);
-    if(addr!=NULL)freeaddrinfo(addr);
   }
-  /*Do the same FQDN check we did above.
-    We don't do this once in advance for both cases, because in the
-     subjectAltName case we might have an IPv6 address without a dot.*/
-  else if(strchr(host,'.')!=NULL){
-    int last_cn_loc;
-    int cn_loc;
-    /*If there is no subjectAltName, match against commonName.
-      RFC 6125 says that at least one significant CA is known to issue certs
-       with multiple CNs, although it SHOULD NOT.
-      It also says: "The server's identity may also be verified by comparing
-       the reference identity to the Common Name (CN) value in the last
-       Relative Distinguished Name (RDN) of the subject field of the server's
-       certificate (where "last" refers to the DER-encoded order...)."
-      So find the last one and check it.*/
-    cn_loc=-1;
-    do{
-      last_cn_loc=cn_loc;
-      cn_loc=X509_NAME_get_index_by_NID(X509_get_subject_name(peer_cert),
-       NID_commonName,last_cn_loc);
-    }
-    while(cn_loc>=0);
-    ret=last_cn_loc>=0
-     &&op_http_hostname_match(host,host_len,
-     X509_NAME_ENTRY_get_data(
-     X509_NAME_get_entry(X509_get_subject_name(peer_cert),last_cn_loc)));
-  }
+  if(addr!=NULL)freeaddrinfo(addr);
   X509_free(peer_cert);
   return ret;
 }
