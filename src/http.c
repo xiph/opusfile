@@ -1622,6 +1622,20 @@ static int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
   return 0;
 }
 
+/*Convert a host to a numeric address, if possible.
+  Return: A struct addrinfo containing the address, if it was numeric, and NULL
+           otherwise.*/
+static struct addrinfo *op_inet_pton(const char *_host){
+  struct addrinfo *addrs;
+  struct addrinfo  hints;
+  memset(&hints,0,sizeof(hints));
+  hints.ai_socktype=SOCK_STREAM;
+  hints.ai_flags=AI_NUMERICHOST;
+  if(!getaddrinfo(_host,NULL,&hints,&addrs))return addrs;
+  return NULL;
+}
+
+# if OPENSSL_VERSION_NUMBER<0x10002000L
 /*Match a host name against a host with a possible wildcard pattern according
    to the rules of RFC 6125 Section 6.4.3.
   Return: 0 if the pattern doesn't match, and a non-zero value if it does.*/
@@ -1694,19 +1708,6 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
    &&op_strncasecmp(_host,pattern,(int)pattern_prefix_len)==0
    &&op_strncasecmp(_host+_host_len-host_suffix_len,
    pattern+pattern_prefix_len+1,(int)host_suffix_len)==0;
-}
-
-/*Convert a host to a numeric address, if possible.
-  Return: A struct addrinfo containing the address, if it was numeric, and NULL
-           otherise.*/
-static struct addrinfo *op_inet_pton(const char *_host){
-  struct addrinfo *addrs;
-  struct addrinfo  hints;
-  memset(&hints,0,sizeof(hints));
-  hints.ai_socktype=SOCK_STREAM;
-  hints.ai_flags=AI_NUMERICHOST;
-  if(!getaddrinfo(_host,NULL,&hints,&addrs))return addrs;
-  return NULL;
 }
 
 /*Verify the server's hostname matches the certificate they presented using
@@ -1875,6 +1876,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
   X509_free(peer_cert);
   return ret;
 }
+# endif
 
 /*Perform the TLS handshake on a new connection.*/
 static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
@@ -1889,6 +1891,50 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
 # if !defined(OPENSSL_NO_TLSEXT)
   /*Support for RFC 6066 Server Name Indication.*/
   SSL_set_tlsext_host_name(_ssl_conn,_stream->url.host);
+# endif
+  skip_certificate_check=_stream->skip_certificate_check;
+# if OPENSSL_VERSION_NUMBER>=0x10002000L
+  /*As of version 1.0.2, OpenSSL can finally do hostname checks automatically.
+    Of course, they make it much more complicated than it needs to be.*/
+  if(!skip_certificate_check){
+    X509_VERIFY_PARAM *param;
+    struct addrinfo   *addr;
+    char              *host;
+    unsigned char     *ip;
+    int                ip_len;
+    param=SSL_get0_param(_ssl_conn);
+    OP_ASSERT(param!=NULL);
+    host=_stream->url.host;
+    ip=NULL;
+    ip_len=0;
+    /*Check to see if the host was specified as a simple IP address.*/
+    addr=op_inet_pton(host);
+    if(addr!=NULL){
+      switch(addr->ai_family){
+        case AF_INET:{
+          struct sockaddr_in *s;
+          s=(struct sockaddr_in *)addr->ai_addr;
+          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+          ip=(unsigned char *)&s->sin_addr;
+          ip_len=sizeof(s->sin_addr);
+          host=NULL;
+        }break;
+        case AF_INET6:{
+          struct sockaddr_in6 *s;
+          s=(struct sockaddr_in6 *)addr->ai_addr;
+          OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
+          ip=(unsigned char *)&s->sin6_addr;
+          ip_len=sizeof(s->sin6_addr);
+          host=NULL;
+        }break;
+      }
+    }
+    /*Always set both host and ip to prevent matching against an old one.
+      One of the two will always be NULL, clearing that parameter.*/
+    X509_VERIFY_PARAM_set1_host(param,host,0);
+    X509_VERIFY_PARAM_set1_ip(param,ip,ip_len);
+    if(addr!=NULL)freeaddrinfo(addr);
+  }
 # endif
   /*Resume a previous session if available.*/
   if(_stream->ssl_session!=NULL){
@@ -1909,17 +1955,22 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
   ret=op_do_ssl_step(_ssl_conn,_fd,SSL_connect);
   if(OP_UNLIKELY(ret<=0))return OP_FALSE;
   ssl_session=_stream->ssl_session;
-  skip_certificate_check=_stream->skip_certificate_check;
-  if(ssl_session==NULL||!skip_certificate_check){
+  if(ssl_session==NULL
+# if OPENSSL_VERSION_NUMBER<0x10002000L
+   ||!skip_certificate_check
+# endif
+   ){
     ret=op_do_ssl_step(_ssl_conn,_fd,SSL_do_handshake);
     if(OP_UNLIKELY(ret<=0))return OP_FALSE;
-    /*OpenSSL does not do hostname verification, despite the fact that we just
-       passed it the hostname above in the call to SSL_set_tlsext_host_name(),
-       because they are morons.
+# if OPENSSL_VERSION_NUMBER<0x10002000L
+    /*OpenSSL before version 1.0.2 does not do automatic hostname verification,
+       despite the fact that we just passed it the hostname above in the call
+       to SSL_set_tlsext_host_name().
       Do it for them.*/
     if(!skip_certificate_check&&!op_http_verify_hostname(_stream,_ssl_conn)){
       return OP_FALSE;
     }
+# endif
     if(ssl_session==NULL){
       /*Save the session for later resumption.*/
       _stream->ssl_session=SSL_get1_session(_ssl_conn);
