@@ -214,6 +214,7 @@ static const char *op_parse_file_url(const char *_src){
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
 #  include <openssl/ssl.h>
+#  include <openssl/asn1.h>
 #  include "winerrno.h"
 
 typedef SOCKET op_sock;
@@ -344,6 +345,7 @@ int SSL_CTX_set_default_verify_paths_win32(SSL_CTX *_ssl_ctx);
 #  include <poll.h>
 #  include <unistd.h>
 #  include <openssl/ssl.h>
+#  include <openssl/asn1.h>
 
 typedef int op_sock;
 
@@ -1531,6 +1533,7 @@ static long op_bio_retry_ctrl(BIO *_b,int _cmd,long _num,void *_ptr){
 # if OPENSSL_VERSION_NUMBER<0x10100000L
 #  define BIO_set_data(_b,_ptr) ((_b)->ptr=(_ptr))
 #  define BIO_set_init(_b,_init) ((_b)->init=(_init))
+#  define ASN1_STRING_get0_data ASN1_STRING_data
 # endif
 
 static int op_bio_retry_new(BIO *_b){
@@ -1632,7 +1635,7 @@ static int op_http_hostname_match(const char *_host,size_t _host_len,
   size_t      pattern_prefix_len;
   size_t      pattern_suffix_len;
   if(OP_UNLIKELY(_host_len>(size_t)INT_MAX))return 0;
-  pattern=(const char *)ASN1_STRING_data(_pattern);
+  pattern=(const char *)ASN1_STRING_get0_data(_pattern);
   pattern_len=strlen(pattern);
   /*Check the pattern for embedded NULs.*/
   if(OP_UNLIKELY(pattern_len!=(size_t)ASN1_STRING_length(_pattern)))return 0;
@@ -1805,7 +1808,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
         }
       }
       else if(name->type==GEN_IPADD){
-        unsigned char *cert_ip;
+        unsigned const char *cert_ip;
         /*If we do have an IP address, compare it directly.
           RFC 6125: "When the reference identity is an IP address, the identity
            MUST be converted to the 'network byte order' octet string
@@ -1818,7 +1821,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
            type iPAddress.
           A match occurs if the reference identity octet string and the value
            octet strings are identical."*/
-        cert_ip=ASN1_STRING_data(name->d.iPAddress);
+        cert_ip=ASN1_STRING_get0_data(name->d.iPAddress);
         if(ip_len==ASN1_STRING_length(name->d.iPAddress)
          &&memcmp(ip,cert_ip,ip_len)==0){
           ret=1;
