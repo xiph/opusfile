@@ -1704,7 +1704,7 @@ int op_link_count(const OggOpusFile *_of){
   return _of->nlinks;
 }
 
-ogg_uint32_t op_serialno(const OggOpusFile *_of,int _li){
+opus_uint32 op_serialno(const OggOpusFile *_of,int _li){
   if(OP_UNLIKELY(_li>=_of->nlinks))_li=_of->nlinks-1;
   if(!_of->seekable)_li=0;
   return _of->links[_li<0?_of->cur_link:_li].serialno;
