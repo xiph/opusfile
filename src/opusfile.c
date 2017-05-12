@@ -856,6 +856,7 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
       /*Fail if the pre-skip is non-zero, since it's asking us to skip more
          samples than exist.*/
       if(_link->head.pre_skip>0)return OP_EBADTIMESTAMP;
+      _link->pcm_file_offset=0;
       /*Set pcm_end and end_offset so we can skip the call to
          op_find_final_pcm_offset().*/
       _link->pcm_start=_link->pcm_end=0;
@@ -867,7 +868,8 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
       if(_link->head.pre_skip>0)return OP_EBADTIMESTAMP;
       /*Set pcm_end and end_offset so we can skip the call to
          op_find_final_pcm_offset().*/
-      _link->pcm_end=_link->pcm_start=0;
+      _link->pcm_file_offset=0;
+      _link->pcm_start=_link->pcm_end=0;
       _link->end_offset=_link->data_offset;
       /*Tell the caller we've got a buffered page for them.*/
       return 1;
@@ -952,6 +954,7 @@ static int op_find_initial_pcm_offset(OggOpusFile *_of,
   /*Update the packet count after end-trimming.*/
   _of->op_count=pi;
   _of->cur_discard_count=_link->head.pre_skip;
+  _link->pcm_file_offset=0;
   _of->prev_packet_gp=_link->pcm_start=pcm_start;
   _of->prev_page_offset=page_offset;
   return 0;
@@ -1272,6 +1275,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
        always starts with a seek.*/
     ret=op_find_initial_pcm_offset(_of,links+nlinks,NULL);
     if(OP_UNLIKELY(ret<0))return ret;
+    links[nlinks].pcm_file_offset=total_duration;
     _searched=_of->offset;
     /*Mark the current link count so it can be cleaned up on error.*/
     _of->nlinks=++nlinks;
@@ -1727,6 +1731,7 @@ opus_int64 op_raw_total(const OggOpusFile *_of,int _li){
 
 ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
   OggOpusLink *links;
+  ogg_int64_t  pcm_total;
   ogg_int64_t  diff;
   int          nlinks;
   nlinks=_of->nlinks;
@@ -1739,20 +1744,14 @@ ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
   /*We verify that the granule position differences are larger than the
      pre-skip and that the total duration does not overflow during link
      enumeration, so we don't have to check here.*/
+  pcm_total=0;
   if(_li<0){
-    ogg_int64_t pcm_total;
-    int         li;
-    pcm_total=0;
-    for(li=0;li<nlinks;li++){
-      OP_ALWAYS_TRUE(!op_granpos_diff(&diff,
-       links[li].pcm_end,links[li].pcm_start));
-      pcm_total+=diff-links[li].head.pre_skip;
-    }
-    return pcm_total;
+    pcm_total=links[nlinks-1].pcm_file_offset;
+    _li=nlinks-1;
   }
   OP_ALWAYS_TRUE(!op_granpos_diff(&diff,
    links[_li].pcm_end,links[_li].pcm_start));
-  return diff-links[_li].head.pre_skip;
+  return pcm_total+diff-links[_li].head.pre_skip;
 }
 
 const OpusHead *op_head(const OggOpusFile *_of,int _li){
@@ -1822,6 +1821,34 @@ opus_int32 op_bitrate_instant(OggOpusFile *_of){
   return ret;
 }
 
+/*Given a serialno, find a link with a corresponding Opus stream, if it exists.
+  Return: The index of the link to which the page belongs, or a negative number
+           if it was not a desired Opus bitstream section.*/
+static int op_get_link_from_serialno(const OggOpusFile *_of,int _cur_link,
+ opus_int64 _page_offset,ogg_uint32_t _serialno){
+  const OggOpusLink *links;
+  int                nlinks;
+  int                li_lo;
+  int                li_hi;
+  OP_ASSERT(_of->seekable);
+  links=_of->links;
+  nlinks=_of->nlinks;
+  li_lo=0;
+  /*Start off by guessing we're just a multiplexed page in the current link.*/
+  li_hi=_cur_link+1<nlinks&&_page_offset<links[nlinks+1].offset?
+   _cur_link+1:nlinks;
+  do{
+    if(_page_offset>=links[_cur_link].offset)li_lo=_cur_link;
+    else li_hi=_cur_link;
+    _cur_link=li_lo+(li_hi-li_lo>>1);
+  }
+  while(li_hi-li_lo>1);
+  /*We've identified the link that should contain this page.
+    Make sure it's a page we care about.*/
+  if(links[_cur_link].serialno!=_serialno)return OP_FALSE;
+  return _cur_link;
+}
+
 /*Fetch and process a page.
   This handles the case where we're at a bitstream boundary and dumps the
    decoding machine.
@@ -1878,19 +1905,28 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
     if(OP_UNLIKELY(_of->ready_state<OP_STREAMSET)){
       if(seekable){
         ogg_uint32_t serialno;
-        int          nlinks;
-        int          li;
         serialno=ogg_page_serialno(&og);
-        /*Match the serialno to bitstream section.
-          We use this rather than offset positions to avoid problems near
-           logical bitstream boundaries.*/
-        nlinks=_of->nlinks;
-        for(li=0;li<nlinks&&links[li].serialno!=serialno;li++);
-        /*Not a desired Opus bitstream section.
-          Keep trying.*/
-        if(li>=nlinks)continue;
+        /*Match the serialno to bitstream section.*/
+        OP_ASSERT(cur_link>=0&&cur_link<_of->nlinks);
+        if(links[cur_link].serialno!=serialno){
+          /*It wasn't a page from the current link.
+            Is it from the next one?*/
+          if(OP_LIKELY(cur_link+1<_of->nlinks&&links[cur_link+1].serialno==
+           serialno)){
+            cur_link++;
+          }
+          else{
+            int new_link;
+            new_link=
+             op_get_link_from_serialno(_of,cur_link,_page_offset,serialno);
+            /*Not a desired Opus bitstream section.
+              Keep trying.*/
+            if(new_link<0)continue;
+            cur_link=new_link;
+          }
+        }
         cur_serialno=serialno;
-        _of->cur_link=cur_link=li;
+        _of->cur_link=cur_link;
         ogg_stream_reset_serialno(&_of->os,serialno);
         _of->ready_state=OP_STREAMSET;
         /*If we're at the start of this link, initialize the granule position
@@ -2119,35 +2155,41 @@ static ogg_int64_t op_get_granulepos(const OggOpusFile *_of,
  ogg_int64_t _pcm_offset,int *_li){
   const OggOpusLink *links;
   ogg_int64_t        duration;
+  ogg_int64_t        pcm_start;
+  opus_int32         pre_skip;
   int                nlinks;
-  int                li;
+  int                li_lo;
+  int                li_hi;
   OP_ASSERT(_pcm_offset>=0);
   nlinks=_of->nlinks;
   links=_of->links;
-  for(li=0;OP_LIKELY(li<nlinks);li++){
-    ogg_int64_t pcm_start;
-    opus_int32  pre_skip;
-    pcm_start=links[li].pcm_start;
-    pre_skip=links[li].head.pre_skip;
-    OP_ALWAYS_TRUE(!op_granpos_diff(&duration,links[li].pcm_end,pcm_start));
-    duration-=pre_skip;
-    if(_pcm_offset<duration){
-      _pcm_offset+=pre_skip;
-      if(OP_UNLIKELY(pcm_start>OP_INT64_MAX-_pcm_offset)){
-        /*Adding this amount to the granule position would overflow the positive
-           half of its 64-bit range.
-          Since signed overflow is undefined in C, do it in a way the compiler
-           isn't allowed to screw up.*/
-        _pcm_offset-=OP_INT64_MAX-pcm_start+1;
-        pcm_start=OP_INT64_MIN;
-      }
-      pcm_start+=_pcm_offset;
-      *_li=li;
-      return pcm_start;
-    }
-    _pcm_offset-=duration;
+  li_lo=0;
+  li_hi=nlinks;
+  do{
+    int li;
+    li=li_lo+(li_hi-li_lo>>1);
+    if(links[li].pcm_file_offset<=_pcm_offset)li_lo=li;
+    else li_hi=li;
   }
-  return -1;
+  while(li_hi-li_lo>1);
+  _pcm_offset-=links[li_lo].pcm_file_offset;
+  pcm_start=links[li_lo].pcm_start;
+  pre_skip=links[li_lo].head.pre_skip;
+  OP_ALWAYS_TRUE(!op_granpos_diff(&duration,links[li_lo].pcm_end,pcm_start));
+  duration-=pre_skip;
+  if(_pcm_offset>=duration)return -1;
+  _pcm_offset+=pre_skip;
+  if(OP_UNLIKELY(pcm_start>OP_INT64_MAX-_pcm_offset)){
+    /*Adding this amount to the granule position would overflow the positive
+       half of its 64-bit range.
+      Since signed overflow is undefined in C, do it in a way the compiler
+       isn't allowed to screw up.*/
+    _pcm_offset-=OP_INT64_MAX-pcm_start+1;
+    pcm_start=OP_INT64_MIN;
+  }
+  pcm_start+=_pcm_offset;
+  *_li=li_lo;
+  return pcm_start;
 }
 
 /*A small helper to determine if an Ogg page contains data that continues onto
@@ -2608,22 +2650,14 @@ static ogg_int64_t op_get_pcm_offset(const OggOpusFile *_of,
  ogg_int64_t _gp,int _li){
   const OggOpusLink *links;
   ogg_int64_t        pcm_offset;
-  ogg_int64_t        delta;
-  int                li;
   links=_of->links;
-  pcm_offset=0;
-  OP_ASSERT(_li<_of->nlinks);
-  for(li=0;li<_li;li++){
-    OP_ALWAYS_TRUE(!op_granpos_diff(&delta,
-     links[li].pcm_end,links[li].pcm_start));
-    delta-=links[li].head.pre_skip;
-    pcm_offset+=delta;
-  }
-  OP_ASSERT(_li>=0);
+  OP_ASSERT(_li>=0&&_li<_of->nlinks);
+  pcm_offset=links[_li].pcm_file_offset;
   if(_of->seekable&&OP_UNLIKELY(op_granpos_cmp(_gp,links[_li].pcm_end)>0)){
     _gp=links[_li].pcm_end;
   }
   if(OP_LIKELY(op_granpos_cmp(_gp,links[_li].pcm_start)>0)){
+    ogg_int64_t delta;
     if(OP_UNLIKELY(op_granpos_diff(&delta,_gp,links[_li].pcm_start)<0)){
       /*This means an unseekable stream claimed to have a page from more than
          2 billion days after we joined.*/

@@ -136,6 +136,9 @@ struct OggOpusLink{
      that end-trimming calculations work properly.
     This is only valid for seekable sources.*/
   opus_int64   end_offset;
+  /*The total duration of all prior links.
+    This is always zero for non-seekable sources.*/
+  ogg_int64_t  pcm_file_offset;
   /*The granule position of the last sample.
     This is only valid for seekable sources.*/
   ogg_int64_t  pcm_end;
