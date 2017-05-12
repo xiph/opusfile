@@ -152,7 +152,7 @@ struct OggOpusLink{
 struct OggOpusFile{
   /*The callbacks used to access the data source.*/
   OpusFileCallbacks  callbacks;
-  /*A FILE *, memory bufer, etc.*/
+  /*A FILE *, memory buffer, etc.*/
   void              *source;
   /*Whether or not we can seek with this data source.*/
   int                seekable;
@@ -166,7 +166,9 @@ struct OggOpusFile{
   int                nserialnos;
   /*The capacity of the list of serial numbers from a single link.*/
   int                cserialnos;
-  /*Storage for the list of serial numbers from a single link.*/
+  /*Storage for the list of serial numbers from a single link.
+    This is a scratch buffer used when scanning the BOS pages at the start of
+     each link.*/
   ogg_uint32_t      *serialnos;
   /*This is the current offset of the data processed by the ogg_sync_state.
     After a seek, this should be set to the target offset so that we can track
@@ -227,7 +229,7 @@ struct OggOpusFile{
   /*The number of valid samples in the decoded buffer.*/
   int                od_buffer_size;
   /*The type of gain offset to apply.
-    One of OP_HEADER_GAIN, OP_TRACK_GAIN, or OP_ABSOLUTE_GAIN.*/
+    One of OP_HEADER_GAIN, OP_ALBUM_GAIN, OP_TRACK_GAIN, or OP_ABSOLUTE_GAIN.*/
   int                gain_type;
   /*The offset to apply to the gain.*/
   opus_int32         gain_offset_q8;

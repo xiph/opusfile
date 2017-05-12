@@ -1184,8 +1184,8 @@ static int op_http_conn_read_response(OpusHTTPConn *_conn,
     if(OP_UNLIKELY(ret<=0))return size<=0?OP_EREAD:OP_FALSE;
     /*We read some data.*/
     /*Make sure the starting characters are "HTTP".
-      Otherwise we could wind up waiting forever for a response from
-       something that is not an HTTP server.*/
+      Otherwise we could wind up waiting for a response from something that is
+       not an HTTP server until we time out.*/
     if(size<4&&op_strncasecmp(buf,"HTTP",OP_MIN(size+ret,4))!=0){
       return OP_FALSE;
     }
@@ -1258,10 +1258,10 @@ static char *op_http_parse_status_line(int *_v1_1_compat,
   char   *status_code;
   int     v1_1_compat;
   size_t  d;
-  /*RFC 2616 Section 6.1 does not say that the tokens in the Status-Line cannot
-     be separated by optional LWS, but since it specifically calls out where
+  /*RFC 2616 Section 6.1 does not say if the tokens in the Status-Line can be
+     separated by optional LWS, but since it specifically calls out where
      spaces are to be placed and that CR and LF are not allowed except at the
-     end, I am assuming this to be true.*/
+     end, we are assuming extra LWS is not allowed.*/
   /*We already validated that this starts with "HTTP"*/
   OP_ASSERT(op_strncasecmp(_response,"HTTP",4)==0);
   next=_response+4;
@@ -1285,7 +1285,7 @@ static char *op_http_parse_status_line(int *_v1_1_compat,
     d--;
   }
   /*We don't need to parse the version number.
-    Any non-zero digit means it's greater than 1.*/
+    Any non-zero digit means it's at least 1.*/
   v1_1_compat=d>0;
   next+=d;
   if(OP_UNLIKELY(*next++!=' '))return NULL;
@@ -1617,7 +1617,7 @@ static int op_http_conn_establish_tunnel(OpusHTTPStream *_stream,
   next=op_http_parse_status_line(NULL,&status_code,_stream->response.buf);
   /*According to RFC 2817, "Any successful (2xx) response to a
      CONNECT request indicates that the proxy has established a
-     connection to the requested host and port.*/
+     connection to the requested host and port."*/
   if(OP_UNLIKELY(next==NULL)||OP_UNLIKELY(status_code[0]!='2'))return OP_FALSE;
   return 0;
 }
