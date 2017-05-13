@@ -1980,13 +1980,32 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
       opus_int32 total_duration;
       int        durations[255];
       int        op_count;
+      int        report_hole;
+      report_hole=0;
       total_duration=op_collect_audio_packets(_of,durations);
       if(OP_UNLIKELY(total_duration<0)){
-        /*Drain the packets from the page anyway.*/
+        /*libogg reported a hole (a gap in the page sequence numbers).
+          Drain the packets from the page anyway.
+          If we don't, they'll still be there when we fetch the next page.
+          Then, when we go to pull out packets, we might get more than 255,
+           which would overrun our packet buffer.*/
         total_duration=op_collect_audio_packets(_of,durations);
         OP_ASSERT(total_duration>=0);
-        /*Report holes to the caller.*/
-        if(!_ignore_holes)return OP_HOLE;
+        if(!_ignore_holes){
+          /*Report the hole to the caller after we finish timestamping the
+             packets.*/
+          report_hole=1;
+          /*We had lost or damaged pages, so reset our granule position
+             tracking.
+            This makes holes behave the same as a small raw seek.
+            If the next page is the EOS page, we'll discard it (because we
+             can't perform end trimming properly), and we'll always discard at
+             least 80 ms of audio (to allow decoder state to re-converge).
+            We could try to fill in the gap with PLC by looking at timestamps
+             in the non-EOS case, but that's complicated and error prone and we
+             can't rely on the timestamps being valid.*/
+          _of->prev_packet_gp=-1;
+        }
       }
       op_count=_of->op_count;
       /*If we found at least one audio data packet, compute per-packet granule
@@ -2013,6 +2032,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
               Proceed to the next link, rather than risk playing back some
                samples that shouldn't have been played.*/
             _of->op_count=0;
+            if(report_hole)return OP_HOLE;
             continue;
           }
           /*By default discard 80 ms of data after a seek, unless we seek
@@ -2114,10 +2134,11 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
         }
         _of->prev_packet_gp=prev_packet_gp;
         _of->prev_page_offset=_page_offset;
-        _of->op_count=pi;
-        /*If end-trimming didn't trim all the packets, we're done.*/
-        if(OP_LIKELY(pi>0))return 0;
+        _of->op_count=op_count=pi;
       }
+      if(report_hole)return OP_HOLE;
+      /*If end-trimming didn't trim all the packets, we're done.*/
+      if(op_count>0)return 0;
     }
   }
 }

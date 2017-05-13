@@ -249,7 +249,11 @@ int main(int _argc,const char **_argv){
          files with signed, 16-bit little-endian samples are far more
          universally supported, so that's what we output.*/
       ret=op_read_stereo(of,pcm,sizeof(pcm)/sizeof(*pcm));
-      if(ret<0){
+      if(ret==OP_HOLE){
+        fprintf(stderr,"\nHole detected! Corrupt file segment?\n");
+        continue;
+      }
+      else if(ret<0){
         fprintf(stderr,"\nError decoding '%s': %i\n",_argv[1],ret);
         if(is_ssl)fprintf(stderr,"Possible truncation attack?\n");
         ret=EXIT_FAILURE;
