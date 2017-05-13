@@ -1724,9 +1724,9 @@ opus_int64 op_raw_total(const OggOpusFile *_of,int _li){
    ||OP_UNLIKELY(_li>=_of->nlinks)){
     return OP_EINVAL;
   }
-  if(_li<0)return _of->end-_of->links[0].offset;
+  if(_li<0)return _of->end;
   return (_li+1>=_of->nlinks?_of->end:_of->links[_li+1].offset)
-   -_of->links[_li].offset;
+   -(_li>0?_of->links[_li].offset:0);
 }
 
 ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){

@@ -1670,6 +1670,8 @@ ogg_int64_t op_pcm_tell(const OggOpusFile *_of) OP_ARG_NONNULL(1);
     packets out of the tail of the link to which it seeks.
    \param _of          The \c OggOpusFile in which to seek.
    \param _byte_offset The byte position to seek to.
+                       This must be between 0 and #op_raw_total(\a _of,\c -1)
+                        (inclusive).
    \return 0 on success, or a negative error code on failure.
    \retval #OP_EREAD    The underlying seek operation failed.
    \retval #OP_EINVAL   The stream was only partially open, or the target was
