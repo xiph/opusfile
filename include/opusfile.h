@@ -1575,8 +1575,8 @@ const OpusTags *op_tags(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \param _of The \c OggOpusFile from which to retrieve the current link index.
    \return The index of the current link on success, or a negative value on
             failure.
-           For seekable streams, this is a number between 0 and the value
-            returned by op_link_count().
+           For seekable streams, this is a number between 0 (inclusive) and the
+            value returned by op_link_count() (exclusive).
            For unseekable streams, this value starts at 0 and increments by one
             each time a new link is encountered (even though op_link_count()
             always returns 1).
