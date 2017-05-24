@@ -3422,6 +3422,7 @@ void *op_url_stream_vcreate_impl(OpusFileCallbacks *_cb,
   proxy_user=NULL;
   proxy_pass=NULL;
   pinfo=NULL;
+  *_pinfo=NULL;
   for(;;){
     ptrdiff_t request;
     request=va_arg(_ap,char *)-(char *)NULL;
@@ -3453,7 +3454,6 @@ void *op_url_stream_vcreate_impl(OpusFileCallbacks *_cb,
   }
   /*If the caller has requested server information, proxy it to a local copy to
      simplify error handling.*/
-  *_pinfo=NULL;
   if(pinfo!=NULL){
     void *ret;
     opus_server_info_init(_info);
