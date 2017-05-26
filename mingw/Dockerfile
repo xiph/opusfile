@@ -15,6 +15,7 @@ RUN git clone https://git.xiph.org/opusfile.git
 
 WORKDIR opusfile
 RUN git pull
+COPY Makefile mingw/Makefile
 RUN make -C mingw
 RUN ./autogen.sh && ./configure --host=i686-w64-mingw32 --prefix=${PWD}/mingw PKG_CONFIG_PATH=${PWD}/mingw/lib/pkgconfig && make && make check && make install
 RUN make -C mingw package
