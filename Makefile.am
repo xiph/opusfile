@@ -17,6 +17,7 @@ libopusfile_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
 
 libopusurl_la_SOURCES = src/http.c src/internal.c src/internal.h
+libopusurl_la_CFLAGS = $(AM_CFLAGS) $(URL_DEPS_CFLAGS)
 libopusurl_la_LIBADD = libopusfile.la $(URL_DEPS_LIBS)
 libopusurl_la_LDFLAGS = -no-undefined \
  -version-info @OP_LT_CURRENT@:@OP_LT_REVISION@:@OP_LT_AGE@
