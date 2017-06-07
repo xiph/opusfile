@@ -89,7 +89,7 @@ ssl_BUILD: $(ssl_DIR)
 
 # Package the binaries.
 DIST_VERSION := $(shell git describe --dirty)
-DIST := opusfile-$(DIST_VERSION)-f25docker-win32
+DIST := opusfile-$(DIST_VERSION)-win32
 package: $(DIST).zip
 
 $(DIST).zip: $(DIST)
