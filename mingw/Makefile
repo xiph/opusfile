@@ -88,7 +88,8 @@ ssl_BUILD: $(ssl_DIR)
 # CROSS_COMPILE="i686-w64-mingw32-" ./Configure mingw no-asm no-shared --prefix=$PWD/mingw && make depend && make -j8 && make install
 
 # Package the binaries.
-DIST := opusfile-0.8-f25docker-win32
+DIST_VERSION := $(shell git describe --dirty)
+DIST := opusfile-$(DIST_VERSION)-f25docker-win32
 package: $(DIST).zip
 
 $(DIST).zip: $(DIST)
