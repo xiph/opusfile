@@ -2032,8 +2032,8 @@ static int op_http_connect_impl(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
      families were returned in the DNS records in accordance with RFC 6555.*/
   for(addr=_addrs,nprotos=0;addr!=NULL&&nprotos<OP_NPROTOS;addr=addr->ai_next){
     if(addr->ai_family==AF_INET6||addr->ai_family==AF_INET){
-      OP_ASSERT(addr->ai_addrlen<=sizeof(struct sockaddr_in6));
-      OP_ASSERT(addr->ai_addrlen<=sizeof(struct sockaddr_in));
+      OP_ASSERT(addr->ai_addrlen<=
+       OP_MAX(sizeof(struct sockaddr_in6),sizeof(struct sockaddr_in)));
       /*If we've seen this address family before, skip this address for now.*/
       for(pi=0;pi<nprotos;pi++)if(addrs[pi]->ai_family==addr->ai_family)break;
       if(pi<nprotos)continue;
@@ -3408,7 +3408,7 @@ static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
    *_pinfo will be NULL.
   Our caller is responsible for copying *_info to **_pinfo if it ultimately
    succeeds, or for clearing *_info if it ultimately fails.*/
-void *op_url_stream_vcreate_impl(OpusFileCallbacks *_cb,
+static void *op_url_stream_vcreate_impl(OpusFileCallbacks *_cb,
  const char *_url,OpusServerInfo *_info,OpusServerInfo **_pinfo,va_list _ap){
   int             skip_certificate_check;
   const char     *proxy_host;
