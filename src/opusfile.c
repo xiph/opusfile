@@ -148,7 +148,7 @@ static int op_get_data(OggOpusFile *_of,int _nbytes){
   int            nbytes;
   OP_ASSERT(_nbytes>0);
   buffer=(unsigned char *)ogg_sync_buffer(&_of->oy,_nbytes);
-  nbytes=(int)(*_of->callbacks.read)(_of->source,buffer,_nbytes);
+  nbytes=(int)(*_of->callbacks.read)(_of->stream,buffer,_nbytes);
   OP_ASSERT(nbytes<=_nbytes);
   if(OP_LIKELY(nbytes>0))ogg_sync_wrote(&_of->oy,nbytes);
   return nbytes;
@@ -158,7 +158,7 @@ static int op_get_data(OggOpusFile *_of,int _nbytes){
 static int op_seek_helper(OggOpusFile *_of,opus_int64 _offset){
   if(_offset==_of->offset)return 0;
   if(_of->callbacks.seek==NULL
-   ||(*_of->callbacks.seek)(_of->source,_offset,SEEK_SET)){
+   ||(*_of->callbacks.seek)(_of->stream,_offset,SEEK_SET)){
     return OP_EREAD;
   }
   _of->offset=_offset;
@@ -166,7 +166,7 @@ static int op_seek_helper(OggOpusFile *_of,opus_int64 _offset){
   return 0;
 }
 
-/*Get the current position indicator of the underlying source.
+/*Get the current position indicator of the underlying stream.
   This should be the same as the value reported by tell().*/
 static opus_int64 op_position(const OggOpusFile *_of){
   /*The current position indicator is _not_ simply offset.
@@ -370,7 +370,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,OpusSeekRecord *_sr,
       search_start=llret+1;
     }
     /*We started from the beginning of the stream and found nothing.
-      This should be impossible unless the contents of the source changed out
+      This should be impossible unless the contents of the stream changed out
        from under us after we read from it.*/
     if(OP_UNLIKELY(!begin)&&OP_UNLIKELY(_offset<0))return OP_EBADLINK;
     /*Bump up the chunk size.
@@ -456,7 +456,7 @@ static opus_int64 op_get_last_page(OggOpusFile *_of,ogg_int64_t *_gp,
       }
     }
     /*We started from at or before the beginning of the link and found nothing.
-      This should be impossible unless the contents of the source changed out
+      This should be impossible unless the contents of the stream changed out
        from under us after we read from it.*/
     if((OP_UNLIKELY(left_link)||OP_UNLIKELY(!begin))&&OP_UNLIKELY(_offset<0)){
       return OP_EBADLINK;
@@ -1395,8 +1395,8 @@ static int op_open_seekable2_impl(OggOpusFile *_of){
   opus_int64     data_offset;
   int            ret;
   /*We can seek, so set out learning all about this file.*/
-  (*_of->callbacks.seek)(_of->source,0,SEEK_END);
-  _of->offset=_of->end=(*_of->callbacks.tell)(_of->source);
+  (*_of->callbacks.seek)(_of->stream,0,SEEK_END);
+  _of->offset=_of->end=(*_of->callbacks.tell)(_of->stream);
   if(OP_UNLIKELY(_of->end<0))return OP_EREAD;
   data_offset=_of->links[0].data_offset;
   if(OP_UNLIKELY(_of->end<data_offset))return OP_EBADLINK;
@@ -1441,7 +1441,7 @@ static int op_open_seekable2(OggOpusFile *_of){
   prev_page_offset=_of->prev_page_offset;
   start_offset=_of->offset;
   memcpy(op_start,_of->op,sizeof(*op_start)*start_op_count);
-  OP_ASSERT((*_of->callbacks.tell)(_of->source)==op_position(_of));
+  OP_ASSERT((*_of->callbacks.tell)(_of->stream)==op_position(_of));
   ogg_sync_init(&_of->oy);
   ogg_stream_init(&_of->os,-1);
   ret=op_open_seekable2_impl(_of);
@@ -1459,7 +1459,7 @@ static int op_open_seekable2(OggOpusFile *_of){
   _of->cur_discard_count=_of->links[0].head.pre_skip;
   if(OP_UNLIKELY(ret<0))return ret;
   /*And restore the position indicator.*/
-  ret=(*_of->callbacks.seek)(_of->source,op_position(_of),SEEK_SET);
+  ret=(*_of->callbacks.seek)(_of->stream,op_position(_of),SEEK_SET);
   return OP_UNLIKELY(ret<0)?OP_EREAD:0;
 }
 
@@ -1498,11 +1498,11 @@ static void op_clear(OggOpusFile *_of){
   _ogg_free(_of->serialnos);
   ogg_stream_clear(&_of->os);
   ogg_sync_clear(&_of->oy);
-  if(_of->callbacks.close!=NULL)(*_of->callbacks.close)(_of->source);
+  if(_of->callbacks.close!=NULL)(*_of->callbacks.close)(_of->stream);
 }
 
 static int op_open1(OggOpusFile *_of,
- void *_source,const OpusFileCallbacks *_cb,
+ void *_stream,const OpusFileCallbacks *_cb,
  const unsigned char *_initial_data,size_t _initial_bytes){
   ogg_page  og;
   ogg_page *pog;
@@ -1511,7 +1511,7 @@ static int op_open1(OggOpusFile *_of,
   memset(_of,0,sizeof(*_of));
   if(OP_UNLIKELY(_initial_bytes>(size_t)LONG_MAX))return OP_EFAULT;
   _of->end=-1;
-  _of->source=_source;
+  _of->stream=_stream;
   *&_of->callbacks=*_cb;
   /*At a minimum, we need to be able to read data.*/
   if(OP_UNLIKELY(_of->callbacks.read==NULL))return OP_EREAD;
@@ -1532,12 +1532,12 @@ static int op_open1(OggOpusFile *_of,
   }
   /*Can we seek?
     Stevens suggests the seek test is portable.*/
-  seekable=_cb->seek!=NULL&&(*_cb->seek)(_source,0,SEEK_CUR)!=-1;
+  seekable=_cb->seek!=NULL&&(*_cb->seek)(_stream,0,SEEK_CUR)!=-1;
   /*If seek is implemented, tell must also be implemented.*/
   if(seekable){
     opus_int64 pos;
     if(OP_UNLIKELY(_of->callbacks.tell==NULL))return OP_EINVAL;
-    pos=(*_of->callbacks.tell)(_of->source);
+    pos=(*_of->callbacks.tell)(_of->stream);
     /*If the current position is not equal to the initial bytes consumed,
        absolute seeking will not work.*/
     if(OP_UNLIKELY(pos!=(opus_int64)_initial_bytes))return OP_EINVAL;
@@ -1596,14 +1596,14 @@ static int op_open2(OggOpusFile *_of){
   return ret;
 }
 
-OggOpusFile *op_test_callbacks(void *_source,const OpusFileCallbacks *_cb,
+OggOpusFile *op_test_callbacks(void *_stream,const OpusFileCallbacks *_cb,
  const unsigned char *_initial_data,size_t _initial_bytes,int *_error){
   OggOpusFile *of;
   int          ret;
   of=(OggOpusFile *)_ogg_malloc(sizeof(*of));
   ret=OP_EFAULT;
   if(OP_LIKELY(of!=NULL)){
-    ret=op_open1(of,_source,_cb,_initial_data,_initial_bytes);
+    ret=op_open1(of,_stream,_cb,_initial_data,_initial_bytes);
     if(OP_LIKELY(ret>=0)){
       if(_error!=NULL)*_error=0;
       return of;
@@ -1617,10 +1617,10 @@ OggOpusFile *op_test_callbacks(void *_source,const OpusFileCallbacks *_cb,
   return NULL;
 }
 
-OggOpusFile *op_open_callbacks(void *_source,const OpusFileCallbacks *_cb,
+OggOpusFile *op_open_callbacks(void *_stream,const OpusFileCallbacks *_cb,
  const unsigned char *_initial_data,size_t _initial_bytes,int *_error){
   OggOpusFile *of;
-  of=op_test_callbacks(_source,_cb,_initial_data,_initial_bytes,_error);
+  of=op_test_callbacks(_stream,_cb,_initial_data,_initial_bytes,_error);
   if(OP_LIKELY(of!=NULL)){
     int ret;
     ret=op_open2(of);
@@ -1633,15 +1633,15 @@ OggOpusFile *op_open_callbacks(void *_source,const OpusFileCallbacks *_cb,
 
 /*Convenience routine to clean up from failure for the open functions that
    create their own streams.*/
-static OggOpusFile *op_open_close_on_failure(void *_source,
+static OggOpusFile *op_open_close_on_failure(void *_stream,
  const OpusFileCallbacks *_cb,int *_error){
   OggOpusFile *of;
-  if(OP_UNLIKELY(_source==NULL)){
+  if(OP_UNLIKELY(_stream==NULL)){
     if(_error!=NULL)*_error=OP_EFAULT;
     return NULL;
   }
-  of=op_open_callbacks(_source,_cb,NULL,0,_error);
-  if(OP_UNLIKELY(of==NULL))(*_cb->close)(_source);
+  of=op_open_callbacks(_stream,_cb,NULL,0,_error);
+  if(OP_UNLIKELY(of==NULL))(*_cb->close)(_stream);
   return of;
 }
 
@@ -1659,15 +1659,15 @@ OggOpusFile *op_open_memory(const unsigned char *_data,size_t _size,
 
 /*Convenience routine to clean up from failure for the open functions that
    create their own streams.*/
-static OggOpusFile *op_test_close_on_failure(void *_source,
+static OggOpusFile *op_test_close_on_failure(void *_stream,
  const OpusFileCallbacks *_cb,int *_error){
   OggOpusFile *of;
-  if(OP_UNLIKELY(_source==NULL)){
+  if(OP_UNLIKELY(_stream==NULL)){
     if(_error!=NULL)*_error=OP_EFAULT;
     return NULL;
   }
-  of=op_test_callbacks(_source,_cb,NULL,0,_error);
-  if(OP_UNLIKELY(of==NULL))(*_cb->close)(_source);
+  of=op_test_callbacks(_stream,_cb,NULL,0,_error);
+  if(OP_UNLIKELY(of==NULL))(*_cb->close)(_stream);
   return of;
 }
 

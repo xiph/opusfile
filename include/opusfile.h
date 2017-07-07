@@ -1155,16 +1155,18 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
  int *_error,...) OP_ARG_NONNULL(1);
 
 /**Open a stream using the given set of callbacks to access it.
-   \param _source        The stream to read from (e.g., a <code>FILE *</code>).
+   \param _stream        The stream to read from (e.g., a <code>FILE *</code>).
+                         This value will be passed verbatim as the first
+                          argument to all of the callbacks.
    \param _cb            The callbacks with which to access the stream.
                          <code><a href="#op_read_func">read()</a></code> must
                           be implemented.
                          <code><a href="#op_seek_func">seek()</a></code> and
                           <code><a href="#op_tell_func">tell()</a></code> may
                           be <code>NULL</code>, or may always return -1 to
-                          indicate a source is unseekable, but if
+                          indicate a stream is unseekable, but if
                           <code><a href="#op_seek_func">seek()</a></code> is
-                          implemented and succeeds on a particular source, then
+                          implemented and succeeds on a particular stream, then
                           <code><a href="#op_tell_func">tell()</a></code> must
                           also.
                          <code><a href="#op_close_func">close()</a></code> may
@@ -1227,11 +1229,11 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                             basic validity checks.</dd>
                          </dl>
    \return A freshly opened \c OggOpusFile, or <code>NULL</code> on error.
-           <tt>libopusfile</tt> does <em>not</em> take ownership of the source
+           <tt>libopusfile</tt> does <em>not</em> take ownership of the stream
             if the call fails.
-           The calling application is responsible for closing the source if
+           The calling application is responsible for closing the stream if
             this call returns an error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_open_callbacks(void *_source,
+OP_WARN_UNUSED_RESULT OggOpusFile *op_open_callbacks(void *_stream,
  const OpusFileCallbacks *_cb,const unsigned char *_initial_data,
  size_t _initial_bytes,int *_error) OP_ARG_NONNULL(2);
 
@@ -1333,18 +1335,20 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,
    For new code, you are likely better off using op_test() instead, which
     is less resource-intensive, requires less data to succeed, and imposes a
     hard limit on the amount of data it examines (important for unseekable
-    sources, where all such data must be buffered until you are sure of the
+    streams, where all such data must be buffered until you are sure of the
     stream type).
-   \param _source        The stream to read from (e.g., a <code>FILE *</code>).
+   \param _stream        The stream to read from (e.g., a <code>FILE *</code>).
+                         This value will be passed verbatim as the first
+                          argument to all of the callbacks.
    \param _cb            The callbacks with which to access the stream.
                          <code><a href="#op_read_func">read()</a></code> must
                           be implemented.
                          <code><a href="#op_seek_func">seek()</a></code> and
                           <code><a href="#op_tell_func">tell()</a></code> may
                           be <code>NULL</code>, or may always return -1 to
-                          indicate a source is unseekable, but if
+                          indicate a stream is unseekable, but if
                           <code><a href="#op_seek_func">seek()</a></code> is
-                          implemented and succeeds on a particular source, then
+                          implemented and succeeds on a particular stream, then
                           <code><a href="#op_tell_func">tell()</a></code> must
                           also.
                          <code><a href="#op_close_func">close()</a></code> may
@@ -1374,11 +1378,11 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,
                          See op_open_callbacks() for a full list of failure
                           codes.
    \return A partially opened \c OggOpusFile, or <code>NULL</code> on error.
-           <tt>libopusfile</tt> does <em>not</em> take ownership of the source
+           <tt>libopusfile</tt> does <em>not</em> take ownership of the stream
             if the call fails.
-           The calling application is responsible for closing the source if
+           The calling application is responsible for closing the stream if
             this call returns an error.*/
-OP_WARN_UNUSED_RESULT OggOpusFile *op_test_callbacks(void *_source,
+OP_WARN_UNUSED_RESULT OggOpusFile *op_test_callbacks(void *_stream,
  const OpusFileCallbacks *_cb,const unsigned char *_initial_data,
  size_t _initial_bytes,int *_error) OP_ARG_NONNULL(2);
 
@@ -1435,7 +1439,7 @@ void op_free(OggOpusFile *_of);
    Their documention will indicate so explicitly.*/
 /*@{*/
 
-/**Returns whether or not the data source being read is seekable.
+/**Returns whether or not the stream being read is seekable.
    This is true if
    <ol>
    <li>The <code><a href="#op_seek_func">seek()</a></code> and
@@ -1456,9 +1460,9 @@ int op_seekable(const OggOpusFile *_of) OP_ARG_NONNULL(1);
     return 1.
    The actual number of links is not known until the stream is fully opened.
    \param _of The \c OggOpusFile from which to retrieve the link count.
-   \return For fully-open seekable sources, this returns the total number of
+   \return For fully-open seekable streams, this returns the total number of
             links in the whole stream, which will be at least 1.
-           For partially-open or unseekable sources, this always returns 1.*/
+           For partially-open or unseekable streams, this always returns 1.*/
 int op_link_count(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 
 /**Get the serial number of the given link in a (possibly-chained) Ogg Opus
@@ -1472,7 +1476,7 @@ int op_link_count(const OggOpusFile *_of) OP_ARG_NONNULL(1);
    \return The serial number of the given link.
            If \a _li is greater than the total number of links, this returns
             the serial number of the last link.
-           If the source is not seekable, this always returns the serial number
+           If the stream is not seekable, this always returns the serial number
             of the current link.*/
 opus_uint32 op_serialno(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
@@ -1489,7 +1493,7 @@ opus_uint32 op_serialno(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \return The channel count of the given link.
            If \a _li is greater than the total number of links, this returns
             the channel count of the last link.
-           If the source is not seekable, this always returns the channel count
+           If the stream is not seekable, this always returns the channel count
             of the current link.*/
 int op_channel_count(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
 
@@ -1508,9 +1512,9 @@ int op_channel_count(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
             compressed size of link \a _li if it is non-negative, or a negative
             value on error.
            The compressed size of the entire stream may be smaller than that
-            of the underlying source if trailing garbage was detected in the
+            of the underlying stream if trailing garbage was detected in the
             file.
-   \retval #OP_EINVAL The source is not seekable (so we can't know the length),
+   \retval #OP_EINVAL The stream is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
 opus_int64 op_raw_total(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
@@ -1528,7 +1532,7 @@ opus_int64 op_raw_total(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
    \return The PCM length of the entire stream if \a _li is negative, the PCM
             length of link \a _li if it is non-negative, or a negative value on
             error.
-   \retval #OP_EINVAL The source is not seekable (so we can't know the length),
+   \retval #OP_EINVAL The stream is not seekable (so we can't know the length),
                        \a _li wasn't less than the total number of links in
                        the stream, or the stream was only partially open.*/
 ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li) OP_ARG_NONNULL(1);
@@ -1641,10 +1645,10 @@ ogg_int64_t op_pcm_tell(const OggOpusFile *_of) OP_ARG_NONNULL(1);
 /*@{*/
 /**\name Functions for seeking in Opus streams
 
-   These functions let you seek in Opus streams, if the underlying source
+   These functions let you seek in Opus streams, if the underlying stream
     support it.
    Seeking is implemented for all built-in stream I/O routines, though some
-    individual sources may not be seekable (pipes, live HTTP streams, or HTTP
+    individual streams may not be seekable (pipes, live HTTP streams, or HTTP
     streams from a server that does not support <code>Range</code> requests).
 
    op_raw_seek() is the fastest: it is guaranteed to perform at most one

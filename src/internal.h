@@ -153,16 +153,16 @@ struct OggOpusLink{
 };
 
 struct OggOpusFile{
-  /*The callbacks used to access the data source.*/
+  /*The callbacks used to access the stream.*/
   OpusFileCallbacks  callbacks;
   /*A FILE *, memory buffer, etc.*/
-  void              *source;
-  /*Whether or not we can seek with this data source.*/
+  void              *stream;
+  /*Whether or not we can seek with this stream.*/
   int                seekable;
   /*The number of links in this chained Ogg Opus file.*/
   int                nlinks;
   /*The cached information from each link in a chained Ogg Opus file.
-    If source isn't seekable (e.g., it's a pipe), only the current link
+    If stream isn't seekable (e.g., it's a pipe), only the current link
      appears.*/
   OggOpusLink       *links;
   /*The number of serial numbers from a single link.*/
@@ -179,9 +179,9 @@ struct OggOpusFile{
     After a call to op_get_next_page(), this will point to the first byte after
      that page.*/
   opus_int64         offset;
-  /*The total size of this data source, or -1 if it's unseekable.*/
+  /*The total size of this stream, or -1 if it's unseekable.*/
   opus_int64         end;
-  /*Used to locate pages in the data source.*/
+  /*Used to locate pages in the stream.*/
   ogg_sync_state     oy;
   /*One of OP_NOTOPEN, OP_PARTOPEN, OP_OPENED, OP_STREAMSET, OP_INITSET.*/
   int                ready_state;
