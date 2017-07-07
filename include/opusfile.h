@@ -239,7 +239,8 @@ struct OpusHead{
       -32768...32767.
      The <tt>libopusfile</tt> API will automatically apply this gain to the
       decoded output before returning it, scaling it by
-      <code>pow(10,output_gain/(20.0*256))</code>.*/
+      <code>pow(10,output_gain/(20.0*256))</code>.
+     You can adjust this behavior with op_set_gain_offset().*/
   int           output_gain;
   /**The channel mapping family, in the range 0...255.
      Channel mapping family 0 covers mono or stereo in a single stream.
