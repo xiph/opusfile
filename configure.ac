@@ -88,6 +88,11 @@ AM_COND_IF(OP_WIN32,
 )
 AC_SEARCH_LIBS(ftime, [compat], , [enable_http=no])
 
+m4_ifndef([PKG_PROG_PKG_CONFIG],
+  [m4_fatal([Could not locate the pkg-config autoconf macros.
+Please make sure pkg-config is installed and, if necessary, set the environment
+variable ACLOCAL="aclocal -I/path/to/pkg.m4".])])
+
 AS_IF([test "$enable_http" != "no"], [
    openssl="openssl"
    AC_DEFINE([OP_ENABLE_HTTP], [1], [Enable HTTP support])
