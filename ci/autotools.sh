@@ -61,4 +61,5 @@ make
 make distcheck PKG_CONFIG_PATH=${PKG_CONFIG_PATH}
 
 # build the documentation
-make -C doc/latex
+# currently fails on jenkins (debian stretch)
+# make -C doc/latex

@@ -19,4 +19,5 @@ make -C unix PKG_CONFIG_PATH=$PWD/../opus check
 
 # build the documentation
 make -C doc
-make -C doc/latex
+# currently fails on jenkins (debian stretch)
+# make -C doc/latex
