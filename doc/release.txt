@@ -5,7 +5,7 @@ Source release:
 - Update OP_LT_* API versioning in configure.ac.
 - Check for uncommitted changes to master.
 - Tag the release commit with 'git tag -s vN.M'.
- - Include release notes in the tag annotation.
+  - Include release notes in the tag annotation.
 - Verify 'make distcheck' produces a tarball with
   the desired name.
 - Push tag to public repo.
