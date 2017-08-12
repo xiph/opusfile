@@ -95,44 +95,44 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-NoHTTP|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\Release;..\..\..\ogg\win32\VS2015\$(Platform)\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\Release;..\..\ogg\win32\VS2015\$(Platform)\Release;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\$(Configuration);..\..\ogg\win32\VS2015\$(Platform)\$(Configuration);..\..\..\openssl\$(Platform)\Release\lib;..\..\..\openssl\out32;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-NoHTTP|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>..\..\..\opus\win32\VS2015\$(Platform)\Release;..\..\..\ogg\win32\VS2015\$(Platform)\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\opus\win32\VS2015\$(Platform)\Release;..\..\ogg\win32\VS2015\$(Platform)\Release;$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
