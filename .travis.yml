@@ -1,9 +1,5 @@
 language: c
 
-# We need at least Ubuntu 14.04 for the libopus dependency.
-sudo: required
-dist: trusty
-
 addons:
   apt:
     packages:
