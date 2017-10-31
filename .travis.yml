@@ -14,6 +14,8 @@ addons:
       - libogg-dev
       - libopus-dev
 
+env: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl/lib/pkgconfig
+
 install: if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew bundle; fi
 
 script:
