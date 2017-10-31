@@ -1,3 +1,3 @@
 brew 'opus'
 brew 'libogg'
-brew 'opensll'
+brew 'openssl'
