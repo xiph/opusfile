@@ -1,0 +1,6 @@
+[submodule "ogg"]
+	path = ogg
+	url = https://github.com/xiph/ogg.git
+[submodule "opus"]
+	path = opus
+	url = https://github.com/xiph/opus.git

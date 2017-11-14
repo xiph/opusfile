@@ -109,32 +109,32 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-NoHTTP|Win32'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\..\openssl\inc32;..\..\..\openssl\$(Platform)\Release\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-NoHTTP|x64'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>..\..\..\opus\include;..\..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\opus\include;..\..\ogg\include;..\..\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
