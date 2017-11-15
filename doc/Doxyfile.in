@@ -18,3 +18,5 @@ SORT_MEMBER_DOCS       = NO
 HAVE_DOT               = @HAVE_DOT@
 
 PROJECT_LOGO           = @top_srcdir@/doc/opus_logo.svg
+
+FULL_PATH_NAMES        = NO
