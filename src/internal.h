@@ -251,6 +251,8 @@ struct OggOpusFile{
      occurs (switching between the float/short APIs, or between the
      stereo/multistream APIs).*/
   int                state_channel_count;
+  /*The read size for the opus file in bytes*/
+  int                read_size;
 #endif
 };
 

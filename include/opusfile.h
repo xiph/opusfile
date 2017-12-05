@@ -2150,6 +2150,18 @@ OP_WARN_UNUSED_RESULT int op_read_stereo(OggOpusFile *_of,
 OP_WARN_UNUSED_RESULT int op_read_float_stereo(OggOpusFile *_of,
  float *_pcm,int _buf_size) OP_ARG_NONNULL(1);
 
+/**Sets the read size for the \c OggOpusFile.
+   \param _of         The \c OggOpusFile on which to set the read size.
+   \param _read_size  The number of bytes that should be consumed each time the
+                      \c OggOpusFile reads from its data source.*/
+void op_set_read_size(OggOpusFile *_of, int _read_size);
+
+/**Gets the current read size for the \c OggOpusFile.
+   \param _of         The \c OggOpusFile on which to set the read size.
+   \return            The number of bytes consumed each time the \c OggOpusFile
+                      reads from its data source.*/
+int op_get_read_size(OggOpusFile *_of);
+
 /*@}*/
 /*@}*/
 

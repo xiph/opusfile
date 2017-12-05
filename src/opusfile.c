@@ -197,12 +197,12 @@ static opus_int64 op_get_next_page(OggOpusFile *_of,ogg_page *_og,
       int ret;
       /*Send more paramedics.*/
       if(!_boundary)return OP_FALSE;
-      if(_boundary<0)read_nbytes=OP_READ_SIZE;
+      if(_boundary<0)read_nbytes=_of->read_size;
       else{
         opus_int64 position;
         position=op_position(_of);
         if(position>=_boundary)return OP_FALSE;
-        read_nbytes=(int)OP_MIN(_boundary-position,OP_READ_SIZE);
+        read_nbytes=(int)OP_MIN(_boundary-position,_of->read_size);
       }
       ret=op_get_data(_of,read_nbytes);
       if(OP_UNLIKELY(ret<0))return OP_EREAD;
@@ -1513,6 +1513,7 @@ static int op_open1(OggOpusFile *_of,
   _of->end=-1;
   _of->stream=_stream;
   *&_of->callbacks=*_cb;
+  _of->read_size = OP_READ_SIZE;
   /*At a minimum, we need to be able to read data.*/
   if(OP_UNLIKELY(_of->callbacks.read==NULL))return OP_EREAD;
   /*Initialize the framing state.*/
@@ -3321,6 +3322,16 @@ int op_read_stereo(OggOpusFile *_of,opus_int16 *_pcm,int _buf_size){
 int op_read_float_stereo(OggOpusFile *_of,float *_pcm,int _buf_size){
   _of->state_channel_count=0;
   return op_filter_read_native(_of,_pcm,_buf_size,op_stereo_filter,NULL);
+}
+
+void op_set_read_size(OggOpusFile *_of, int _read_size) {
+  _read_size = _read_size > OP_CHUNK_SIZE_MAX ? OP_CHUNK_SIZE_MAX : _read_size;
+  _read_size = _read_size < 1 ? OP_READ_SIZE : _read_size;
+  _of->read_size = _read_size;
+}
+
+int op_get_read_size(OggOpusFile *_of) {
+  return _of->read_size;
 }
 
 #endif
