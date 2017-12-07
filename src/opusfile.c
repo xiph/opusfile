@@ -2078,7 +2078,11 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
          &&OP_LIKELY(diff<total_duration)){
           cur_packet_gp=prev_packet_gp;
           for(pi=0;pi<op_count;pi++){
-            diff=durations[pi]-diff;
+            /*Check for overflow.*/
+            if(diff<0&&OP_UNLIKELY(OP_INT64_MAX+diff<durations[pi])){
+              diff=durations[pi]+1;
+            }
+            else diff=durations[pi]-diff;
             /*If we have samples to trim...*/
             if(diff>0){
               /*If we trimmed the entire packet, stop (the spec says encoders
