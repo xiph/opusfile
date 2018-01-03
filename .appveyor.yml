@@ -44,7 +44,11 @@ build:
   verbosity: minimal
 
 after_build:
-- 7z a opusfile.zip win32\VS2015\%PLATFORM%\%CONFIGURATION%\opusfile.lib include\opusfile.h
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% copy /B %APPVEYOR_BUILD_FOLDER%\..\openssl\%PLATFORM%\Release\lib\* win32\VS2015\%PLATFORM%\%CONFIGURATION%\
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% mkdir include\openssl
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% copy /B %APPVEYOR_BUILD_FOLDER%\..\openssl\inc32\openssl include\openssl\
+- 7z a opusfile.zip win32\VS2015\%PLATFORM%\%CONFIGURATION%\opusfile.??? include\
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% 7z a opusfile.zip win32\VS2015\%PLATFORM%\%CONFIGURATION%\lib.pdb win32\VS2015\%PLATFORM%\%CONFIGURATION%\*.lib
 
 artifacts:
 - path: opusfile.zip
