@@ -19,16 +19,18 @@ install:
         If ($env:Platform -Match "Win32") {
             $env:VCVARS_PLATFORM="x86"
             $env:OPENSSL_TARGET="VC-WIN32"
-            $env:DO="do_ms"
+            $env:DO="do_nasm"
         } Else {
             $env:VCVARS_PLATFORM="amd64"
             $env:OPENSSL_TARGET="VC-WIN64A"
             $env:DO="do_win64a"
         }
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% chocolatey install -y nasm
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% set PATH=%PROGRAMFILES%\nasm;%PATH%
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% cd openssl
 # without prefix, libs end up in out32 for both 32 and 64-bit
-- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% perl Configure %OPENSSL_TARGET% no-asm --prefix=%CD%\%PLATFORM%\Release
+- if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% perl Configure %OPENSSL_TARGET% --prefix=%CD%\%PLATFORM%\Release
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% call ms\%DO%
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% nmake /f ms\nt.mak
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% nmake /f ms\nt.mak install
