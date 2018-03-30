@@ -34,7 +34,7 @@ dnl - interfaces added -> increment AGE
 dnl - interfaces removed -> AGE = 0
 
 OP_LT_CURRENT=4
-OP_LT_REVISION=2
+OP_LT_REVISION=3
 OP_LT_AGE=4
 
 AC_SUBST(OP_LT_CURRENT)
