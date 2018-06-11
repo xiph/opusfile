@@ -282,7 +282,7 @@ int opus_tags_copy(OpusTags *_dst,const OpusTags *_src){
   ret=opus_tags_copy_impl(&dst,_src);
   if(OP_UNLIKELY(ret<0))opus_tags_clear(&dst);
   else *_dst=*&dst;
-  return 0;
+  return ret;
 }
 
 int opus_tags_add(OpusTags *_tags,const char *_tag,const char *_value){
