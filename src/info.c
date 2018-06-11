@@ -116,7 +116,6 @@ static int op_tags_ensure_capacity(OpusTags *_tags,size_t _ncomments){
     Trimming requires cleaning up the allocated strings in the old space, and
      is best handled separately if it's ever needed.*/
   OP_ASSERT(_ncomments>=(size_t)cur_ncomments);
-  comment_lengths=_tags->comment_lengths;
   comment_lengths=(int *)_ogg_realloc(_tags->comment_lengths,size);
   if(OP_UNLIKELY(comment_lengths==NULL))return OP_EFAULT;
   if(_tags->comment_lengths==NULL){
