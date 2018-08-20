@@ -1,4 +1,4 @@
-FROM fedora:25
+FROM fedora:28
 MAINTAINER opus@xiph.org
 
 # Linux build.
