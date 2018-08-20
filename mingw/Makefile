@@ -5,8 +5,8 @@ TOOL_PREFIX ?= i686-w64-mingw32
 # To build opusfile under mingw, we first need to build:
 DEPS = ogg opus ssl
 
-ogg_URL := https://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz
-ogg_SHA := 3f687ccdd5ac8b52d76328fbbfebc70c459a40ea891dbf3dccb74a210826e79b
+ogg_URL := https://downloads.xiph.org/releases/ogg/libogg-1.3.3.tar.xz
+ogg_SHA := 4f3fc6178a533d392064f14776b23c397ed4b9f48f5de297aba73b643f955c08
 
 opus_URL := https://archive.mozilla.org/pub/opus/opus-1.2.1.tar.gz
 opus_SHA := cfafd339ccd9c5ef8d6ab15d7e1a412c054bf4cb4ecbbbcc78c12ef2def70732
