@@ -11,8 +11,8 @@ ogg_SHA := 4f3fc6178a533d392064f14776b23c397ed4b9f48f5de297aba73b643f955c08
 opus_URL := https://archive.mozilla.org/pub/opus/opus-1.2.1.tar.gz
 opus_SHA := cfafd339ccd9c5ef8d6ab15d7e1a412c054bf4cb4ecbbbcc78c12ef2def70732
 
-ssl_URL := https://openssl.org/source/openssl-1.0.2l.tar.gz
-ssl_SHA := ce07195b659e75f4e1db43552860070061f156a98bb37b672b101ba6e3ddf30c
+ssl_URL := https://openssl.org/source/openssl-1.0.2p.tar.gz
+ssl_SHA := 50a98e07b1a89eb8f6a99477f262df71c6fa7bef77df4dc83025a2845c827d00
 
 all: $(DEPS)
 
