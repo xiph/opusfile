@@ -41,6 +41,10 @@ Win32 binaries:
   - ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir/mingw \
         PKG_CONFIG_PATH=/path/to/builddir/mingw/lib/pkgconfig
   - make && make check && make -C doc/latex
+    - Doxygen 1.18.13 fails because of unescaped '#' characters in URLs
+      (and escaping them breaks the HTML output).
+      But at least two years old: https://github.com/doxygen/doxygen/issues/6456
+      Doxygen 1.8.3 works.
 - Add api docs to opus-codec.org.
 - mkdir opusfile-${version}-win32
 - Copy AUTHORS COPYING README.md include/opusfile.h to the release dir.
