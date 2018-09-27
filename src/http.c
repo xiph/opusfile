@@ -358,6 +358,11 @@ typedef int op_sock;
 # include <sys/timeb.h>
 # include <openssl/x509v3.h>
 
+# if (defined(LIBRESSL_VERSION_NUMBER)&&OPENSSL_VERSION_NUMBER==0x20000000L)
+#  undef OPENSSL_VERSION_NUMBER
+#  define OPENSSL_VERSION_NUMBER 0x1000115fL
+# endif
+
 /*The maximum number of simultaneous connections.
   RFC 2616 says this SHOULD NOT be more than 2, but everyone on the modern web
    ignores that (e.g., IE 8 bumped theirs up from 2 to 6, Firefox uses 15).
