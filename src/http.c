@@ -3151,8 +3151,10 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
     }break;
     case SEEK_END:{
       /*Check for overflow:*/
-      if(_offset>content_length||_offset<content_length-OP_INT64_MAX)return -1;
-      pos=content_length-_offset;
+      if(_offset<-content_length||_offset>OP_INT64_MAX-content_length){
+        return -1;
+      }
+      pos=content_length+_offset;
     }break;
     default:return -1;
   }

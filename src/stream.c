@@ -72,7 +72,7 @@ static int op_fseek(void *_stream,opus_int64 _offset,int _whence){
      other libraries (that don't use MSVCRT80 from MSVC 2005 by default).
     i686-w64-mingw32 does have fseeko() and respects _FILE_OFFSET_BITS, but I
      don't know how to detect that at compile time.
-    We could just use fseeko64() (which is available in both), but its
+    We could just use fseeko64() (which is available in both), but it's
      implemented using fgetpos()/fsetpos() just like this code, except without
      the overflow checking, so we prefer our version.*/
   opus_int64 pos;
@@ -322,8 +322,8 @@ static int op_mem_seek(void *_stream,opus_int64 _offset,int _whence){
       size=stream->size;
       OP_ASSERT(size>=0);
       /*Check for overflow:*/
-      if(_offset>size||_offset<size-OP_MEM_DIFF_MAX)return -1;
-      pos=(ptrdiff_t)(size-_offset);
+      if(_offset<-size||_offset>OP_MEM_DIFF_MAX-size)return -1;
+      pos=(ptrdiff_t)(size+_offset);
     }break;
     default:return -1;
   }
