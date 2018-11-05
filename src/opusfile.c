@@ -1531,7 +1531,9 @@ static int op_open1(OggOpusFile *_of,
     ogg_sync_wrote(&_of->oy,(long)_initial_bytes);
   }
   /*Can we seek?
-    Stevens suggests the seek test is portable.*/
+    Stevens suggests the seek test is portable.
+    It's actually not for files on win32, but we address that by fixing it in
+     our callback implementation (see stream.c).*/
   seekable=_cb->seek!=NULL&&(*_cb->seek)(_stream,0,SEEK_CUR)!=-1;
   /*If seek is implemented, tell must also be implemented.*/
   if(seekable){
