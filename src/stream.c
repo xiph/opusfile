@@ -63,7 +63,7 @@ static int op_fread(void *_stream,unsigned char *_ptr,int _buf_size){
 
 static int op_fseek(void *_stream,opus_int64 _offset,int _whence){
 #if defined(_WIN32)
-  /*_fseeki64() is not exposed until MSCVCRT80.
+  /*_fseeki64() is not exposed until MSVCRT80.
     This is the default starting with MSVC 2005 (_MSC_VER>=1400), but we want
      to allow linking against older MSVCRT versions for compatibility back to
      XP without installing extra runtime libraries.
@@ -105,7 +105,7 @@ static int op_fseek(void *_stream,opus_int64 _offset,int _whence){
 
 static opus_int64 op_ftell(void *_stream){
 #if defined(_WIN32)
-  /*_ftelli64() is not exposed until MSCVCRT80, and ftello()/ftello64() have
+  /*_ftelli64() is not exposed until MSVCRT80, and ftello()/ftello64() have
      the same problems as fseeko()/fseeko64() in MingW.
     See above for a more detailed explanation.*/
   opus_int64 pos;
