@@ -1990,9 +1990,12 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
           Drain the packets from the page anyway.
           If we don't, they'll still be there when we fetch the next page.
           Then, when we go to pull out packets, we might get more than 255,
-           which would overrun our packet buffer.*/
-        total_duration=op_collect_audio_packets(_of,durations);
-        OP_ASSERT(total_duration>=0);
+           which would overrun our packet buffer.
+          We repeat this call until we get any actual packets, since we might
+           have buffered multiple out-of-sequence pages with no packets on
+           them.*/
+        do total_duration=op_collect_audio_packets(_of,durations);
+        while(total_duration<0);
         if(!_ignore_holes){
           /*Report the hole to the caller after we finish timestamping the
              packets.*/
