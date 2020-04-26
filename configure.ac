@@ -86,7 +86,27 @@ AM_COND_IF(OP_WIN32,
     )
   )
 )
-AC_SEARCH_LIBS(ftime, [compat], , [enable_http=no])
+
+# HTTP support requires either clock_gettime or ftime.  clock_gettime is
+# used only if time.h defines CLOCK_REALTIME and the function is available
+# in the standard library; on platforms such as glibc < 2.17 where -lrt
+# or another library would be required, ftime will be used.
+AS_IF([test "$enable_http" != "no"], [
+  AC_MSG_CHECKING([for clock_gettime])
+  AC_LINK_IFELSE([
+    AC_LANG_PROGRAM([[#include <time.h>]], [[
+      struct timespec ts;
+      return clock_gettime(CLOCK_REALTIME, &ts);
+    ]])
+  ], [
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([OP_HAVE_CLOCK_GETTIME], [1],
+      [Enable use of clock_gettime function])
+  ], [
+    AC_MSG_RESULT([no])
+    AC_SEARCH_LIBS(ftime, [compat], , [enable_http=no])
+  ])
+])
 
 m4_ifndef([PKG_PROG_PKG_CONFIG],
   [m4_fatal([Could not locate the pkg-config autoconf macros.
