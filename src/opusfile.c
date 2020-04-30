@@ -3176,7 +3176,7 @@ static opus_uint32 op_rand(opus_uint32 _seed){
 
 # define OP_GAIN (32753.0F)
 
-# define OP_PRNG_GAIN (1.0F/0xFFFFFFFF)
+# define OP_PRNG_GAIN (1.0F/(float)0xFFFFFFFF)
 
 /*48 kHz noise shaping filter, sd=2.34.*/
 
