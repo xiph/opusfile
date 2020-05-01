@@ -17,7 +17,7 @@ install:
 - 7z x opus.zip -oopus-artifacts
 - move /Y opus-artifacts opus
 - git clone -q https://github.com/xiph/ogg.git ogg
-- msbuild ogg\win32\VS2015\libogg_static.sln /p:Configuration=%CONFIGURATION:-NoHTTP=%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+- msbuild ogg\win32\VS2015\libogg.sln /p:Configuration=%CONFIGURATION:-NoHTTP=%;Platform=%PLATFORM% /m /v:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 - if %CONFIGURATION:-NoHTTP=%==%CONFIGURATION% git clone -q --branch=OpenSSL_1_0_2-stable https://github.com/openssl/openssl.git openssl
 - ps: >-
         If ($env:Platform -Match "Win32") {
