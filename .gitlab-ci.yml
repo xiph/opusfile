@@ -25,3 +25,13 @@ makefile:
     - make -C unix check
   tags:
     - docker
+
+doc:
+  stage: build
+  before_script:
+    - apt-get update &&
+      apt-get install -y doxygen graphviz
+  script:
+    - make -C doc
+  tags:
+    - docker
