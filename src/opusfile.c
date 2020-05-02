@@ -2654,11 +2654,12 @@ int op_pcm_seek(OggOpusFile *_of,ogg_int64_t _pcm_offset){
     ret=op_fetch_and_process_page(_of,NULL,-1,0,1);
     if(OP_UNLIKELY(ret<0))return OP_EBADLINK;
   }
-  OP_ALWAYS_TRUE(!op_granpos_diff(&diff,prev_packet_gp,pcm_start));
-  /*We skipped too far.
+  /*We skipped too far, or couldn't get within 2 billion samples of the target.
     Either the timestamps were illegal or there was a hole in the data.*/
-  if(diff>skip)return OP_EBADLINK;
-  OP_ASSERT(_pcm_offset-diff<OP_INT32_MAX);
+  if(op_granpos_diff(&diff,prev_packet_gp,pcm_start)||diff>skip
+   ||_pcm_offset-diff>=OP_INT32_MAX){
+    return OP_EBADLINK;
+  }
   /*TODO: If there are further holes/illegal timestamps, we still won't decode
      to the correct sample.
     However, at least op_pcm_tell() will report the correct value immediately
