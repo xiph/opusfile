@@ -1,7 +1,7 @@
 # Image from https://hub.docker.com/_/gcc/ based on Debian
 image: gcc
 
-build:
+autotools:
   stage: build
   before_script:
     - apt-get update &&
@@ -12,5 +12,16 @@ build:
     - ./configure
     - make
     - make distcheck
+  tags:
+    - docker
+
+makefile:
+  stage: build
+  before_script:
+    - apt-get update &&
+      apt-get install -y libopus-dev libogg-dev libssl-dev
+  script:
+    - make -C unix
+    - make -C unix check
   tags:
     - docker
