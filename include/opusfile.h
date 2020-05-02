@@ -698,7 +698,7 @@ void opus_picture_tag_clear(OpusPictureTag *_pic) OP_ARG_NONNULL(1);
 #define OP_HTTP_PROXY_PASS_REQUEST            (6720)
 #define OP_GET_SERVER_INFO_REQUEST            (6784)
 
-#define OP_URL_OPT(_request) ((_request)+(char *)0)
+#define OP_URL_OPT(_request) ((char *)(_request))
 
 /*These macros trigger compilation errors or warnings if the wrong types are
    provided to one of the URL options.*/
