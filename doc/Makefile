@@ -30,5 +30,6 @@ distclean: clean
 Doxyfile: Doxyfile.in Makefile ../package_version
 	sed -e 's/@PACKAGE_NAME@/opusfile/' \
 	    -e 's/@PACKAGE_VERSION@/$(PACKAGE_VERSION)/' \
+	    -e 's/@HAVE_DOT@/yes/' \
 	    -e 's/@top_srcdir@/../' \
 	  < $< > $@
