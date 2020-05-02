@@ -108,7 +108,7 @@ $(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll ssleay32.dll)
 	cp ../.libs/libopusurl.dll.a $@
 	cp bin/*.dll $@
 	cp ../examples/.libs/*.exe $@
-	cp /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll $@
+	cp /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_dw2-1.dll $@
 	cp /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll $@
 	i686-w64-mingw32-strip $@/*.exe
 	i686-w64-mingw32-strip $@/*.dll
