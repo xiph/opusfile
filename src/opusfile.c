@@ -1782,6 +1782,7 @@ int op_current_link(const OggOpusFile *_of){
 /*Compute an average bitrate given a byte and sample count.
   Return: The bitrate in bits per second.*/
 static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
+  if(OP_UNLIKELY(_samples<=0))return OP_INT32_MAX;
   /*These rates are absurd, but let's handle them anyway.*/
   if(OP_UNLIKELY(_bytes>(OP_INT64_MAX-(_samples>>1))/(48000*8))){
     ogg_int64_t den;
@@ -1791,7 +1792,6 @@ static opus_int32 op_calc_bitrate(opus_int64 _bytes,ogg_int64_t _samples){
     den=_samples/(48000*8);
     return (opus_int32)((_bytes+(den>>1))/den);
   }
-  if(OP_UNLIKELY(_samples<=0))return OP_INT32_MAX;
   /*This can't actually overflow in normal operation: even with a pre-skip of
      545 2.5 ms frames with 8 streams running at 1282*8+1 bytes per packet
      (1275 byte frames + Opus framing overhead + Ogg lacing values), that all
