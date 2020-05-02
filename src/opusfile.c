@@ -2822,6 +2822,7 @@ static int op_read_native(OggOpusFile *_of,
       /*If we have buffered samples, return them.*/
       if(nsamples>0){
         if(nsamples*nchannels>_buf_size)nsamples=_buf_size/nchannels;
+        OP_ASSERT(_pcm!=NULL||nsamples<=0);
         /*Check nsamples again so we don't pass NULL to memcpy() if _buf_size
            is zero.
           That would technically be undefined behavior, even if the number of
@@ -2885,6 +2886,7 @@ static int op_read_native(OggOpusFile *_of,
           _of->samples_tracked+=trimmed_duration-od_buffer_pos;
         }
         else{
+          OP_ASSERT(_pcm!=NULL);
           /*Otherwise decode directly into the user's buffer.*/
           ret=op_decode(_of,_pcm,pop,duration,nchannels);
           if(OP_UNLIKELY(ret<0))return ret;
