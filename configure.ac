@@ -58,7 +58,7 @@ case $host in
     host_mingw=true
     ;;
 esac
-AM_CONDITIONAL(OP_WIN32, test "$host_mingw" = "true")
+AM_CONDITIONAL(OP_WIN32, [test "$host_mingw" = "true"])
 
 AC_ARG_ENABLE([assertions],
   AS_HELP_STRING([--enable-assertions], [Enable assertions in code]),,
@@ -72,20 +72,21 @@ AC_ARG_ENABLE([http],
   AS_HELP_STRING([--disable-http], [Disable HTTP support]),,
   enable_http=yes)
 
-AM_COND_IF(OP_WIN32,
-  AS_IF([test "$enable_http" != "no"],
-    AC_CHECK_HEADER([winsock2.h],,
+AM_COND_IF(OP_WIN32, [
+  AS_IF([test "$enable_http" != "no"], [
+    AC_CHECK_HEADER([winsock2.h],, [
       AC_MSG_WARN([HTTP support requires a Winsock socket library.])
       enable_http=no
-    )
-  ),
-  AS_IF([test "$enable_http" != "no"],
-    AC_CHECK_HEADER([sys/socket.h],,
+    ])
+  ])
+], [
+  AS_IF([test "$enable_http" != "no"], [
+    AC_CHECK_HEADER([sys/socket.h],, [
       AC_MSG_WARN([HTTP support requires a POSIX socket library.])
       enable_http=no
-    )
-  )
-)
+    ])
+  ])
+])
 
 # HTTP support requires either clock_gettime or ftime.  clock_gettime is
 # used only if time.h defines CLOCK_REALTIME and the function is available
