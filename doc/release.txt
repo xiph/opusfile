@@ -39,41 +39,11 @@ Win32 binaries:
   - Downloads versions of libogg, opus, openssl.
   - Compiles them.
   - Compiles static opusfile and examples against the built deps.
-- Compile dynamic opusfile with:
-  - ./configure --host=i686-w64-mingw32 --prefix=/path/to/builddir/mingw \
-        PKG_CONFIG_PATH=/path/to/builddir/mingw/lib/pkgconfig
-  - make && make check && make -C doc/latex
-    - If Doxygen fails because of unescaped '#' characters in URLs
-      Update to at least Doxygen 1.8.15. Doxygen 1.8.3 also works.
-- mkdir opusfile-${version}-win32
-- Copy AUTHORS COPYING README.md include/opusfile.h to the release dir.
-  - Don't put opusfile.h in an opusfile-${version}-win32/include directory,
-    just put it straight in the release dir.
+- run `make -C mingw package`
+  - Creates an opusfile-${version}-win32.zip binary package.
 - Merge changes between README.md and the version in the last
   binary release. E.g. it's good to include versions of the dependencies,
   release notes, etc.
-- Convert README.md to DOS line endings.
-- Copy .libs/libopusfile-0.dll to the release dir.
-- Copy .libs/libopusfile.a to the release dir.
-- Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
-- Copy .libs/libopusurl-0.dll to the release dir.
-- Copy .libs/libopusurl.a to the release dir.
-- Copy .libs/libopusurl.dll.a to the release dir. (May not be needed?)
-- Copy mingw/bin/*.dll to the release dir for dependencies.
-- Copy any other dependent dlls, e.g. on Fedora 23 I needed to copy
-    /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll
-    /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
-  On Gentoo I needed to copy
-    /usr/lib64/gcc/i686-w64-mingw32/7.3.0/libgcc_s_sjlj-1.dll
-  TODO: It may be possible to avoid this with CFLAGS="-static-libgcc"
-- Copy doc/latex/refman.pdf to opusfile-${version}-win32/opusfile-${version}.pdf
-- Copy examples/.libs/*.exe to the release dir.
-- Run "i686-w64-ming32-strip *.dll *.a *.exe" in the release dir.
-- In the release dir, run:
-    sha256sum * > SHA256SUMS.txt
-    gpg --detach-sign --armor SHA256SUMS.txt
-- In the parent directory, create the archive:
-    zip -r opusfile-${version}-win32.zip opusfile-${version}-win32/*
 - Copy the archive to a clean system and verify the examples work
   to make sure you've included all the necessary libraries.
 - Upload the archive zipfile to websites.
