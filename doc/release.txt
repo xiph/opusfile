@@ -18,6 +18,8 @@ Source release:
 - Update links on <https://www.opus-codec.org/downloads/>.
 - Add a copy of the documentation to <https://www.opus-codec.org/docs/>
   and update the links.
+  - Add doc/latex/refman as docs/opusfile_api-${version}.pdf on opus-codec.org
+  - Add doc/html as docs/opusfile_api-${version} on opus-codec.org
 
 Releases are commited to https://svn.xiph.org/releases/opus/
 which propagates to downloads.xiph.org, and copied manually
@@ -75,11 +77,8 @@ Win32 binaries:
 - Copy the archive to a clean system and verify the examples work
   to make sure you've included all the necessary libraries.
 - Upload the archive zipfile to websites.
-- Verify file permissions and that it's available at the expected
-  URL.
+- Verify file permissions and that it's available at the expected URL.
 - Update links on <http://www.opus-codec.org/downloads/>.
-- Add doc/latex/refman as docs/opusfile_api-${version}.pdf on opus-codec.org
-- Add doc/html as docs/opusfile_api-${version} on opus-codec.org
 
 Binary releases are copied manually to s3 to appear at
 https://archive.mozilla.org/pub/mozilla.org/opus/win32/
