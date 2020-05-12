@@ -85,8 +85,6 @@ ssl_BUILD: $(ssl_DIR)
 	$(MAKE) -C $<
 	$(MAKE) -C $< install
 
-# CROSS_COMPILE="i686-w64-mingw32-" ./Configure mingw no-asm no-shared --prefix=$PWD/mingw && make depend && make -j8 && make install
-
 # Package the binaries.
 DIST_VERSION := $(shell git describe --dirty)
 DIST := opusfile-$(DIST_VERSION)-win32
