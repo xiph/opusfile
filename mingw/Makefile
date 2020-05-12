@@ -78,7 +78,7 @@ opus_BUILD: $(opus_DIR)
 	$(MAKE) -C $< install
 
 ssl_BUILD: $(ssl_DIR)
-	cd $< && ./Configure shared mingw64 no-asm \
+	cd $< && ./Configure shared mingw no-asm \
 	  --prefix=$(CURDIR) \
 	  --cross-compile-prefix=$(TOOL_PREFIX)-
 	$(MAKE) -C $< depend
