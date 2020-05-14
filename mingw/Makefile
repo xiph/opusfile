@@ -94,7 +94,7 @@ $(DIST).zip: $(DIST)
 	zip -r $@ $</*
 	@echo $@ ready to go.
 
-$(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll ssleay32.dll) 
+$(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll libssl-1_1.dll)
 	cd .. && make install
 	mkdir -p $(DIST)
 	cp ../AUTHORS ../COPYING ../README.md ../include/opusfile.h $@
