@@ -11,7 +11,7 @@ RUN dnf install -y mingw32-gcc zip
 
 RUN dnf clean all
 
-RUN git clone https://git.xiph.org/opusfile.git
+RUN git clone https://gitlab.xiph.org/xiph/opusfile.git
 
 WORKDIR opusfile
 RUN git pull
