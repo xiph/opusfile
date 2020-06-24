@@ -23,9 +23,10 @@ libopusfile-0.dll: ../unix/Makefile $(DEPS)
 	$(MAKE) -f $<
 
 opusfile: $(DEPS)
-	../configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR) \
+	$(MKDIR) $@
+	cd $@ && ../configure --host=$(TOOL_PREFIX) --prefix=$(CURDIR) \
 	  PKG_CONFIG_PATH=$(CURDIR)/lib/pkgconfig
-	$(MAKE)
+	$(MAKE) -C $@
 
 clean:
 	$(RM) -r objs
