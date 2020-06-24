@@ -11,8 +11,8 @@ ogg_SHA := c163bc12bc300c401b6aa35907ac682671ea376f13ae0969a220f7ddf71893fe
 opus_URL := https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz
 opus_SHA := 65b58e1e25b2a114157014736a3d9dfeaad8d41be1c8179866f144a2fb44ff9d
 
-ssl_URL := https://openssl.org/source/openssl-1.1.1g.tar.gz
-ssl_SHA := ddb04774f1e32f0c49751e21b67216ac87852ceb056b75209af2443400636d46
+ssl_URL := https://openssl.org/source/openssl-1.0.2u.tar.gz
+ssl_SHA := ecd0c6ffb493dd06707d38b14bb4d8c2288bb7033735606569d8f90f89669d16
 
 all: $(DEPS)
 
@@ -78,7 +78,7 @@ opus_BUILD: $(opus_DIR)
 	$(MAKE) -C $< install
 
 ssl_BUILD: $(ssl_DIR)
-	cd $< && ./Configure shared mingw no-asm \
+	cd $< && ./Configure mingw \
 	  --prefix=$(CURDIR) \
 	  --cross-compile-prefix=$(TOOL_PREFIX)-
 	$(MAKE) -C $< depend
@@ -94,8 +94,8 @@ $(DIST).zip: $(DIST)
 	zip -r $@ $</*
 	@echo $@ ready to go.
 
-$(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll libssl-1_1.dll)
-	cd .. && make install
+$(DIST): $(addprefix $(CURDIR)/bin/, libogg-0.dll libopus-0.dll)
+	#cd .. && make install
 	mkdir -p $(DIST)
 	cp ../AUTHORS ../COPYING ../README.md ../include/opusfile.h $@
 	cp ../.libs/libopusfile-0.dll $@
