@@ -1,6 +1,6 @@
 # Cross-compiling under mingw
 
-Just running `make` in this directory should download
+Just running `make libopusfile-0.dll` in this directory should download
 and build opusfile and its dependencies. Some mingw
 libraries need to be compiled into the final package.
 
@@ -44,12 +44,13 @@ The steps are something like
 - Convert README.md to DOS line endings.
 - Copy .libs/libopusfile-0.dll to the release dir.
 - Copy .libs/libopusfile.a to the release dir.
-- Copy .libs/libopusfile.dll.a to the release dir. (May not be needed?)
 - Copy .libs/libopusurl-0.dll to the release dir.
 - Copy .libs/libopusurl.a to the release dir.
-- Copy .libs/libopusurl.dll.a to the release dir. (May not be needed?)
 - Copy mingw/bin/*.dll to the release dir for dependencies.
-- Copy any other dependent dlls, e.g. on Fedora 23 I needed to copy
+- Copy any other dependent dlls, e.g. on Fedora 32 I needed to copy
+    /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_dw2-1.dll
+    /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+  On Fedora 23 I needed to copy
     /usr/i686-w64-mingw32/sys-root/mingw/bin/libgcc_s_sjlj-1.dll
     /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
   On Gentoo I needed to copy
