@@ -1,7 +1,7 @@
 # Opusfile
 
+[![GitLab Pipeline Status](https://gitlab.xiph.org/xiph/opusfile/badges/master/pipeline.svg)](https://gitlab.xiph.org/xiph/opusfile/commits/master)
 [![Travis Build Status](https://travis-ci.org/xiph/opusfile.svg?branch=master)](https://travis-ci.org/xiph/opusfile)
-[![Jenkins Build Status](https://mf4.xiph.org/jenkins/buildStatus/icon?job=opusfile-autotools)](https://mf4.xiph.org/jenkins/view/opus/job/opusfile-autotools/)
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/xiph/opusfile?branch=master&svg=true)](https://ci.appveyor.com/project/rillian/opusfile)
 
 The opusfile and opusurl libraries provide a high-level API for
