@@ -334,6 +334,9 @@ int SSL_CTX_set_default_verify_paths_win32(SSL_CTX *_ssl_ctx);
 
 # else
 /*Normal Berkeley sockets.*/
+#  ifndef BSD_COMP
+#   define BSD_COMP 1        /* for FIONREAD on Solaris/Illumos */
+#  endif
 #  include <sys/ioctl.h>
 #  include <sys/types.h>
 #  include <sys/socket.h>
