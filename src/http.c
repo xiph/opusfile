@@ -564,7 +564,7 @@ static int op_parse_url_impl(OpusParsedURL *_dst,const char *_src){
   /*Discard the <fragment> component, if any.
     This doesn't get sent to the server.
     Some day we should add support for Media Fragment URIs
-     <http://www.w3.org/TR/media-frags/>.*/
+     <https://www.w3.org/TR/media-frags/>.*/
   if(*path_end=='#')uri_end=path_end+1+strspn(path_end+1,OP_URL_QUERY_FRAG);
   else uri_end=path_end;
   /*If there's anything left, this was not a valid URL.*/

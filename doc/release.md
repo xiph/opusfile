@@ -52,7 +52,7 @@ tag on the github mirror https://github.com/xiph/opusfile/releases
   to make sure you've included all the necessary libraries.
 - Upload the archive zipfile to websites.
 - Verify file permissions and that it's available at the expected URL.
-- Update links on <http://www.opus-codec.org/downloads/>.
+- Update links on <https://www.opus-codec.org/downloads/>.
 
 Binary releases are copied manually to s3 to appear at
 https://archive.mozilla.org/pub/mozilla.org/opus/win32/

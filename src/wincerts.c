@@ -14,7 +14,7 @@
    in their bugtracker for over two years that implements this, without any
    action, so I'm giving up and re-implementing it locally.
 
-  [1] <http://rt.openssl.org/Ticket/Display.html?id=2158>*/
+  [1] <https://rt.openssl.org/Ticket/Display.html?id=2158>*/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
