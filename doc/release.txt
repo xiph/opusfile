@@ -25,6 +25,10 @@ Releases are commited to https://svn.xiph.org/releases/opus/
 which propagates to downloads.xiph.org, and copied manually
 to https://archive.mozilla.org/pub/opus/
 
+Release notes and package links should be added to the corresponding
+tag at https://gitlab.xiph.org/xiph/opusfile so they show on the
+releases page.
+
 Release packages should also be manually attached to the corresponding
 tag on the github mirror https://github.com/xiph/opusfile/releases
 
