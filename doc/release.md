@@ -1,6 +1,6 @@
-= Release checklist =
+# Release checklist
 
-Source release:
+## Source release
 
 - Update OP_LT_* API versioning in configure.ac.
 - Check for uncommitted changes to master.
@@ -32,7 +32,7 @@ releases page.
 Release packages should also be manually attached to the corresponding
 tag on the github mirror https://github.com/xiph/opusfile/releases
 
-Win32 binaries:
+## Win32 binaries
 
 - Install cross-i686-w64-mingw32-gcc and associated binutils.
   - If you skip this step, libopus will still try to build with the system gcc
