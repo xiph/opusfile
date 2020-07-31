@@ -1267,6 +1267,8 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     ret=op_fetch_headers(_of,&links[nlinks].head,&links[nlinks].tags,
      _serialnos,_nserialnos,_cserialnos,last!=next?NULL:&og);
     if(OP_UNLIKELY(ret<0))return ret;
+    /*Mark the current link count so it can be cleaned up on error.*/
+    _of->nlinks=nlinks+1;
     links[nlinks].offset=next;
     links[nlinks].data_offset=_of->offset;
     links[nlinks].serialno=_of->os.serialno;
@@ -1277,8 +1279,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     if(OP_UNLIKELY(ret<0))return ret;
     links[nlinks].pcm_file_offset=total_duration;
     _searched=_of->offset;
-    /*Mark the current link count so it can be cleaned up on error.*/
-    _of->nlinks=++nlinks;
+    ++nlinks;
   }
   /*Last page is in the starting serialno list, so we've reached the last link.
     Now find the last granule position for it (if we didn't the first time we
