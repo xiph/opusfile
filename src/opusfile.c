@@ -1057,9 +1057,11 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
     ogg_uint32_t serialno1;
     opus_int64   offset1;
     /*If the granule position is negative, either it's invalid or we'd cause
-       overflow.*/
+       overflow.
+      If it is larger than OP_INT64_MAX-OP_GP_SPACING_MIN, then no positive
+       granule position would satisfy our minimum spacing requirements below.*/
     gp1=_sr[sri].gp;
-    if(gp1<0)continue;
+    if(gp1<0||gp1>OP_INT64_MAX-OP_GP_SPACING_MIN)continue;
     /*We require some minimum distance between granule positions to make an
        estimate.
       We don't actually know what granule position scheme is being used,
@@ -1067,10 +1069,7 @@ static opus_int64 op_predict_link_start(const OpusSeekRecord *_sr,int _nsr,
       Therefore we require a minimum spacing between them, with the
        expectation that while bitrates and granule position increments might
        vary locally in quite complex ways, they are globally smooth.*/
-    if(OP_UNLIKELY(op_granpos_add(&gp2_min,gp1,OP_GP_SPACING_MIN)<0)){
-      /*No granule position would satisfy us.*/
-      continue;
-    }
+    gp2_min=gp1+OP_GP_SPACING_MIN;
     offset1=_sr[sri].offset;
     serialno1=_sr[sri].serialno;
     for(srj=sri;srj-->0;){
