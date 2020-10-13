@@ -2358,8 +2358,19 @@ static int op_pcm_seek_page(OggOpusFile *_of,
               For very small files (with all of the data in a single page,
                generally 1 second or less), we can loop them continuously
                without seeking at all.*/
-            OP_ALWAYS_TRUE(!op_granpos_add(&prev_page_gp,_of->op[0].granulepos,
-             -op_get_packet_duration(_of->op[0].packet,_of->op[0].bytes)));
+            if(op_granpos_add(&prev_page_gp,_of->op[0].granulepos,
+             -op_get_packet_duration(_of->op[0].packet,_of->op[0].bytes))<0) {
+              /*We validate/sanitize the per-packet timestamps, so the only way
+                 we should fail to calculate a granule position for the
+                 previous page is if the first page with completed packets in
+                 the stream is also the last, and end-trimming causes the
+                 apparent granule position preceding the first sample in the
+                 first packet to underflow.
+                The starting PCM offset is then 0 by spec mandate (see also:
+                 op_find_initial_pcm_offset()).*/
+              OP_ASSERT(_of->op[0].e_o_s);
+              prev_page_gp=0;
+            }
             if(op_granpos_cmp(prev_page_gp,_target_gp)<=0){
               /*Don't call op_decode_clear(), because it will dump our
                  packets.*/
