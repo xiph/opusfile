@@ -2310,13 +2310,18 @@ static int op_pcm_seek_page(OggOpusFile *_of,
       opus_int64 offset;
       int        op_count;
       op_count=_of->op_count;
-      /*The only way the offset can be invalid _and_ we can fail the granule
+      /*The offset can be out of range if we were reading through the stream
+         and encountered a page with the granule position for another link
+         outside of the data range identified during link enumeration when we
+         were opening the file.
+        We will just ignore the current position in that case.
+        The only way the offset can be valid _and_ we can fail the granule
          position checks below is if someone changed the contents of the last
          page since we read it.
-        We'd be within our rights to just return OP_EBADLINK in that case, but
-         we'll simply ignore the current position instead.*/
+        We'd be within our rights to just return OP_EBADLINK, but instead we'll
+         simply ignore the current position in that case, too.*/
       offset=_of->offset;
-      if(op_count>0&&OP_LIKELY(offset<=end)){
+      if(op_count>0&&OP_LIKELY(begin<=offset&&offset<=end)){
         ogg_int64_t gp;
         /*Make sure the timestamp is valid.
           The granule position might be -1 if we collected the packets from a
@@ -2332,7 +2337,6 @@ static int op_pcm_seek_page(OggOpusFile *_of,
             Otherwise it appears using the whole link range to estimate the
              first seek location gives better results, on average.*/
           if(diff<0){
-            OP_ASSERT(offset>=begin);
             if(offset-begin>=end-begin>>1||diff>-OP_CUR_TIME_THRESH){
               best=begin=offset;
               best_gp=pcm_start=gp;
