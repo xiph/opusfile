@@ -1753,7 +1753,7 @@ ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
   }
   OP_ALWAYS_TRUE(!op_granpos_diff(&diff,
    links[_li].pcm_end,links[_li].pcm_start));
-  return pcm_total+diff-links[_li].head.pre_skip;
+  return pcm_total+(diff-links[_li].head.pre_skip);
 }
 
 const OpusHead *op_head(const OggOpusFile *_of,int _li){
