@@ -12,7 +12,7 @@ opusurl depends on opusfile and openssl.
 
 The library is functional, but there are likely issues
 we didn't find in our own testing. Please give feedback
-in #opus on irc.freenode.net or at opus@xiph.org.
+in #opus on irc.libera.chat or at opus@xiph.org.
 
 Programming documentation is available in tree and online at
 https://opus-codec.org/docs/
