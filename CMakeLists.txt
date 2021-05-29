@@ -23,7 +23,6 @@ list(APPEND CMAKE_REQUIRED_LIBRARIES "m")
 check_symbol_exists(lrintf "math.h" OP_HAVE_LRINTF)
 cmake_pop_check_state()
 
-# TODO: shared libraries via BUILD_SHARED_LIBS does not work
 add_library(opusfile
   "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/info.c"
@@ -109,7 +108,7 @@ if(NOT OP_DISABLE_HTTP)
 
   add_library(opusurl
     "${CMAKE_CURRENT_SOURCE_DIR}/src/http.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"  # TODO: duplicated symbols because already defined in opusfile?
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.h"
   )
   add_library(opusfile::opusurl ALIAS opusurl)
