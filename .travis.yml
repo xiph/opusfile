@@ -31,7 +31,6 @@ before_script:
     fi
 
 script:
-  - echo ${PATH}
   - cmake -Bbuild -H.
   - cmake --build build
   - ./autogen.sh
