@@ -4,6 +4,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 include(opusfilePackageVersion)
 get_package_version(PACKAGE_VERSION PROJECT_VERSION)
+string(REPLACE "." ";" PROJECT_VERSION_LIST ${PROJECT_VERSION})
+list(GET PROJECT_VERSION_LIST 0 PROJECT_VERSION_MAJOR)
+list(GET PROJECT_VERSION_LIST 1 PROJECT_VERSION_MINOR)
 
 project(opusfile
   VERSION ${PROJECT_VERSION}
@@ -44,6 +47,8 @@ add_library(opusfile
 add_library(opusfile::opusfile ALIAS opusfile)
 set_target_properties(opusfile PROPERTIES
   PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 target_include_directories(opusfile
   PRIVATE
@@ -134,8 +139,10 @@ if(NOT OP_DISABLE_HTTP)
       "${CMAKE_CURRENT_SOURCE_DIR}/src/winerrno.h"
     )
   endif()
-  set_target_properties(opusfile PROPERTIES
+  set_target_properties(opusurl PROPERTIES
     PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
   )
   target_include_directories(opusurl
     PRIVATE
