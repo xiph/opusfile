@@ -25,7 +25,11 @@ find_package(Opus REQUIRED)
 include(CMakePushCheckState)
 include(CheckSymbolExists)
 cmake_push_check_state(RESET)
-list(APPEND CMAKE_REQUIRED_LIBRARIES "m")
+include(CheckLibraryExists)
+check_library_exists(m lrintf "" OP_HAVE_LIBM)
+if(OP_HAVE_LIBM)
+  list(APPEND CMAKE_REQUIRED_LIBRARIES "m")
+endif()
 check_symbol_exists(lrintf "math.h" OP_HAVE_LRINTF)
 cmake_pop_check_state()
 
@@ -52,6 +56,7 @@ target_link_libraries(opusfile
   PUBLIC
     Ogg::ogg
     Opus::opus
+    $<$<BOOL:OP_HAVE_LIBM>:m>
 )
 target_compile_options(opusfile
   PRIVATE
@@ -155,6 +160,7 @@ if(NOT OP_DISABLE_HTTP)
       OpenSSL::SSL
       $<$<C_COMPILER_ID:MSVC>:ws2_32>
       $<$<C_COMPILER_ID:MSVC>:crypt32>
+      $<$<BOOL:OP_HAVE_LIBM>:m>
   )
   target_compile_options(opusurl
     PRIVATE
