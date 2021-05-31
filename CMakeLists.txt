@@ -38,11 +38,14 @@ add_library(opusfile
   "${CMAKE_CURRENT_SOURCE_DIR}/src/stream.c"
 )
 add_library(opusfile::opusfile ALIAS opusfile)
+set_target_properties(opusfile PROPERTIES
+  PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+)
 target_include_directories(opusfile
   PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
   INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_link_libraries(opusfile
@@ -76,6 +79,7 @@ install(TARGETS opusfile
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 
 if(NOT OP_DISABLE_HTTP)
@@ -113,6 +117,7 @@ if(NOT OP_DISABLE_HTTP)
   cmake_pop_check_state()
 
   add_library(opusurl
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/http.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.h"
@@ -124,11 +129,14 @@ if(NOT OP_DISABLE_HTTP)
       "${CMAKE_CURRENT_SOURCE_DIR}/src/winerrno.h"
     )
   endif()
+  set_target_properties(opusfile PROPERTIES
+    PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+  )
   target_include_directories(opusurl
     PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include"
     INTERFACE
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
   target_compile_definitions(opusurl
@@ -167,6 +175,7 @@ if(NOT OP_DISABLE_HTTP)
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
 endif()
 
