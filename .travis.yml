@@ -23,11 +23,16 @@ addons:
 
 env: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl/lib/pkgconfig
 
+before_script:
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      wget https://cmake.org/files/v3.16/cmake-3.16.9-Linux-x86_64.tar.gz
+      tar xzf cmake-3.16.9-Linux-x86_64.tar.gz
+      export PATH=/cmake-3.16.9-Linux-x86_64/bin:${PATH}
+    fi
+
 script:
-  - wget https://github.com/Kitware/CMake/releases/download/v3.20.3/cmake-3.20.3-linux-x86_64.tar.gz
-  - tar xzf cmake-3.20.3-linux-x86_64.tar.gz
-  - cmake-3.20.3-linux-x86_64/bin/cmake -Bbuild -H.
-  - cmake-3.20.3-linux-x86_64/bin/cmake --build build
+  - cmake -Bbuild -H.
+  - cmake --build build
   - ./autogen.sh
   - ./configure
   - make
