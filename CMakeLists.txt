@@ -10,12 +10,12 @@ project(opusfile
   LANGUAGES C
 )
 
-# TODO: build documentation?
 option(OP_DISABLE_HTTP "Disable HTTP support" OFF)
 option(OP_DISABLE_FLOAT_API "Disable floating-point API" OFF)
 option(OP_FIXED_POINT "Enable fixed-point calculation" OFF)
 option(OP_ENABLE_ASSERTIONS "Enable assertions in code" OFF)
 option(OP_DISABLE_EXAMPLES "Do not build example applications" OFF)
+option(OP_DISABLE_DOCS "Do not build API documentation" OFF)
 
 include(GNUInstallDirs)
 
@@ -236,6 +236,28 @@ if(NOT OP_DISABLE_EXAMPLES)
       $<$<C_COMPILER_ID:Clang,GNU>:-Wno-long-long>
       $<$<C_COMPILER_ID:Clang,GNU>:-fvisibility=hidden>
   )
+endif()
+
+if(NOT OP_DISABLE_DOCS)
+  find_package(Doxygen OPTIONAL_COMPONENTS dot)
+
+  set(DOXYGEN_PROJECT_BRIEF "Stand-alone decoder library for .opus files.")
+  set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
+
+  set(DOXYGEN_QUIET YES)
+  set(DOXYGEN_WARNINGS YES)
+  set(DOXYGEN_WARN_IF_UNDOCUMENTED YES)
+  set(DOXYGEN_WARN_IF_DOC_ERROR YES)
+  set(DOXYGEN_WARN_NO_PARAMDOC YES)
+
+  set(DOXYGEN_JAVADOC_AUTOBRIEF YES)
+  set(DOXYGEN_SORT_MEMBER_DOCS NO)
+
+  set(DOXYGEN_PROJECT_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/doc/opus_logo.svg")
+
+  set(DOXYGEN_FULL_PATH_NAMES NO)
+
+  doxygen_add_docs(doxygen "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h" ALL USE_STAMP_FILE)
 endif()
 
 install(EXPORT opusfileTargets
