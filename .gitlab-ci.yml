@@ -15,6 +15,20 @@ autotools:
   tags:
     - docker
 
+cmake:
+  stage: build
+  before_script:
+    - apt-get update &&
+      apt-get install -y libopus-dev libogg-dev libssl-dev
+        doxygen
+  script:
+    - wget https://github.com/Kitware/CMake/releases/download/v3.20.3/cmake-3.20.3-linux-x86_64.tar.gz
+    - tar xzvf cmake-3.20.3-linux-x86_64.tar.gz
+    - cmake-3.20.3-linux-x86_64/bin/cmake -Bbuild -H.
+    - cmake-3.20.3-linux-x86_64/bin/cmake --build build
+  tags:
+    - docker
+
 makefile:
   stage: build
   before_script:
