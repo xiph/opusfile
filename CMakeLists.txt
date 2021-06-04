@@ -61,7 +61,7 @@ target_link_libraries(opusfile
   PUBLIC
     Ogg::ogg
     Opus::opus
-    $<$<BOOL:OP_HAVE_LIBM>:m>
+    $<$<BOOL:${OP_HAVE_LIBM}>:m>
 )
 target_compile_options(opusfile
   PRIVATE
@@ -167,7 +167,7 @@ if(NOT OP_DISABLE_HTTP)
       OpenSSL::SSL
       $<$<C_COMPILER_ID:MSVC>:ws2_32>
       $<$<C_COMPILER_ID:MSVC>:crypt32>
-      $<$<BOOL:OP_HAVE_LIBM>:m>
+      $<$<BOOL:${OP_HAVE_LIBM}>:m>
   )
   target_compile_options(opusurl
     PRIVATE
