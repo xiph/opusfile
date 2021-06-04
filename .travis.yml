@@ -17,7 +17,6 @@ addons:
       - libogg-dev
       - libopus-dev
       - libssl-dev
-      - wget
   homebrew:
     brewfile: true
 
@@ -25,7 +24,7 @@ env: PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/opt/openssl/lib/pkgconfig
 
 before_script:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      wget https://cmake.org/files/v3.16/cmake-3.16.9-Linux-x86_64.tar.gz;
+      curl -O https://cmake.org/files/v3.16/cmake-3.16.9-Linux-x86_64.tar.gz;
       tar xzf cmake-3.16.9-Linux-x86_64.tar.gz;
       export PATH="${PWD}/cmake-3.16.9-Linux-x86_64/bin:${PATH}";
     fi
