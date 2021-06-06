@@ -41,6 +41,11 @@ endif()
 set(cmake_fd_required_arg)
 set(cmake_fd_quiet_arg)
 
+if (NOT @OP_DISABLE_HTTP@)
+  include(CMakeFindDependencyMacro)
+  find_dependency(OpenSSL)
+endif()
+
 # Including targets of opusfile
 include("${CMAKE_CURRENT_LIST_DIR}/opusfileTargets.cmake")
 
