@@ -1,3 +1,5 @@
+@PACKAGE_INIT@
+
 # Ported from CMakeFindDependencyMacro.cmake (finding configs and using pkgconfig as fallback)
 set(cmake_quiet_arg)
 if(${CMAKE_FIND_PACKAGE_NAME}_FIND_QUIETLY)
@@ -41,3 +43,5 @@ set(cmake_fd_quiet_arg)
 
 # Including targets of opusfile
 include("${CMAKE_CURRENT_LIST_DIR}/opusfileTargets.cmake")
+
+check_required_components(opusfile)

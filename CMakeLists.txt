@@ -282,6 +282,12 @@ install(EXPORT opusfileTargets
   NAMESPACE opusfile::
 )
 include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/opusfileConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfig.cmake"
+  INSTALL_DESTINATION
+    "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
+)
 write_basic_package_version_file(
   "opusfileConfigVersion.cmake"
   VERSION "${PACKAGE_VERSION}"
@@ -289,7 +295,7 @@ write_basic_package_version_file(
 )
 install(
   FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/opusfileConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfigVersion.cmake"
   DESTINATION
     "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
