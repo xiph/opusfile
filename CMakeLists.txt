@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-include(opusfilePackageVersion)
+include(OpusFilePackageVersion)
 get_package_version(PACKAGE_VERSION PROJECT_VERSION)
 string(REPLACE "." ";" PROJECT_VERSION_LIST ${PROJECT_VERSION})
 list(GET PROJECT_VERSION_LIST 0 PROJECT_VERSION_MAJOR)
 list(GET PROJECT_VERSION_LIST 1 PROJECT_VERSION_MINOR)
 
-project(opusfile
+project(OpusFile
   VERSION ${PROJECT_VERSION}
   LANGUAGES C
 )
@@ -44,7 +44,7 @@ add_library(opusfile
   "${CMAKE_CURRENT_SOURCE_DIR}/src/opusfile.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/stream.c"
 )
-add_library(opusfile::opusfile ALIAS opusfile)
+add_library(OpusFile::opusfile ALIAS opusfile)
 set_target_properties(opusfile PROPERTIES
   PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
   VERSION ${PROJECT_VERSION}
@@ -84,7 +84,7 @@ target_compile_definitions(opusfile
     $<$<BOOL:${OP_HAVE_LRINTF}>:OP_HAVE_LRINTF>
 )
 install(TARGETS opusfile
-  EXPORT opusfileTargets
+  EXPORT OpusFileTargets
   RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -127,7 +127,7 @@ if(NOT OP_DISABLE_HTTP)
     "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.h"
   )
-  add_library(opusfile::opusurl ALIAS opusurl)
+  add_library(OpusFile::opusurl ALIAS opusurl)
   if(WIN32)
     target_sources(opusurl PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/src/wincerts.c"
@@ -178,7 +178,7 @@ if(NOT OP_DISABLE_HTTP)
       $<$<C_COMPILER_ID:Clang,GNU>:-fvisibility=hidden>
   )
   install(TARGETS opusurl
-    EXPORT opusfileTargets
+    EXPORT OpusFileTargets
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -191,7 +191,7 @@ if(NOT OP_DISABLE_EXAMPLES)
   add_executable(opusfile_example
     "${CMAKE_CURRENT_SOURCE_DIR}/examples/opusfile_example.c"
   )
-  add_executable(opusfile::opusfile_example ALIAS opusfile_example)
+  add_executable(OpusFile::opusfile_example ALIAS opusfile_example)
   if(WIN32)
     target_sources(opusfile_example PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/examples/win32utf8.c"
@@ -224,7 +224,7 @@ if(NOT OP_DISABLE_EXAMPLES)
   add_executable(seeking_example
     "${CMAKE_CURRENT_SOURCE_DIR}/examples/seeking_example.c"
   )
-  add_executable(opusfile::seeking_example ALIAS seeking_example)
+  add_executable(OpusFile::seeking_example ALIAS seeking_example)
   if(WIN32)
     target_sources(seeking_example PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/examples/win32utf8.c"
@@ -277,26 +277,26 @@ if(NOT OP_DISABLE_DOCS)
   doxygen_add_docs(doxygen "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h" ALL USE_STAMP_FILE)
 endif()
 
-install(EXPORT opusfileTargets
+install(EXPORT OpusFileTargets
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
-  NAMESPACE opusfile::
+  NAMESPACE OpusFile::
 )
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/opusfileConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfig.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/OpusFileConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/OpusFileConfig.cmake"
   INSTALL_DESTINATION
     "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
 )
 write_basic_package_version_file(
-  "opusfileConfigVersion.cmake"
+  "OpusFileConfigVersion.cmake"
   VERSION "${PACKAGE_VERSION}"
   COMPATIBILITY AnyNewerVersion
 )
 install(
   FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/OpusFileConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/OpusFileConfigVersion.cmake"
   DESTINATION
     "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
 )
