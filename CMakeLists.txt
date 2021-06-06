@@ -283,7 +283,7 @@ install(EXPORT opusfileTargets
 )
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/opusfileConfig.cmake.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/opusfileConfig.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/opusfileConfig.cmake"
   INSTALL_DESTINATION
     "${CMAKE_INSTALL_LIBDIR}/cmake/opusfile"
