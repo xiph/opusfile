@@ -47,3 +47,4 @@ test-driver
 unix/objs
 unix/opusfile_example
 unix/seeking_example
+build
