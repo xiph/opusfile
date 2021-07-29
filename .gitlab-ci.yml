@@ -1,5 +1,8 @@
-# Image from https://hub.docker.com/_/gcc/ based on Debian
-image: gcc:9
+default:
+  tags:
+    - docker
+  # Image from https://hub.docker.com/_/gcc/ based on Debian
+  image: gcc:9
 
 autotools:
   stage: build
@@ -12,8 +15,6 @@ autotools:
     - ./configure
     - make
     - make distcheck
-  tags:
-    - docker
 
 makefile:
   stage: build
@@ -23,8 +24,6 @@ makefile:
   script:
     - make -C unix
     - make -C unix check
-  tags:
-    - docker
 
 doc:
   stage: build
@@ -33,5 +32,3 @@ doc:
       apt-get install -y doxygen graphviz
   script:
     - make -C doc
-  tags:
-    - docker
