@@ -58,6 +58,7 @@ jobs:
           which openssl
           openssl version
           echo $PKG_CONFIG_PATH
+          pkg-config --cflags --libs openssl
           find /usr/local -name openssl.pc
           brew link openssl
           openssl version
@@ -66,6 +67,8 @@ jobs:
           which openssl
           openssl version
           pkg-config --cflags --libs openssl
+        env:
+          PKG_CONFIG_PATH: /usr/local/opt/openssl@1.1/lib/pkgconfig
 
       - name: Build with Autotools
         if: startsWith(matrix.build-system,'autotools')
