@@ -59,7 +59,9 @@ jobs:
           openssl version
           echo $PKG_CONFIG_PATH
           find /usr/local -name openssl.pc
-          find /usr -name openssl.pc
+          brew link openssl
+          openssl version
+          pkg-config --cflags --libs openssl
           brew install openssl@1.1
           which openssl
           openssl version
