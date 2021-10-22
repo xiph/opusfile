@@ -158,7 +158,7 @@ typedef struct OggOpusFile       OggOpusFile;
 
 /**A request did not succeed.*/
 #define OP_FALSE         (-1)
-/*Currently not used externally.*/
+/**Currently not used externally.**/
 #define OP_EOF           (-2)
 /**There was a hole in the page sequence numbers (e.g., a page was corrupt or
     missing).*/
@@ -185,7 +185,7 @@ typedef struct OggOpusFile       OggOpusFile;
 #define OP_EBADHEADER    (-133)
 /**The ID header contained an unrecognized version number.*/
 #define OP_EVERSION      (-134)
-/*Currently not used at all.*/
+/**Currently not used at all.**/
 #define OP_ENOTAUDIO     (-135)
 /**An audio packet failed to decode properly.
    This is usually caused by a multistream Ogg packet where the durations of
