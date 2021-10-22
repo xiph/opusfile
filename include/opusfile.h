@@ -1159,20 +1159,16 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                          This value will be passed verbatim as the first
                           argument to all of the callbacks.
    \param _cb            The callbacks with which to access the stream.
-                         <code><a href="#op_read_func">read()</a></code> must
-                          be implemented.
-                         <code><a href="#op_seek_func">seek()</a></code> and
-                          <code><a href="#op_tell_func">tell()</a></code> may
-                          be <code>NULL</code>, or may always return -1 to
-                          indicate a stream is unseekable, but if
-                          <code><a href="#op_seek_func">seek()</a></code> is
-                          implemented and succeeds on a particular stream, then
-                          <code><a href="#op_tell_func">tell()</a></code> must
-                          also.
-                         <code><a href="#op_close_func">close()</a></code> may
-                          be <code>NULL</code>, but if it is not, it will be
-                          called when the \c OggOpusFile is destroyed by
-                          op_free().
+                         \ref op_read_func "read()" must be implemented.
+                         \ref op_seek_func "seek()" and \ref op_tell_func
+                          "tell()" may be <code>NULL</code>, or may always
+                          return -1 to indicate a stream is unseekable, but if
+                          \ref op_seek_func "seek()" is implemented and
+                          succeeds on a particular stream, then \ref
+                          op_tell_func "tell()" must also.
+                         \ref op_close_func "close()" may be <code>NULL</code>,
+                          but if it is not, it will be called when the \c
+                          OggOpusFile is destroyed by op_free().
                          It will not be called if op_open_callbacks() fails
                           with an error.
    \param _initial_data  An initial buffer of data from the start of the
@@ -1183,10 +1179,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                           stream to be opened, even if it is unseekable.
    \param _initial_bytes The number of bytes in \a _initial_data.
                          If the stream is seekable, its current position (as
-                          reported by
-                          <code><a href="#opus_tell_func">tell()</a></code>
-                          at the start of this function) must be equal to
-                          \a _initial_bytes.
+                          reported by \ref op_tell_func "tell()" at the start
+                          of this function) must be equal to \a _initial_bytes.
                          Otherwise, seeking to absolute positions will
                           generate inconsistent results.
    \param[out] _error    Returns 0 on success, or a failure code on error.
@@ -1206,11 +1200,10 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_open_url(const char *_url,
                             implemented, such as an unsupported channel
                             family.</dd>
                            <dt>#OP_EINVAL</dt>
-                           <dd><code><a href="#op_seek_func">seek()</a></code>
-                            was implemented and succeeded on this source, but
-                            <code><a href="#op_tell_func">tell()</a></code>
-                            did not, or the starting position indicator was
-                            not equal to \a _initial_bytes.</dd>
+                           <dd>\ref op_seek_func "seek()" was implemented and
+                            succeeded on this source, but \ref op_tell_func
+                            "tell()" did not, or the starting position
+                            indicator was not equal to \a _initial_bytes.</dd>
                            <dt>#OP_ENOTFORMAT</dt>
                            <dd>The stream contained a link that did not have
                             any logical Opus streams in it.</dd>
@@ -1341,20 +1334,16 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,
                          This value will be passed verbatim as the first
                           argument to all of the callbacks.
    \param _cb            The callbacks with which to access the stream.
-                         <code><a href="#op_read_func">read()</a></code> must
-                          be implemented.
-                         <code><a href="#op_seek_func">seek()</a></code> and
-                          <code><a href="#op_tell_func">tell()</a></code> may
-                          be <code>NULL</code>, or may always return -1 to
-                          indicate a stream is unseekable, but if
-                          <code><a href="#op_seek_func">seek()</a></code> is
-                          implemented and succeeds on a particular stream, then
-                          <code><a href="#op_tell_func">tell()</a></code> must
-                          also.
-                         <code><a href="#op_close_func">close()</a></code> may
-                          be <code>NULL</code>, but if it is not, it will be
-                          called when the \c OggOpusFile is destroyed by
-                          op_free().
+                         \ref op_read_func "read()" must be implemented.
+                         \ref op_seek_func "seek()" and \ref op_tell_func
+                          "tell()" may be <code>NULL</code>, or may always
+                          return -1 to indicate a stream is unseekable, but if
+                          \ref op_seek_func "seek()" is implemented and
+                          succeeds on a particular stream, then \ref
+                          op_tell_func "tell()" must also.
+                         \ref op_close_func "close()" may be <code>NULL</code>,
+                          but if it is not, it will be called when the \c
+                          OggOpusFile is destroyed by op_free().
                          It will not be called if op_open_callbacks() fails
                           with an error.
    \param _initial_data  An initial buffer of data from the start of the
@@ -1367,9 +1356,8 @@ OP_WARN_UNUSED_RESULT OggOpusFile *op_test_url(const char *_url,
    \param _initial_bytes The number of bytes in \a _initial_data.
                          If the stream is seekable, its current position (as
                           reported by
-                          <code><a href="#opus_tell_func">tell()</a></code>
-                          at the start of this function) must be equal to
-                          \a _initial_bytes.
+                          \ref op_tell_func "tell()" at the start of this
+                          function) must be equal to \a _initial_bytes.
                          Otherwise, seeking to absolute positions will
                           generate inconsistent results.
    \param[out] _error    Returns 0 on success, or a failure code on error.
@@ -1442,13 +1430,12 @@ void op_free(OggOpusFile *_of);
 /**Returns whether or not the stream being read is seekable.
    This is true if
    <ol>
-   <li>The <code><a href="#op_seek_func">seek()</a></code> and
-    <code><a href="#op_tell_func">tell()</a></code> callbacks are both
-    non-<code>NULL</code>,</li>
-   <li>The <code><a href="#op_seek_func">seek()</a></code> callback was
-    successfully executed at least once, and</li>
-   <li>The <code><a href="#op_tell_func">tell()</a></code> callback was
-    successfully able to report the position indicator afterwards.</li>
+   <li>The \ref op_seek_func "seek()" and \ref op_tell_func "tell()"
+    callbacks are both non-<code>NULL</code>,</li>
+   <li>The \ref op_seek_func "seek()" callback was successfully executed at
+    least once, and</li>
+   <li>The \ref op_tell_func "tell()" callback was successfully able to report
+    the position indicator afterwards.</li>
    </ol>
    This function may be called on partially-opened streams.
    \param _of The \c OggOpusFile whose seekable status is to be returned.
