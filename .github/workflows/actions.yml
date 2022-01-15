@@ -67,14 +67,6 @@ jobs:
         run: |
           brew bundle
 
-      - name: macOS diagnostics
-        if: startsWith(matrix.os,'macos')
-        run: |
-          which openssl
-          openssl version
-          echo $PKG_CONFIG_PATH
-          pkg-config --cflags --libs openssl
-
       - name: Build with Autotools
         if: startsWith(matrix.build-system,'autotools')
         run: |
