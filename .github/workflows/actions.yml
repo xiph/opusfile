@@ -103,7 +103,7 @@ jobs:
           make -C unix check
 
       - name: Build Documentation
-        if: !startsWith(matrix.build-system,'cmake')
+        if: ${{ ! startsWith(matrix.build-system,'cmake') }}
         run: |
           make -C doc
 
