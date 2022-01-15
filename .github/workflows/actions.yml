@@ -58,7 +58,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libopus-dev libogg-dev libssl-dev
-          sudo apt-get install -y doxygen
+          sudo apt-get install -y doxygen graphviz
 
       - name: Install macOS dependencies
         if: startsWith(matrix.os,'macos')
