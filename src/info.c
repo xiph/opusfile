@@ -84,7 +84,7 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
   {
     size_t size;
     int ci;
-    if (head.channel_count != 16)
+    if (head.channel_count < 1 || head.channel_count > OP_NCHANNELS_MAX)
       return OP_EBADHEADER;
     size = 21 + head.channel_count;
     if (_len < size || head.version <= 1 && _len > size)
