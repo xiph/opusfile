@@ -36,6 +36,17 @@ endif()
 check_symbol_exists(lrintf "math.h" OP_HAVE_LRINTF)
 cmake_pop_check_state()
 
+# Helper function to configure pkg-config files
+function(configure_pkg_config_file pkg_config_file_in)
+    set(prefix ${CMAKE_INSTALL_PREFIX})
+    set(exec_prefix ${CMAKE_INSTALL_FULL_BINDIR})
+    set(libdir ${CMAKE_INSTALL_FULL_LIBDIR})
+    set(includedir ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+    set(VERSION ${PROJECT_VERSION})
+    string(REPLACE ".in" "" pkg_config_file ${pkg_config_file_in})
+    configure_file(${pkg_config_file_in} ${pkg_config_file} @ONLY)
+endfunction()
+
 add_library(opusfile
   "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/info.c"
@@ -83,6 +94,10 @@ target_compile_definitions(opusfile
     $<$<BOOL:${OP_ENABLE_ASSERTIONS}>:OP_ENABLE_ASSERTIONS>
     $<$<BOOL:${OP_HAVE_LRINTF}>:OP_HAVE_LRINTF>
 )
+if(OP_HAVE_LIBM)
+  set(lrintf_lib "-lm")
+endif()
+configure_pkg_config_file(opusfile.pc.in)
 install(TARGETS opusfile
   EXPORT OpusFileTargets
   RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -90,6 +105,9 @@ install(TARGETS opusfile
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
   PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opusfile.pc
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
 if(NOT OP_DISABLE_HTTP)
@@ -177,6 +195,8 @@ if(NOT OP_DISABLE_HTTP)
       $<$<C_COMPILER_ID:Clang,GNU>:-Wno-long-long>
       $<$<C_COMPILER_ID:Clang,GNU>:-fvisibility=hidden>
   )
+  set(openssl "openssl")
+  configure_pkg_config_file(opusurl.pc.in)
   install(TARGETS opusurl
     EXPORT OpusFileTargets
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -184,6 +204,9 @@ if(NOT OP_DISABLE_HTTP)
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
     PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
+  )
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opusurl.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
   )
 endif()
 
