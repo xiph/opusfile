@@ -47,6 +47,6 @@ if (NOT @OP_DISABLE_HTTP@)
 endif()
 
 # Including targets of opusfile
-include("${CMAKE_CURRENT_LIST_DIR}/opusfileTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/OpusFileTargets.cmake")
 
-check_required_components(opusfile)
+check_required_components(OpusFile)
