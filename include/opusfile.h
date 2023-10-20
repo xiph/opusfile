@@ -266,6 +266,8 @@ struct OpusHead{
      Otherwise, it refers to the output of the uncoupled stream
       <code>(index-coupled_count)</code>.*/
   unsigned char mapping[OPUS_CHANNEL_COUNT_MAX];
+
+  unsigned char dmatrix[38*38*2];
 };
 
 /**The metadata from an Ogg Opus stream.
