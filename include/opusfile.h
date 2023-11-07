@@ -108,7 +108,9 @@ extern "C" {
 # include <stdio.h>
 # include <ogg/ogg.h>
 # include <opus_multistream.h>
-
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+#include <opus_projection.h>
+#endif
 /**@cond PRIVATE*/
 
 /*Enable special features for gcc and gcc-compatible compilers.*/

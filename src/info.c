@@ -113,7 +113,7 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
     size_t size;
     int ci;
     int i, k, s;
-    fprintf(stderr, "Mapping family  3 not actually implemented!\n");
+    fprintf(stderr, "Mapping family  3!\n");
     if (head.channel_count < 1 || head.channel_count > OP_NCHANNELS_MAX)
       return OP_EBADHEADER;
 
@@ -146,8 +146,7 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
       k=ci*(head.stream_count+head.coupled_count)+i;
       s = _data[21 + 2*k + 1] << 8 | _data[21 + 2*k];
       s = ((s & 0xFFFF) ^ 0x8000) - 0x8000;
-      /* fprintf(stderr, "%s%6d%s",ci==0?"\t[":", ",s,ci==head.channel_count-1?"]\n":""); */
-
+      fprintf(stderr, "%s%6d%s",ci==0?"\t[":", ",s,ci==head.channel_count-1?"]\n":"");
       _head->dmatrix[k] = s;
       }
     }

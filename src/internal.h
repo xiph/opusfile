@@ -213,6 +213,8 @@ struct OggOpusFile{
   int                op_count;
   /*Central working state for the packet-to-PCM decoder.*/
   OpusMSDecoder     *od;
+  /*Projection decoder state.*/
+  OpusProjectionDecoder *st;
   /*The application-provided packet decode callback.*/
   op_decode_cb_func  decode_cb;
   /*The application-provided packet decode callback context.*/

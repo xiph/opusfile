@@ -27,6 +27,8 @@
 #include <math.h>
 
 #include "opusfile.h"
+#include "opus_projection.h"
+
 
 /*This implementation is largely based off of libvorbisfile.
   All of the Ogg bits work roughly the same, though I have made some
@@ -1335,7 +1337,12 @@ static void op_update_gain(OggOpusFile *_of){
   gain_q8=OP_CLAMP(-32768,gain_q8,32767);
   OP_ASSERT(_of->od!=NULL);
 #if defined(OPUS_SET_GAIN)
-  opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(gain_q8));
+  if(_of->od==NULL){
+    fprintf(stderr, "Set gain not available.\n");
+  }
+  else{
+    opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(gain_q8));
+  }
 #else
 /*A fallback that works with both float and fixed-point is a bunch of work,
    so just force people to use a sufficiently new version.
@@ -1366,10 +1373,25 @@ static int op_make_decode_ready(OggOpusFile *_of){
   }
   else{
     int err;
-    opus_multistream_decoder_destroy(_of->od);
-    _of->od=opus_multistream_decoder_create(48000,channel_count,
-     stream_count,coupled_count,head->mapping,&err);
-    if(_of->od==NULL)return OP_EFAULT;
+    if(head->mapping_family==3){  /*probably also better for mapping 2*/
+      OpusProjectionDecoder *st_dec;
+      /*opus_projection_decoder_destroy(_of->od);*/
+      const unsigned char *matrix = head->dmatrix;
+      /* opus_int32 matrix_size = mapping_matrix_get_size(stream_count + coupled_count, channel_count); */
+      opus_int32 matrix_size = (stream_count + coupled_count) * channel_count * sizeof(opus_int16);
+      st_dec = opus_projection_decoder_create(48000,channel_count,
+      stream_count,coupled_count,matrix,matrix_size,&err);
+      _of->od = NULL;
+      _of->st = st_dec;
+      /*Override od*/
+      if(_of->st==NULL)return OP_EFAULT;
+    }
+    else{
+      opus_multistream_decoder_destroy(_of->od);
+      _of->od=opus_multistream_decoder_create(48000,channel_count,
+      stream_count,coupled_count,head->mapping,&err);
+      if(_of->od==NULL)return OP_EFAULT;
+    }
     _of->od_stream_count=stream_count;
     _of->od_coupled_count=coupled_count;
     _of->od_channel_count=channel_count;
@@ -2809,8 +2831,15 @@ static int op_decode(OggOpusFile *_of,op_sample *_pcm,
     ret=opus_multistream_decode(_of->od,
      _op->packet,_op->bytes,_pcm,_nsamples,0);
 #else
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+if(_of->st!=NULL){
+    ret=opus_projection_decode_float(_of->st,
+     _op->packet,_op->bytes,_pcm,_nsamples,0);
+}
+#else
     ret=opus_multistream_decode_float(_of->od,
      _op->packet,_op->bytes,_pcm,_nsamples,0);
+#endif
 #endif
     OP_ASSERT(ret<0||ret==_nsamples);
   }
