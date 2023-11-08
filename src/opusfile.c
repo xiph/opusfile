@@ -1376,11 +1376,12 @@ static int op_make_decode_ready(OggOpusFile *_of){
     if(head->mapping_family==3){  /*probably also better for mapping 2*/
       OpusProjectionDecoder *st_dec;
       /*opus_projection_decoder_destroy(_of->od);*/
-      const unsigned char *matrix = head->dmatrix;
       /* opus_int32 matrix_size = mapping_matrix_get_size(stream_count + coupled_count, channel_count); */
-      opus_int32 matrix_size = (stream_count + coupled_count) * channel_count * sizeof(opus_int16);
+      const int dmatrix_size = (stream_count + coupled_count) * channel_count *
+        sizeof(opus_int16);
+      opus_projection_decoder_destroy(_of->st);
       st_dec = opus_projection_decoder_create(48000,channel_count,
-      stream_count,coupled_count,matrix,matrix_size,&err);
+      stream_count,coupled_count,head->dmatrix,dmatrix_size,&err);
       _of->od = NULL;
       _of->st = st_dec;
       /*Override od*/

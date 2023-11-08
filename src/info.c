@@ -111,9 +111,9 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
       (including the non-diegetic stereo track). For other orders with no
       demixing matrices currently available, use channel mapping 2.*/
     size_t size;
-    int ci;
-    int i, k, s;
-    fprintf(stderr, "Mapping family  3!\n");
+    size_t dmatrix_size;
+    int i;
+    fprintf(stderr, "Mapping family 3!\n");
     if (head.channel_count < 1 || head.channel_count > OP_NCHANNELS_MAX)
       return OP_EBADHEADER;
 
@@ -132,26 +132,13 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
     if (_len < size || head.version <= 1 && _len > size)
       return OP_EBADHEADER;
 
-
-    for (i = 0; i < head.stream_count+head.coupled_count; i++)
-    {
-      for (ci = 0; ci < head.channel_count; ci++)
-      {
-      /*if (_data[21 + j] >= (head.stream_count+head.coupled_count)*2 &&
-          _data[21 + j] != 255)
-      {
-        return OP_EBADHEADER;
-      }*/
-
-      k=ci*(head.stream_count+head.coupled_count)+i;
-      s = _data[21 + 2*k + 1] << 8 | _data[21 + 2*k];
-      s = ((s & 0xFFFF) ^ 0x8000) - 0x8000;
-      fprintf(stderr, "%s%6d%s",ci==0?"\t[":", ",s,ci==head.channel_count-1?"]\n":"");
-      _head->dmatrix[k] = s;
-      }
+    dmatrix_size = head.channel_count*(head.stream_count+head.coupled_count) * 
+      sizeof(opus_int16);
+    memcpy(_head->dmatrix, _data + 21, dmatrix_size);
+    if (_head != NULL){
+      for (i = 0; i < head.channel_count; i++) 
+        _head->mapping[i] = i;
     }
-    if (_head != NULL)
-      memcpy(_head->mapping, _data + 21, head.channel_count);
   }
   /*General purpose players should not attempt to play back content with
      channel mapping family 255.*/
