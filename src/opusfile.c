@@ -2832,15 +2832,19 @@ static int op_decode(OggOpusFile *_of,op_sample *_pcm,
     ret=opus_multistream_decode(_of->od,
      _op->packet,_op->bytes,_pcm,_nsamples,0);
 #else
-#ifdef OPUS_HAVE_OPUS_PROJECTION_H
-if(_of->st!=NULL){
-    ret=opus_projection_decode_float(_of->st,
-     _op->packet,_op->bytes,_pcm,_nsamples,0);
-}
-#else
+#  ifdef OPUS_HAVE_OPUS_PROJECTION_H
+    if(_of->st!=NULL){
+      ret=opus_projection_decode_float(_of->st,
+       _op->packet,_op->bytes,_pcm,_nsamples,0);
+    }
+    else{
+      ret=opus_multistream_decode_float(_of->od,
+       _op->packet,_op->bytes,_pcm,_nsamples,0);
+    }
+#  else
     ret=opus_multistream_decode_float(_of->od,
-     _op->packet,_op->bytes,_pcm,_nsamples,0);
-#endif
+      _op->packet,_op->bytes,_pcm,_nsamples,0);
+#  endif
 #endif
     OP_ASSERT(ret<0||ret==_nsamples);
   }
