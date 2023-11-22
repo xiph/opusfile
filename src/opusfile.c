@@ -1338,7 +1338,7 @@ static void op_update_gain(OggOpusFile *_of){
   OP_ASSERT(_of->od!=NULL);
 #if defined(OPUS_SET_GAIN)
   if(_of->od==NULL){
-    fprintf(stderr, "Set gain not available.\n");
+    opus_projection_decoder_ctl(_of->st,OPUS_SET_GAIN(gain_q8));
   }
   else{
     opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(gain_q8));
