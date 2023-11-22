@@ -27,7 +27,6 @@
 #include <math.h>
 
 #include "opusfile.h"
-#include "opus_projection.h"
 
 
 /*This implementation is largely based off of libvorbisfile.
@@ -1337,12 +1336,16 @@ static void op_update_gain(OggOpusFile *_of){
   gain_q8=OP_CLAMP(-32768,gain_q8,32767);
   OP_ASSERT(_of->od!=NULL);
 #if defined(OPUS_SET_GAIN)
+# ifdef OPUS_HAVE_OPUS_PROJECTION_H
   if(_of->od==NULL){
     opus_projection_decoder_ctl(_of->st,OPUS_SET_GAIN(gain_q8));
   }
   else{
     opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(gain_q8));
   }
+# else
+  opus_multistream_decoder_ctl(_of->od,OPUS_SET_GAIN(gain_q8));
+# endif
 #else
 /*A fallback that works with both float and fixed-point is a bunch of work,
    so just force people to use a sufficiently new version.
@@ -1374,6 +1377,7 @@ static int op_make_decode_ready(OggOpusFile *_of){
   else{
     int err;
     if(head->mapping_family==3){  /*probably also better for mapping 2*/
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
       OpusProjectionDecoder *st_dec;
       /*opus_projection_decoder_destroy(_of->od);*/
       /* opus_int32 matrix_size = mapping_matrix_get_size(stream_count + coupled_count, channel_count); */
@@ -1386,6 +1390,9 @@ static int op_make_decode_ready(OggOpusFile *_of){
       _of->st = st_dec;
       /*Override od*/
       if(_of->st==NULL)return OP_EFAULT;
+#else
+      return OP_EIMPL;
+#endif
     }
     else{
       opus_multistream_decoder_destroy(_of->od);
