@@ -110,6 +110,7 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
     /*Use channel mapping 3 for orders {1, 2, 3} with 4 to 18 channels
       (including the non-diegetic stereo track). For other orders with no
       demixing matrices currently available, use channel mapping 2.*/
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
     size_t size;
     size_t dmatrix_size;
     int i;
@@ -131,11 +132,16 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
 
     dmatrix_size = head.channel_count*(head.stream_count+head.coupled_count) * 
       sizeof(opus_int16);
+    if (dmatrix_size > OPUS_DEMIXING_MATRIX_SIZE_MAX)
+      return OP_EBADHEADER;
     memcpy(_head->dmatrix, _data + 21, dmatrix_size);
     if (_head != NULL){
       for (i = 0; i < head.channel_count; i++) 
         _head->mapping[i] = i;
     }
+#else
+    return OP_EIMPL;
+#endif
   }
   /*General purpose players should not attempt to play back content with
      channel mapping family 255.*/
