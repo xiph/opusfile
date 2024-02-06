@@ -28,7 +28,6 @@
 
 #include "opusfile.h"
 
-
 /*This implementation is largely based off of libvorbisfile.
   All of the Ogg bits work roughly the same, though I have made some
    "improvements" that have not been folded back there, yet.*/
@@ -1376,7 +1375,7 @@ static int op_make_decode_ready(OggOpusFile *_of){
   }
   else{
     int err;
-    if(head->mapping_family==3){  /*probably also better for mapping 2*/
+    if(head->mapping_family==3){
 #ifdef OPUS_HAVE_OPUS_PROJECTION_H
       OpusProjectionDecoder *st_dec;
       const int dmatrix_size = (stream_count + coupled_count) * channel_count *

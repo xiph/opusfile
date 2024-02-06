@@ -275,7 +275,7 @@ struct OpusHead{
   unsigned char mapping[OPUS_CHANNEL_COUNT_MAX];
 
 #ifdef OPUS_HAVE_OPUS_PROJECTION_H
-  /**The maximum size of projection decoder demixing matrix. */
+  /**The demixing matrix of the projection decoder.*/
   unsigned char dmatrix[OPUS_DEMIXING_MATRIX_SIZE_MAX];
 #endif
 };

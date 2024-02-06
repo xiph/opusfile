@@ -113,7 +113,6 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
     size_t size;
     size_t dmatrix_size;
     int i;
-    fprintf(stderr, "Mapping family 3!\n");
     if (head.channel_count < 1 || head.channel_count > OP_NCHANNELS_MAX)
       return OP_EBADHEADER;
 
@@ -124,8 +123,6 @@ int opus_head_parse(OpusHead *_head,const unsigned char *_data,size_t _len){
     head.coupled_count = _data[20];
     if (head.coupled_count > head.stream_count)
       return OP_EBADHEADER;
-
-    fprintf(stderr, "streams %d, coupled %d \n", head.stream_count, head.coupled_count);
 
     size = 21 + (head.channel_count * (head.stream_count+head.coupled_count)*2);
 
