@@ -1379,16 +1379,14 @@ static int op_make_decode_ready(OggOpusFile *_of){
     if(head->mapping_family==3){  /*probably also better for mapping 2*/
 #ifdef OPUS_HAVE_OPUS_PROJECTION_H
       OpusProjectionDecoder *st_dec;
-      /*opus_projection_decoder_destroy(_of->od);*/
-      /* opus_int32 matrix_size = mapping_matrix_get_size(stream_count + coupled_count, channel_count); */
       const int dmatrix_size = (stream_count + coupled_count) * channel_count *
         sizeof(opus_int16);
       opus_projection_decoder_destroy(_of->st);
       st_dec = opus_projection_decoder_create(48000,channel_count,
-      stream_count,coupled_count,head->dmatrix,dmatrix_size,&err);
-      _of->od = NULL;
+      stream_count,coupled_count,(unsigned char*)head->dmatrix,dmatrix_size,&err);
+      /*Replace od with st*/
+      opus_multistream_decoder_destroy(_of->od);
       _of->st = st_dec;
-      /*Override od*/
       if(_of->st==NULL)return OP_EFAULT;
 #else
       return OP_EIMPL;

@@ -211,7 +211,10 @@ typedef struct OggOpusFile       OggOpusFile;
 /**The maximum number of channels in an Ogg Opus stream.*/
 #define OPUS_CHANNEL_COUNT_MAX (255)
 
-#define OPUS_DEMIXING_MATRIX_SIZE_MAX (18 * 18 * 2)
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+/**The maximum size of projection decoder demixing matrix.*/
+#define OPUS_DEMIXING_MATRIX_SIZE_MAX (38 * 38 * 2)
+#endif
 
 /**Ogg Opus bitstream information.
    This contains the basic playback parameters for a stream, and corresponds to
@@ -271,7 +274,10 @@ struct OpusHead{
       <code>(index-coupled_count)</code>.*/
   unsigned char mapping[OPUS_CHANNEL_COUNT_MAX];
 
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  /**The maximum size of projection decoder demixing matrix. */
   unsigned char dmatrix[OPUS_DEMIXING_MATRIX_SIZE_MAX];
+#endif
 };
 
 /**The metadata from an Ogg Opus stream.
