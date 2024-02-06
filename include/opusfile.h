@@ -213,7 +213,7 @@ typedef struct OggOpusFile       OggOpusFile;
 
 #ifdef OPUS_HAVE_OPUS_PROJECTION_H
 /**The maximum size of projection decoder demixing matrix.*/
-#define OPUS_DEMIXING_MATRIX_SIZE_MAX (38 * 38 * 2)
+#define OPUS_DEMIXING_MATRIX_SIZE_MAX (18 * 18 * 2)
 #endif
 
 /**Ogg Opus bitstream information.
