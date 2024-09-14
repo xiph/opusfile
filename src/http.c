@@ -1759,7 +1759,8 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
   char            *host;
   size_t           host_len;
   unsigned char   *ip;
-  int              ip_len;
+  /* On AIX 7.3, ip_len is #defined to ip_ff.ip_flen and compilation fails */
+  int              iplen;
   int              check_cn;
   int              ret;
   host=_stream->url.host;
@@ -1775,7 +1776,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
   /*Check to see if the host was specified as a simple IP address.*/
   addr=op_inet_pton(host);
   ip=NULL;
-  ip_len=0;
+  iplen=0;
   if(addr!=NULL){
     switch(addr->ai_family){
       case AF_INET:{
@@ -1783,7 +1784,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
         s=(struct sockaddr_in *)addr->ai_addr;
         OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
         ip=(unsigned char *)&s->sin_addr;
-        ip_len=sizeof(s->sin_addr);
+        iplen=sizeof(s->sin_addr);
         /*RFC 6125 says, "In this case, the iPAddress subjectAltName must [sic]
            be present in the certificate and must [sic] exactly match the IP in
            the URI."
@@ -1795,7 +1796,7 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
         s=(struct sockaddr_in6 *)addr->ai_addr;
         OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
         ip=(unsigned char *)&s->sin6_addr;
-        ip_len=sizeof(s->sin6_addr);
+        iplen=sizeof(s->sin6_addr);
         check_cn=0;
       }break;
     }
@@ -1879,8 +1880,8 @@ static int op_http_verify_hostname(OpusHTTPStream *_stream,SSL *_ssl_conn){
             A match occurs if the reference identity octet string and the value
              octet strings are identical."*/
           cert_ip=ASN1_STRING_get0_data(name->d.iPAddress);
-          if(ip_len==ASN1_STRING_length(name->d.iPAddress)
-           &&memcmp(ip,cert_ip,ip_len)==0){
+          if(iplen==ASN1_STRING_length(name->d.iPAddress)
+           &&memcmp(ip,cert_ip,iplen)==0){
             ret=1;
             break;
           }
@@ -1941,12 +1942,12 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
     struct addrinfo   *addr;
     char              *host;
     unsigned char     *ip;
-    int                ip_len;
+    int                iplen;
     param=SSL_get0_param(_ssl_conn);
     OP_ASSERT(param!=NULL);
     host=_stream->url.host;
     ip=NULL;
-    ip_len=0;
+    iplen=0;
     /*Check to see if the host was specified as a simple IP address.*/
     addr=op_inet_pton(host);
     if(addr!=NULL){
@@ -1956,7 +1957,7 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
           s=(struct sockaddr_in *)addr->ai_addr;
           OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
           ip=(unsigned char *)&s->sin_addr;
-          ip_len=sizeof(s->sin_addr);
+          iplen=sizeof(s->sin_addr);
           host=NULL;
         }break;
         case AF_INET6:{
@@ -1964,7 +1965,7 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
           s=(struct sockaddr_in6 *)addr->ai_addr;
           OP_ASSERT(addr->ai_addrlen>=sizeof(*s));
           ip=(unsigned char *)&s->sin6_addr;
-          ip_len=sizeof(s->sin6_addr);
+          iplen=sizeof(s->sin6_addr);
           host=NULL;
         }break;
       }
@@ -1972,7 +1973,7 @@ static int op_http_conn_start_tls(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
     /*Always set both host and ip to prevent matching against an old one.
       One of the two will always be NULL, clearing that parameter.*/
     X509_VERIFY_PARAM_set1_host(param,host,0);
-    X509_VERIFY_PARAM_set1_ip(param,ip,ip_len);
+    X509_VERIFY_PARAM_set1_ip(param,ip,iplen);
     if(addr!=NULL)freeaddrinfo(addr);
   }
 # endif
