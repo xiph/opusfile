@@ -1189,6 +1189,7 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
     /*We guard against garbage separating the last and first pages of two
        links below.*/
     while(_searched<end_searched){
+      opus_int64 boundary;
       opus_int32 next_bias;
       /*If we don't have a better estimate, use simple bisection.*/
       if(bisect==-1)bisect=_searched+(end_searched-_searched>>1);
@@ -1199,7 +1200,14 @@ static int op_bisect_forward_serialno(OggOpusFile *_of,
       else end_gp=-1;
       ret=op_seek_helper(_of,bisect);
       if(OP_UNLIKELY(ret<0))return ret;
-      last=op_get_next_page(_of,&og,_sr[nsr-1].offset);
+      /*If there is a large region of invalid data in the middle of the file,
+         avoid scanning it repeatedly.
+        Because of the bisection, doing that would only be O(n*log(n)), not
+         quadratic like op_get_last_page(), but still good to avoid.*/
+      OP_ASSERT(end_searched<=_sr[nsr-1].search_start);
+      boundary=OP_MIN(_sr[nsr-1].offset,
+       OP_ADV_OFFSET(end_searched,OP_PAGE_SIZE_MAX-1));
+      last=op_get_next_page(_of,&og,boundary);
       if(OP_UNLIKELY(last<OP_FALSE))return (int)last;
       next_bias=0;
       if(last==OP_FALSE)end_searched=bisect;
