@@ -54,14 +54,7 @@ EXTRA_DIST = \
  doc/Doxyfile.in \
  doc/opus_logo.svg \
  doc/Makefile \
- unix/Makefile \
- win32/VS2015/opusfile.sln \
- win32/VS2015/opusfile.vcxproj \
- win32/VS2015/opusfile.vcxproj.filters \
- win32/VS2015/opusfile_example.vcxproj \
- win32/VS2015/opusfile_example.vcxproj.filters \
- win32/VS2015/seeking_example.vcxproj \
- win32/VS2015/seeking_example.vcxproj.filters
+ unix/Makefile
 
 # Targets to build and install just the library without the docs
 opusfile install-opusfile: NO_DOXYGEN = 1
