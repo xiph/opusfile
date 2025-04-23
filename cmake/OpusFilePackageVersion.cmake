@@ -60,7 +60,7 @@ function(get_package_version PACKAGE_VERSION PROJECT_VERSION)
     # fail to parse version from git and package version
     message(WARNING "Could not get package version.")
     set(OPUSFILE_PACKAGE_VERSION 0)
-    set(OPUSFILE_PROJECT_VERSION 0)
+    set(OPUSFILE_PROJECT_VERSION 0.0)
   endif()
 
   message(STATUS "Opus project version: ${OPUSFILE_PROJECT_VERSION}")
