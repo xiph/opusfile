@@ -18,17 +18,20 @@
 # if !defined(_GNU_SOURCE)
 #  define _GNU_SOURCE
 # endif
-# if !defined(_LARGEFILE_SOURCE)
-#  define _LARGEFILE_SOURCE
-# endif
-# if !defined(_LARGEFILE64_SOURCE)
-#  define _LARGEFILE64_SOURCE
-# endif
-# if !defined(_FILE_OFFSET_BITS)
-#  define _FILE_OFFSET_BITS 64
-# endif
 
-# include <stdlib.h>
+// 64-bit file access is broken before ANDROID 24.
+#if !defined(__ANDROID__) || __ANDROID_API__ >= 24
+#   if !defined(_LARGEFILE_SOURCE)
+#    define _LARGEFILE_SOURCE
+#   endif
+#   if !defined(_LARGEFILE64_SOURCE)
+#     define _LARGEFILE64_SOURCE
+#   endif
+#   if !defined(_FILE_OFFSET_BITS)
+#    define _FILE_OFFSET_BITS 64
+#   endif
+#endif# include <stdlib.h>
+
 # include <opusfile.h>
 
 typedef struct OggOpusLink OggOpusLink;
