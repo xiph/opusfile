@@ -360,7 +360,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,OpusSeekRecord *_sr,
       /*If this page is from the stream we're looking for, remember it.*/
       if(serialno==_serialno){
         preferred_found=1;
-        *&preferred_sr=*_sr;
+        preferred_sr=*_sr;
       }
       if(!op_lookup_serialno(serialno,_serialnos,_nserialnos)){
         /*We fell off the end of the link, which means we seeked back too far
@@ -381,7 +381,7 @@ static int op_get_prev_page_serial(OggOpusFile *_of,OpusSeekRecord *_sr,
     end=OP_MIN(begin+OP_PAGE_SIZE_MAX-1,original_end);
   }
   while(_offset<0);
-  if(preferred_found)*_sr=*&preferred_sr;
+  if(preferred_found)*_sr=preferred_sr;
   return 0;
 }
 
@@ -1445,8 +1445,8 @@ static int op_open_seekable2(OggOpusFile *_of){
   /*This is a bit too large to put on the stack unconditionally.*/
   op_start=(ogg_packet *)_ogg_malloc(sizeof(*op_start)*start_op_count);
   if(op_start==NULL)return OP_EFAULT;
-  *&oy_start=_of->oy;
-  *&os_start=_of->os;
+  oy_start=_of->oy;
+  os_start=_of->os;
   prev_page_offset=_of->prev_page_offset;
   start_offset=_of->offset;
   memcpy(op_start,_of->op,sizeof(*op_start)*start_op_count);
@@ -1457,8 +1457,8 @@ static int op_open_seekable2(OggOpusFile *_of){
   /*Restore the old stream state.*/
   ogg_stream_clear(&_of->os);
   ogg_sync_clear(&_of->oy);
-  *&_of->oy=*&oy_start;
-  *&_of->os=*&os_start;
+  _of->oy=oy_start;
+  _of->os=os_start;
   _of->offset=start_offset;
   _of->op_count=start_op_count;
   memcpy(_of->op,op_start,sizeof(*_of->op)*start_op_count);
@@ -1521,7 +1521,7 @@ static int op_open1(OggOpusFile *_of,
   if(OP_UNLIKELY(_initial_bytes>(size_t)LONG_MAX))return OP_EFAULT;
   _of->end=-1;
   _of->stream=_stream;
-  *&_of->callbacks=*_cb;
+  _of->callbacks=*_cb;
   /*At a minimum, we need to be able to read data.*/
   if(OP_UNLIKELY(_of->callbacks.read==NULL))return OP_EREAD;
   /*Initialize the framing state.*/
@@ -1887,7 +1887,7 @@ static int op_fetch_and_process_page(OggOpusFile *_of,
     OP_ASSERT(_of->ready_state>=OP_OPENED);
     /*If we were given a page to use, use it.*/
     if(_og!=NULL){
-      *&og=*_og;
+      og=*_og;
       _og=NULL;
     }
     /*Keep reading until we get a page with the correct serialno.*/
