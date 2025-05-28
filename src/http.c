@@ -623,7 +623,7 @@ static int op_parse_url(OpusParsedURL *_dst,const char *_src){
   op_parsed_url_init(&url);
   ret=op_parse_url_impl(&url,_src);
   if(OP_UNLIKELY(ret<0))op_parsed_url_clear(&url);
-  else *_dst=*&url;
+  else *_dst=url;
   return ret;
 }
 
@@ -1068,7 +1068,7 @@ static void op_http_conn_read_rate_update(OpusHTTPConn *_conn){
   read_rate=_conn->read_rate;
   read_delta_ms=OP_MAX(read_delta_ms,1);
   read_rate+=read_delta_bytes*1000/read_delta_ms-read_rate+4>>3;
-  *&_conn->read_time=*&read_time;
+  _conn->read_time=read_time;
   _conn->read_bytes=0;
   _conn->read_rate=read_rate;
 }
@@ -2087,7 +2087,7 @@ static int op_http_connect_impl(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
   _conn->next=_stream->lru_head;
   _stream->lru_head=_conn;
   op_time_get(_start_time);
-  *&_conn->read_time=*_start_time;
+  _conn->read_time=*_start_time;
   _conn->read_bytes=0;
   _conn->read_rate=0;
   /*Try to start a connection to each protocol.
@@ -2201,7 +2201,7 @@ static int op_http_connect(OpusHTTPStream *_stream,OpusHTTPConn *_conn,
     new_addrs=op_resolve(_stream->connect_host,_stream->connect_port);
     if(OP_LIKELY(new_addrs!=NULL)){
       _addrs=new_addrs;
-      *&_stream->resolve_time=*&resolve_time;
+      _stream->resolve_time=resolve_time;
     }
     else if(OP_LIKELY(_addrs==NULL))return OP_FALSE;
   }
@@ -2719,7 +2719,7 @@ static int op_http_stream_open(OpusHTTPStream *_stream,const char *_url,
     /*Always try to skip re-resolve for proxy connections.*/
     else addrs=&_stream->addr_info;
     op_parsed_url_clear(&_stream->url);
-    *&_stream->url=*&next_url;
+    _stream->url=next_url;
     /*TODO: On servers/proxies that support pipelining, we might be able to
        re-use this connection.*/
     op_http_conn_close(_stream,_stream->conns+0,&_stream->lru_head,1);
@@ -3197,7 +3197,7 @@ static int op_http_stream_seek(void *_stream,opus_int64 _offset,int _whence){
   /*Mark when we deactivated the active connection.*/
   if(ci>=0){
     op_http_conn_read_rate_update(stream->conns+ci);
-    *&seek_time=*&stream->conns[ci].read_time;
+    seek_time=stream->conns[ci].read_time;
   }
   else op_time_get(&seek_time);
   /*If we seeked past the end of the stream, just disable the active
@@ -3423,7 +3423,7 @@ static void *op_url_stream_create_impl(OpusFileCallbacks *_cb,const char *_url,
       _ogg_free(stream);
       return NULL;
     }
-    *_cb=*&OP_HTTP_CALLBACKS;
+    *_cb=OP_HTTP_CALLBACKS;
     return stream;
   }
 #else
@@ -3516,7 +3516,7 @@ void *op_url_stream_vcreate(OpusFileCallbacks *_cb,
   OpusServerInfo *pinfo;
   void *ret;
   ret=op_url_stream_vcreate_impl(_cb,_url,&info,&pinfo,_ap);
-  if(pinfo!=NULL)*pinfo=*&info;
+  if(pinfo!=NULL)*pinfo=info;
   return ret;
 }
 
@@ -3549,7 +3549,7 @@ OggOpusFile *op_vopen_url(const char *_url,int *_error,va_list _ap){
     if(pinfo!=NULL)opus_server_info_clear(&info);
     (*cb.close)(source);
   }
-  else if(pinfo!=NULL)*pinfo=*&info;
+  else if(pinfo!=NULL)*pinfo=info;
   return of;
 }
 
@@ -3579,7 +3579,7 @@ OggOpusFile *op_vtest_url(const char *_url,int *_error,va_list _ap){
     if(pinfo!=NULL)opus_server_info_clear(&info);
     (*cb.close)(source);
   }
-  else if(pinfo!=NULL)*pinfo=*&info;
+  else if(pinfo!=NULL)*pinfo=info;
   return of;
 }
 
