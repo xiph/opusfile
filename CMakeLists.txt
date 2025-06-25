@@ -78,10 +78,13 @@ target_compile_options(opusfile
 )
 target_compile_definitions(opusfile
   PRIVATE
+    OP_BUILD
     $<$<BOOL:${OP_DISABLE_FLOAT_API}>:OP_DISABLE_FLOAT_API>
     $<$<BOOL:${OP_FIXED_POINT}>:OP_FIXED_POINT>
     $<$<BOOL:${OP_ENABLE_ASSERTIONS}>:OP_ENABLE_ASSERTIONS>
     $<$<BOOL:${OP_HAVE_LRINTF}>:OP_HAVE_LRINTF>
+  PUBLIC
+    $<$<BOOL:${BUILD_SHARED_LIBS}>:OP_BUILD_SHARED>
 )
 install(TARGETS opusfile
   EXPORT OpusFileTargets
