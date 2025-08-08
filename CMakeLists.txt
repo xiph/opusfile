@@ -120,72 +120,72 @@ if(NOT OP_DISABLE_HTTP)
     endif()
   endif()
   cmake_pop_check_state()
+endif()
 
-  add_library(opusurl
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/http.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.h"
-  )
-  add_library(OpusFile::opusurl ALIAS opusurl)
-  if(WIN32)
-    target_sources(opusurl PRIVATE
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/wincerts.c"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/winerrno.h"
-    )
-  endif()
-  set_target_properties(opusurl PROPERTIES
-    PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
-    VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-  )
-  target_include_directories(opusurl
-    PRIVATE
-      "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    INTERFACE
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/opus>
-  )
-  target_compile_definitions(opusurl
-    PRIVATE
-      $<$<BOOL:${OP_DISABLE_FLOAT_API}>:OP_DISABLE_FLOAT_API>
-      $<$<BOOL:${OP_FIXED_POINT}>:OP_FIXED_POINT>
-      $<$<BOOL:${OP_ENABLE_ASSERTIONS}>:OP_ENABLE_ASSERTIONS>
-      $<$<BOOL:${OP_HAVE_LRINTF}>:OP_HAVE_LRINTF>
-      $<$<BOOL:${OP_HAVE_CLOCK_GETTIME}>:OP_HAVE_CLOCK_GETTIME>
-      $<$<BOOL:${OP_HAVE_FTIME}>:OP_HAVE_FTIME>
-      OP_ENABLE_HTTP
-  )
-  target_link_libraries(opusurl
-    PRIVATE
-      opusfile
-      OpenSSL::SSL
-      $<$<C_COMPILER_ID:MSVC>:ws2_32>
-      $<$<C_COMPILER_ID:MSVC>:crypt32>
-      $<$<BOOL:${OP_HAVE_LIBM}>:m>
-  )
-  target_compile_options(opusurl
-    PRIVATE
-      $<$<C_COMPILER_ID:MSVC>:/wd4267>
-      $<$<C_COMPILER_ID:MSVC>:/wd4244>
-      $<$<C_COMPILER_ID:MSVC>:/wd4090>
-      $<$<C_COMPILER_ID:Clang,GNU>:-std=c89>
-      $<$<C_COMPILER_ID:Clang,GNU>:-pedantic>
-      $<$<C_COMPILER_ID:Clang,GNU>:-Wall>
-      $<$<C_COMPILER_ID:Clang,GNU>:-Wextra>
-      $<$<C_COMPILER_ID:Clang,GNU>:-Wno-parentheses>
-      $<$<C_COMPILER_ID:Clang,GNU>:-Wno-long-long>
-      $<$<C_COMPILER_ID:Clang,GNU>:-fvisibility=hidden>
-  )
-  install(TARGETS opusurl
-    EXPORT OpusFileTargets
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
-    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
+add_library(opusurl
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/http.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/internal.h"
+)
+add_library(OpusFile::opusurl ALIAS opusurl)
+if(WIN32)
+  target_sources(opusurl PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wincerts.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/winerrno.h"
   )
 endif()
+set_target_properties(opusurl PROPERTIES
+  PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/opusfile.h"
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
+)
+target_include_directories(opusurl
+  PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/opus>
+)
+target_compile_definitions(opusurl
+  PRIVATE
+    $<$<BOOL:${OP_DISABLE_FLOAT_API}>:OP_DISABLE_FLOAT_API>
+    $<$<BOOL:${OP_FIXED_POINT}>:OP_FIXED_POINT>
+    $<$<BOOL:${OP_ENABLE_ASSERTIONS}>:OP_ENABLE_ASSERTIONS>
+    $<$<BOOL:${OP_HAVE_LRINTF}>:OP_HAVE_LRINTF>
+    $<$<BOOL:${OP_HAVE_CLOCK_GETTIME}>:OP_HAVE_CLOCK_GETTIME>
+    $<$<BOOL:${OP_HAVE_FTIME}>:OP_HAVE_FTIME>
+    $<$<NOT:$<BOOL:${OP_DISABLE_HTTP}>>:OP_ENABLE_HTTP>
+)
+target_link_libraries(opusurl
+  PRIVATE
+    opusfile
+    $<$<NOT:$<BOOL:${OP_DISABLE_HTTP}>>:OpenSSL::SSL>
+    $<$<C_COMPILER_ID:MSVC>:ws2_32>
+    $<$<C_COMPILER_ID:MSVC>:crypt32>
+    $<$<BOOL:${OP_HAVE_LIBM}>:m>
+)
+target_compile_options(opusurl
+  PRIVATE
+    $<$<C_COMPILER_ID:MSVC>:/wd4267>
+    $<$<C_COMPILER_ID:MSVC>:/wd4244>
+    $<$<C_COMPILER_ID:MSVC>:/wd4090>
+    $<$<C_COMPILER_ID:Clang,GNU>:-std=c89>
+    $<$<C_COMPILER_ID:Clang,GNU>:-pedantic>
+    $<$<C_COMPILER_ID:Clang,GNU>:-Wall>
+    $<$<C_COMPILER_ID:Clang,GNU>:-Wextra>
+    $<$<C_COMPILER_ID:Clang,GNU>:-Wno-parentheses>
+    $<$<C_COMPILER_ID:Clang,GNU>:-Wno-long-long>
+    $<$<C_COMPILER_ID:Clang,GNU>:-fvisibility=hidden>
+)
+install(TARGETS opusurl
+  EXPORT OpusFileTargets
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
+  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/opus"
+)
 
 if(NOT OP_DISABLE_EXAMPLES)
   add_executable(opusfile_example
