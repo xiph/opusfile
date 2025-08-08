@@ -103,6 +103,13 @@ if(NOT OP_DISABLE_HTTP)
     if(NOT OP_HAVE_SYS_SOCKET_H)
       message(FATAL_ERROR "HTTP support requires a POSIX socket library")
     endif()
+    check_symbol_exists(getsockopt "sys/socket.h" OP_HAVE_GETSOCKOPT)
+    if(NOT OP_HAVE_GETSOCKOPT)
+      cmake_push_check_state()
+      list(APPEND CMAKE_REQUIRED_LIBRARIES "socket")
+      check_symbol_exists(getsockopt "sys/socket.h" OP_NEED_SOCKET)
+      cmake_pop_check_state()
+    endif()
   endif()
   check_c_source_compiles(
     "#include <time.h>
@@ -164,6 +171,7 @@ target_link_libraries(opusurl
     $<$<C_COMPILER_ID:MSVC>:ws2_32>
     $<$<C_COMPILER_ID:MSVC>:crypt32>
     $<$<BOOL:${OP_HAVE_LIBM}>:m>
+    $<$<BOOL:${OP_NEED_SOCKET}>:socket>
 )
 target_compile_options(opusurl
   PRIVATE
