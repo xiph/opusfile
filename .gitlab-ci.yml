@@ -16,7 +16,7 @@ autotools:
     - make
     - make distcheck
 
-cmake:
+cmake-3.16:
   stage: build
   before_script:
     - apt-get update &&
@@ -27,6 +27,30 @@ cmake:
     - tar xzf cmake-3.16.9-Linux-x86_64.tar.gz
     - cmake-3.16.9-Linux-x86_64/bin/cmake -Bbuild -H.
     - cmake-3.16.9-Linux-x86_64/bin/cmake --build build
+  tags:
+    - docker
+
+cmake:
+  stage: build
+  before_script:
+    - apt-get update &&
+      apt-get install -y libopus-dev libogg-dev libssl-dev
+        cmake doxygen
+  script:
+    - cmake -Bbuild -H.
+    - cmake --build build
+  tags:
+    - docker
+
+cmake-nohttp:
+  stage: build
+  before_script:
+    - apt-get update &&
+      apt-get install -y libopus-dev libogg-dev libssl-dev
+        cmake doxygen
+  script:
+    - cmake -Bbuild -H. -D OP_DISABLE_HTTP=YES
+    - cmake --build build
   tags:
     - docker
 
