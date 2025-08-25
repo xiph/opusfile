@@ -108,7 +108,9 @@ extern "C" {
 # include <stdio.h>
 # include <ogg/ogg.h>
 # include <opus_multistream.h>
-
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+#include <opus_projection.h>
+#endif
 /**@cond PRIVATE*/
 
 /*Enable special features for gcc and gcc-compatible compilers.*/
@@ -209,6 +211,11 @@ typedef struct OggOpusFile       OggOpusFile;
 /**The maximum number of channels in an Ogg Opus stream.*/
 #define OPUS_CHANNEL_COUNT_MAX (255)
 
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+/**The maximum size of projection decoder demixing matrix.*/
+#define OPUS_DEMIXING_MATRIX_SIZE_MAX (18 * 18 * 2)
+#endif
+
 /**Ogg Opus bitstream information.
    This contains the basic playback parameters for a stream, and corresponds to
     the initial ID header packet of an Ogg Opus stream.*/
@@ -266,6 +273,11 @@ struct OpusHead{
      Otherwise, it refers to the output of the uncoupled stream
       <code>(index-coupled_count)</code>.*/
   unsigned char mapping[OPUS_CHANNEL_COUNT_MAX];
+
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  /**The demixing matrix of the projection decoder.*/
+  unsigned char dmatrix[OPUS_DEMIXING_MATRIX_SIZE_MAX];
+#endif
 };
 
 /**The metadata from an Ogg Opus stream.
