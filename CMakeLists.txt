@@ -68,7 +68,6 @@ target_compile_options(opusfile
     $<$<C_COMPILER_ID:MSVC>:/wd4267>
     $<$<C_COMPILER_ID:MSVC>:/wd4244>
     $<$<C_COMPILER_ID:MSVC>:/wd4090>
-    $<$<C_COMPILER_ID:Clang,GNU>:-std=c89>
     $<$<C_COMPILER_ID:Clang,GNU>:-pedantic>
     $<$<C_COMPILER_ID:Clang,GNU>:-Wall>
     $<$<C_COMPILER_ID:Clang,GNU>:-Wextra>
