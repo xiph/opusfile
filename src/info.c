@@ -338,10 +338,16 @@ int opus_tags_set_binary_suffix(OpusTags *_tags,
   ncomments=_tags->comments;
   ret=op_tags_ensure_capacity(_tags,ncomments);
   if(OP_UNLIKELY(ret<0))return ret;
-  binary_suffix_data=
-   (unsigned char *)_ogg_realloc(_tags->user_comments[ncomments],_len);
-  if(OP_UNLIKELY(binary_suffix_data==NULL))return OP_EFAULT;
-  memcpy(binary_suffix_data,_data,_len);
+  if(_len!=0){
+    binary_suffix_data=
+     (unsigned char *)_ogg_realloc(_tags->user_comments[ncomments],_len);
+    if(OP_UNLIKELY(binary_suffix_data==NULL))return OP_EFAULT;
+    memcpy(binary_suffix_data,_data,_len);
+  }
+  else{
+    _ogg_free(_tags->user_comments[ncomments]);
+    binary_suffix_data=NULL;
+  }
   _tags->user_comments[ncomments]=(char *)binary_suffix_data;
   _tags->comment_lengths[ncomments]=_len;
   return 0;
@@ -721,8 +727,14 @@ static int opus_picture_tag_parse_impl(OpusPictureTag *_pic,const char *_tag,
      for URLs.*/
   _buf_sz-=i;
   memmove(_buf,_buf+i,sizeof(*_buf)*_buf_sz);
-  _buf=(unsigned char *)_ogg_realloc(_buf,_buf_sz);
-  if(_buf_sz>0&&_buf==NULL)return OP_EFAULT;
+  if(_buf_sz>0){
+    _buf=(unsigned char *)_ogg_realloc(_buf,_buf_sz);
+    if(_buf==NULL)return OP_EFAULT;
+  }
+  else{
+    _ogg_free(_buf);
+    _buf=NULL;
+  }
   _pic->type=picture_type;
   _pic->width=width;
   _pic->height=height;
