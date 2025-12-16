@@ -728,8 +728,12 @@ static int opus_picture_tag_parse_impl(OpusPictureTag *_pic,const char *_tag,
   _buf_sz-=i;
   memmove(_buf,_buf+i,sizeof(*_buf)*_buf_sz);
   if(_buf_sz>0){
-    _buf=(unsigned char *)_ogg_realloc(_buf,_buf_sz);
-    if(_buf==NULL)return OP_EFAULT;
+    unsigned char *shrunk_buf;
+    shrunk_buf=(unsigned char *)_ogg_realloc(_buf,_buf_sz);
+    /*Failure is okay here, since we were strictly trying to reduce the buffer
+       size.
+      We can just proceed with the original, larger buffer.*/
+    if(shrunk_buf==NULL)shrunk_buf=_buf;
   }
   else{
     _ogg_free(_buf);
