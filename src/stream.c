@@ -118,11 +118,17 @@ static opus_int64 op_ftell(void *_stream){
 #endif
 }
 
+static int op_fclose(void *_stream){
+  /*This indirection maintains fclose's type signature which is necessary for
+     Control Flow Integrity.*/
+  return fclose((FILE *)_stream);
+}
+
 static const OpusFileCallbacks OP_FILE_CALLBACKS={
   op_fread,
   op_fseek,
   op_ftell,
-  (op_close_func)fclose
+  op_fclose
 };
 
 #if defined(_WIN32)
@@ -257,7 +263,7 @@ static const OpusFileCallbacks OP_UNSEEKABLE_FILE_CALLBACKS={
   op_fread,
   op_fseek_fail,
   op_ftell,
-  (op_close_func)fclose
+  op_fclose
 };
 
 # define WIN32_LEAN_AND_MEAN
