@@ -1741,6 +1741,18 @@ opus_int64 op_raw_total(const OggOpusFile *_of,int _li){
    -(_li>0?_of->links[_li].offset:0);
 }
 
+static opus_int64 op_raw_total_minus_headers(const OggOpusFile* _of, int _li) {
+    if (OP_UNLIKELY(_of->ready_state < OP_OPENED)
+        || OP_UNLIKELY(!_of->seekable)
+        || OP_UNLIKELY(_li >= _of->nlinks)) {
+        return OP_EINVAL;
+    }
+    if (_li < 0)return _of->end;
+    
+    return (_li + 1 >= _of->nlinks ? _of->end : _of->links[_li + 1].offset)
+        - _of->links[_li].data_offset;
+}
+
 ogg_int64_t op_pcm_total(const OggOpusFile *_of,int _li){
   OggOpusLink *links;
   ogg_int64_t  pcm_total;
@@ -1818,7 +1830,7 @@ opus_int32 op_bitrate(const OggOpusFile *_of,int _li){
    ||OP_UNLIKELY(_li>=_of->nlinks)){
     return OP_EINVAL;
   }
-  return op_calc_bitrate(op_raw_total(_of,_li),op_pcm_total(_of,_li));
+  return op_calc_bitrate(op_raw_total_minus_headers(_of,_li),op_pcm_total(_of,_li));
 }
 
 opus_int32 op_bitrate_instant(OggOpusFile *_of){
