@@ -54,7 +54,12 @@ EXTRA_DIST = \
  doc/Doxyfile.in \
  doc/opus_logo.svg \
  doc/Makefile \
- unix/Makefile
+ unix/Makefile \
+ cmake/FindOgg.cmake \
+ cmake/FindOpus.cmake \
+ cmake/OpusFileConfig.cmake.in \
+ cmake/OpusFilePackageVersion.cmake \
+ CMakeLists.txt
 
 # Targets to build and install just the library without the docs
 opusfile install-opusfile: NO_DOXYGEN = 1

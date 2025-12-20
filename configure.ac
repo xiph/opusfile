@@ -122,7 +122,7 @@ AS_IF([test "$enable_http" != "no"], [
 AM_CONDITIONAL(OP_ENABLE_HTTP, [test "$enable_http" != "no"])
 AC_SUBST([openssl])
 
-PKG_CHECK_MODULES([DEPS], [ogg >= 1.3 opus >= 1.0.1])
+PKG_CHECK_MODULES([DEPS], [ogg >= 1.1 opus >= 1.0.1])
 
 AC_ARG_ENABLE([fixed-point],
   AS_HELP_STRING([--enable-fixed-point], [Enable fixed-point calculation]),,
