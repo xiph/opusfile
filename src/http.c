@@ -3467,10 +3467,12 @@ static void *op_url_stream_vcreate_impl(OpusFileCallbacks *_cb,
   pinfo=NULL;
   *_pinfo=NULL;
   for(;;){
-    ptrdiff_t request;
-    request=va_arg(_ap,char *)-(char *)NULL;
+    char *prequest;
+    intptr_t request;
+    prequest=va_arg(_ap,char *);
     /*If we hit NULL, we're done processing options.*/
-    if(!request)break;
+    if(!prequest)break;
+    request=(intptr_t)prequest;
     switch(request){
       case OP_SSL_SKIP_CERTIFICATE_CHECK_REQUEST:{
         skip_certificate_check=!!va_arg(_ap,opus_int32);
