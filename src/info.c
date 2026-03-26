@@ -733,7 +733,7 @@ static int opus_picture_tag_parse_impl(OpusPictureTag *_pic,const char *_tag,
     /*Failure is okay here, since we were strictly trying to reduce the buffer
        size.
       We can just proceed with the original, larger buffer.*/
-    if(shrunk_buf==NULL)shrunk_buf=_buf;
+    if(shrunk_buf!=NULL)_buf=shrunk_buf;
   }
   else{
     _ogg_free(_buf);
