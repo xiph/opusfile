@@ -1558,6 +1558,7 @@ static int op_open1(OggOpusFile *_of,
   /*Don't seek yet.
     Set up a 'single' (current) logical bitstream entry for partial open.*/
   _of->links=(OggOpusLink *)_ogg_malloc(sizeof(*_of->links));
+  if(OP_UNLIKELY(_of->links==NULL))return OP_EFAULT;
   /*The serialno gets filled in later by op_fetch_headers().*/
   ogg_stream_init(&_of->os,-1);
   pog=NULL;
