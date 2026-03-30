@@ -109,7 +109,7 @@ void op_fatal_impl(const char *_str,const char *_file,int _line);
  (OP_MIN(_offset,OP_INT64_MAX-(_amount))+(_amount))
 
 /*The maximum channel count for any mapping we'll actually decode.*/
-# define OP_NCHANNELS_MAX (8)
+# define OP_NCHANNELS_MAX (255)
 
 /*Initial state.*/
 # define  OP_NOTOPEN   (0)
@@ -213,6 +213,10 @@ struct OggOpusFile{
   int                op_count;
   /*Central working state for the packet-to-PCM decoder.*/
   OpusMSDecoder     *od;
+#ifdef OPUS_HAVE_OPUS_PROJECTION_H
+  /*Projection decoder state.*/
+  OpusProjectionDecoder *st;
+#endif
   /*The application-provided packet decode callback.*/
   op_decode_cb_func  decode_cb;
   /*The application-provided packet decode callback context.*/
