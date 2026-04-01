@@ -22,8 +22,12 @@ option(OP_DISABLE_DOCS "Do not build API documentation" OFF)
 
 include(GNUInstallDirs)
 
-find_package(Ogg REQUIRED)
-find_package(Opus REQUIRED)
+if (NOT TARGET Ogg::ogg)
+  find_package(Ogg REQUIRED)
+endif()
+if(NOT TARGET Opus::opus)
+  find_package(Opus REQUIRED)
+endif()
 
 include(CMakePushCheckState)
 include(CheckSymbolExists)
