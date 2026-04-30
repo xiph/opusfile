@@ -1,6 +1,6 @@
 # Opusfile
 
-[![GitLab Pipeline Status](https://gitlab.xiph.org/xiph/opusfile/badges/master/pipeline.svg)](https://gitlab.xiph.org/xiph/opusfile/commits/master)
+[![GitLab Pipeline Status](https://gitlab.xiph.org/xiph/opusfile/badges/main/pipeline.svg)](https://gitlab.xiph.org/xiph/opusfile/commits/main)
 [![GitHub CI](https://github.com/xiph/opusfile/actions/workflows/build.yml/badge.svg)](https://github.com/xiph/opusfile/actions/workflows/build.yml)
 
 The opusfile and opusurl libraries provide a high-level API for

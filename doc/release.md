@@ -3,7 +3,7 @@
 ## Source release
 
 - Update OP_LT_* API versioning in configure.ac.
-- Check for uncommitted changes to master.
+- Check for uncommitted changes to main.
 - Prepare win32 binaries
   - Do this before tagging the release, as it may require changes which should
     be committed
